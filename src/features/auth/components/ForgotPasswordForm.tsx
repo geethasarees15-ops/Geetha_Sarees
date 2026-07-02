@@ -19,13 +19,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { buildOAuthCallbackUrl } from "@/lib/auth/callback";
+import { safeAuthErrorMessage } from "@/lib/auth/safe-auth-errors";
+import { forgotPasswordEmailSchema } from "@/features/auth/validations";
 import { createClient } from "@/lib/supabase/client";
 
-const forgotPasswordSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-});
-
-type FormData = z.infer<typeof forgotPasswordSchema>;
+type FormData = z.infer<typeof forgotPasswordEmailSchema>;
 
 export function ForgotPasswordForm() {
   const { toast } = useToast();
@@ -34,7 +32,7 @@ export function ForgotPasswordForm() {
   const [emailSent, setEmailSent] = React.useState(false);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver: zodResolver(forgotPasswordEmailSchema),
     defaultValues: { email: "" },
   });
 
@@ -55,7 +53,10 @@ export function ForgotPasswordForm() {
     if (error) {
       toast({
         title: "Could not send reset email",
-        description: error.message,
+        description: safeAuthErrorMessage(
+          error,
+          "Could not send reset email. Please try again.",
+        ),
       });
       return;
     }

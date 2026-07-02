@@ -88,6 +88,9 @@ const payload = {
   uri_allow_list: redirectAllowList,
   external_email_enabled: true,
   disable_signup: false,
+  // Skip confirmation emails — reduces bounces from typos, bots, and test signups.
+  // Google OAuth users are already verified by Google.
+  mailer_autoconfirm: true,
 };
 
 if (googleClientId && googleClientSecret) {

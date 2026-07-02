@@ -13,6 +13,10 @@ const supabaseUrl =
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRole = process.env.DATABASE_SERVICE_ROLE;
 
+const allowLiveEmailTest =
+  process.argv.includes("--send-test-email") ||
+  process.env.ALLOW_LIVE_AUTH_EMAIL_TEST === "true";
+
 if (!anonKey || !projectRef) {
   console.error("Missing Supabase env in .env.local");
   process.exit(1);
@@ -65,7 +69,24 @@ async function verifyDatabase() {
 }
 
 async function testEmailSignup() {
-  const testEmail = `ssrtex.verify.${Date.now()}@gmail.com`;
+  if (!allowLiveEmailTest) {
+    return {
+      ok: true,
+      skipped: true,
+      reason:
+        "Skipped live signup email test (prevents Supabase bounces). Use --send-test-email only with a real inbox you control.",
+    };
+  }
+
+  const testEmail = process.env.AUTH_TEST_EMAIL?.trim();
+  if (!testEmail) {
+    return {
+      ok: false,
+      error:
+        "Set AUTH_TEST_EMAIL to a real inbox you control before using --send-test-email.",
+    };
+  }
+
   const password = "TestAuth!23456";
 
   const res = await fetch(`${authBase}/signup`, {
@@ -107,7 +128,8 @@ async function testEmailSignup() {
 
   return {
     ok: true,
-    emailConfirmationRequired: body.user?.identities?.length === 0 || !body.session,
+    emailConfirmationRequired:
+      body.user?.identities?.length === 0 || !body.session,
     userId,
     cleanedUp: Boolean(serviceRole),
   };
@@ -132,7 +154,7 @@ console.log("\nEmail signup test:");
 const signup = await testEmailSignup();
 if (signup.ok) {
   if (signup.skipped) {
-    console.log("  SKIPPED (rate limit) — email provider is reachable");
+    console.log("  SKIPPED —", signup.reason);
   } else {
     console.log("  OK — signup works");
     console.log(

@@ -1,9 +1,18 @@
 import { z } from "zod";
+import {
+  blockedSignupEmailMessage,
+  isBlockedSignupEmail,
+} from "@/lib/auth/email-policy";
+
+const emailField = z
+  .string()
+  .email({ message: "Please enter a valid email address" })
+  .refine((value) => !isBlockedSignupEmail(value), {
+    message: blockedSignupEmailMessage,
+  });
 
 export const authSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address",
-  }),
+  email: emailField,
   password: z
     .string()
     .min(8, {
@@ -17,9 +26,7 @@ export const authSchema = z.object({
 });
 
 export const signupSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address",
-  }),
+  email: emailField,
   name: z.string(),
   password: z
     .string()
@@ -31,4 +38,8 @@ export const signupSchema = z.object({
       message:
         "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character",
     }),
+});
+
+export const forgotPasswordEmailSchema = z.object({
+  email: emailField,
 });
