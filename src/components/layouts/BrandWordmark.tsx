@@ -37,6 +37,7 @@ export function BrandWordmark({
     <span
       className={cn(
         "brand-board-lockup inline-flex max-w-full items-center",
+        size === "nav" && "brand-board-lockup--nav",
         align === "center" && "mx-auto",
         className,
       )}
@@ -62,9 +63,9 @@ export function BrandWordmark({
         style={{ marginLeft: -config.emblemOverlapPx }}
       >
         <span
-          className="brand-board-name whitespace-nowrap font-[family-name:var(--font-hero-serif)] font-bold"
-          style={{ fontSize: config.nameFontPx, lineHeight: 1.15 }}
-        >
+        className="brand-board-name block max-w-full whitespace-nowrap font-[family-name:var(--font-hero-serif)] font-bold"
+        style={{ fontSize: config.nameFontPx, lineHeight: 1.15 }}
+      >
           {siteConfig.shopBoardName}
         </span>
 

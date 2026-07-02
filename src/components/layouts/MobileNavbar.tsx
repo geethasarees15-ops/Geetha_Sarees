@@ -20,8 +20,8 @@ function MobileNavbar({ adminLayout }: Props) {
         <SideMenu triggerClassName="ml-0" />
       </div>
 
-      <div className="flex h-full items-center justify-center px-[3rem]">
-        <Branding size="nav" align="center" className="max-w-[18rem]" />
+      <div className="flex h-full min-w-0 items-center justify-center px-[2.75rem]">
+        <Branding size="nav" align="center" className="min-w-0 max-w-[min(100%,19rem)]" />
       </div>
 
       <div
