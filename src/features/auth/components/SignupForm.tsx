@@ -60,37 +60,51 @@ export function SignUpForm() {
 
   async function onSubmit({ email, password, name }: FormData) {
     setIsLoading(true);
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-        },
-      },
-    });
     const from = searchParams?.get("from");
-
     const unknownError = "Something went wrong, please try again.";
 
-    if (error) {
+    try {
+      const signupResponse = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+      });
+      const signupBody = (await signupResponse.json().catch(() => ({}))) as {
+        message?: string;
+      };
+
+      if (!signupResponse.ok) {
+        toast({
+          title: "Error",
+          description: signupBody.message || unknownError,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Account created",
+          description: "Please sign in with your email and password.",
+        });
+        router.push("/sign-in");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        router.push(from ? from : "/");
+        router.refresh();
+      }
+    } catch {
       toast({
         title: "Error",
-        description: error?.message || unknownError,
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    if (data.session) {
-      router.push(from ? from : "/");
-      router.refresh();
-    } else {
-      toast({
-        title: "Check your email",
-        description:
-          "We sent a confirmation link. Verify your email, then sign in.",
+        description: unknownError,
       });
     }
 

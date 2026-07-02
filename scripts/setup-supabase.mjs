@@ -47,6 +47,11 @@ const triggerSql = [
      FOR EACH ROW EXECUTE FUNCTION public.handle_new_user()`,
 ];
 
+const blockDisposableSql = readFileSync(
+  join(root, "scripts/sql/block-disposable-auth-signup.sql"),
+  "utf8",
+);
+
 // Turn on Row Level Security so the policies below are enforced
 const rlsSql = [
   `ALTER TABLE medias ENABLE ROW LEVEL SECURITY`,
@@ -98,6 +103,8 @@ try {
     await sql.unsafe(q);
     console.log("OK:", q.replace(/\s+/g, " ").slice(0, 60) + "...");
   }
+  await sql.unsafe(blockDisposableSql);
+  console.log("OK: block_disposable_auth_signup trigger");
   const [{ count }] = await sql`SELECT count(*)::int as count FROM products`;
   console.log("Products in database:", count);
   console.log("GraphQL setup complete.");
