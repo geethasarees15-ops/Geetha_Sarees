@@ -49,7 +49,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
           >
             <span
               className={cn(
-                "group flex w-full items-center rounded-md border border-transparent px-3 py-2 text-sm hover:bg-muted hover:text-foreground",
+                "group flex w-full items-center rounded-md border border-transparent px-3 py-2.5 text-sm hover:bg-muted hover:text-foreground",
                 isActive
                   ? "bg-muted font-medium text-foreground"
                   : "text-muted-foreground",

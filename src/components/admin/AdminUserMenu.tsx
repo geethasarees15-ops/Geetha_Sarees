@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,11 +46,13 @@ export function AdminUserMenu() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full justify-start gap-2.5 rounded-md px-3 py-2 hover:bg-muted"
+          className="h-auto w-full justify-start gap-3 rounded-md px-3 py-2.5 hover:bg-muted"
+          aria-label={`${displayName} account menu`}
         >
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarImage src="/avatars/01.png" alt={initials} />
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          <Avatar className="h-9 w-9 shrink-0 border border-primary/15">
+            <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+              {initials}
+            </AvatarFallback>
           </Avatar>
           <span className="min-w-0 flex-1 text-left">
             <span className="block truncate text-sm font-medium text-foreground">
@@ -63,13 +65,26 @@ export function AdminUserMenu() {
           <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start" side="top">
+      <DropdownMenuContent
+        className="w-[calc(var(--admin-sidebar-width)-1.5rem)] min-w-56"
+        align="start"
+        side="top"
+      >
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 shrink-0 border border-primary/15">
+              <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium leading-none">
+                {displayName}
+              </p>
+              <p className="mt-1 truncate text-xs leading-none text-muted-foreground">
+                {user.email}
+              </p>
+            </div>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

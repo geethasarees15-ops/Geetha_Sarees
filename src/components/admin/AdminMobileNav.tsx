@@ -48,7 +48,7 @@ export function AdminMobileNav({ triggerClassName }: AdminMobileNavProps) {
 
       <SheetContent
         side="left"
-        className="flex w-[min(100vw-3rem,18rem)] flex-col gap-0 border-r p-0"
+        className="flex w-[min(100vw-3rem,var(--admin-sidebar-width))] flex-col gap-0 border-r p-0"
       >
         <SheetHeader className="border-b px-4 py-3 text-left">
           <SheetTitle className="text-base font-semibold">
