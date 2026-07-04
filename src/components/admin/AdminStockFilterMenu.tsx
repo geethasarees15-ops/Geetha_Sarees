@@ -62,11 +62,15 @@ export function AdminStockFilterMenu({
           value={value}
           onValueChange={(next) => onChange(next as AdminProductsStockFilter)}
         >
-          <DropdownMenuRadioItem value="all">All products</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="all">
+            All products
+          </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="low">
             Low stock (&lt; {lowStockThreshold})
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="out">Out of stock (0)</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="out">
+            Out of stock (0)
+          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

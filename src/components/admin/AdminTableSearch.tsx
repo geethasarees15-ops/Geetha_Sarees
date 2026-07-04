@@ -173,12 +173,7 @@ export function AdminTableSearch({
             {isFiltering || filterSummary ? (
               <p className="font-medium">
                 {filteredCount} of {totalCount} {entityLabel}
-                {isFiltering ? (
-                  <>
-                    {" "}
-                    matching &quot;{appliedQuery}&quot;
-                  </>
-                ) : null}
+                {isFiltering ? <> matching &quot;{appliedQuery}&quot;</> : null}
                 {filterSummary ? <> · {filterSummary}</> : null}
               </p>
             ) : null}
@@ -222,14 +217,16 @@ export function AdminTableSearch({
         <div className="mt-3 space-y-1 text-sm" aria-live="polite">
           {isFiltering ? (
             <p className="font-medium">
-              Results: {filteredCount} of {totalCount} {entityLabel} match &quot;
+              Results: {filteredCount} of {totalCount} {entityLabel} match
+              &quot;
               {appliedQuery}&quot;
             </p>
           ) : null}
 
           {isPending ? (
             <p className="text-amber-700">
-              Click Search or press Enter to find &quot;{draftQuery.trim()}&quot;
+              Click Search or press Enter to find &quot;{draftQuery.trim()}
+              &quot;
             </p>
           ) : null}
 

@@ -258,7 +258,9 @@ export function DashboardView({ stats, statsError }: Props) {
             <SectionCard title="Payment breakdown">
               <div className="space-y-2.5">
                 {stats.ordersByPayment.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No orders yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No orders yet.
+                  </p>
                 ) : (
                   stats.ordersByPayment.map(({ status, count }) => (
                     <div
@@ -314,7 +316,9 @@ export function DashboardView({ stats, statsError }: Props) {
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-border/50 py-2">
-                  <span className="text-muted-foreground">Featured on home</span>
+                  <span className="text-muted-foreground">
+                    Featured on home
+                  </span>
                   <span className="font-medium tabular-nums">
                     {stats.featuredProducts}
                   </span>

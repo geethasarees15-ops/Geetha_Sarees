@@ -125,15 +125,14 @@ export default function DataTable<TData, TValue>({
           totalCount={totalCount}
           toolbarEnd={toolbarEnd}
           hasActiveFilters={searchLayout === "compact" && isFiltering}
-          onClearAllFilters={searchLayout === "compact" ? clearSearch : undefined}
+          onClearAllFilters={
+            searchLayout === "compact" ? clearSearch : undefined
+          }
         />
       ) : null}
       {newItemHref ? (
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <Link
-            href={newItemHref}
-            className={cn(buttonVariants(), "shrink-0")}
-          >
+          <Link href={newItemHref} className={cn(buttonVariants(), "shrink-0")}>
             {newItemLabel}
           </Link>
         </div>
