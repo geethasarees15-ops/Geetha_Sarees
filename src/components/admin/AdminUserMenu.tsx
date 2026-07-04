@@ -73,10 +73,7 @@ export function AdminUserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={isLoggingOut}
-          onClick={() => void logout()}
-        >
+        <DropdownMenuItem disabled={isLoggingOut} onClick={() => void logout()}>
           {isLoggingOut ? "Signing out…" : "Log out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
