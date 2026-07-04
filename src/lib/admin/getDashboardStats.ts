@@ -122,7 +122,10 @@ async function fetchPaidOrderLines(
   const batches = chunkArray(paidOrderIds, SUPABASE_IN_BATCH_SIZE);
   const results = await Promise.all(
     batches.map((ids) =>
-      supabase.from("order_lines").select(ORDER_LINES_SELECT).in("orderId", ids),
+      supabase
+        .from("order_lines")
+        .select(ORDER_LINES_SELECT)
+        .in("orderId", ids),
     ),
   );
 
@@ -278,11 +281,7 @@ export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
       .lt("stock", 5)
       .order("stock", { ascending: true })
       .limit(8),
-    supabase
-      .from("products")
-      .select("id, name, stock")
-      .eq("stock", 0)
-      .limit(5),
+    supabase.from("products").select("id, name, stock").eq("stock", 0).limit(5),
     supabase.from("collections").select("id", { count: "exact", head: true }),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
   ]);

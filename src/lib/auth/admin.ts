@@ -25,21 +25,23 @@ export function isAdminFromMetadata(user: User | null): boolean {
   return Boolean(user?.app_metadata?.isAdmin);
 }
 
-export const isAdminUser = cache(async (user: User | null): Promise<boolean> => {
-  if (!user) return false;
-  if (isAdminFromMetadata(user)) return true;
+export const isAdminUser = cache(
+  async (user: User | null): Promise<boolean> => {
+    if (!user) return false;
+    if (isAdminFromMetadata(user)) return true;
 
-  try {
-    const supabase = createServiceRoleClient();
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (error) throw error;
-    return data?.is_admin === true;
-  } catch (err) {
-    console.error("[auth] isAdminUser DB check failed:", err);
-    return isAdminFromMetadata(user);
-  }
-});
+    try {
+      const supabase = createServiceRoleClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.is_admin === true;
+    } catch (err) {
+      console.error("[auth] isAdminUser DB check failed:", err);
+      return isAdminFromMetadata(user);
+    }
+  },
+);
