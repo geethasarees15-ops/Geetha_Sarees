@@ -1,4 +1,5 @@
 import AdminShell from "@/components/admin/AdminShell";
+import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { buttonVariants } from "@/components/ui/button";
 import { ProductsColumns, ProductsDataTable } from "@/features/products";
 import { publicErrorMessage } from "@/lib/api/public-error";
@@ -7,6 +8,7 @@ import type { AdminProductsStockFilter } from "@/lib/admin/getAdminProductsList"
 import { resolveStockControlConfig } from "@/lib/integrations/settings";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,7 +19,15 @@ type AdminProjectsPageProps = {
   };
 };
 
-async function ProductsPage({ searchParams }: AdminProjectsPageProps) {
+export default function ProductsPage({ searchParams }: AdminProjectsPageProps) {
+  return (
+    <Suspense fallback={<AdminTablePageSkeleton tableRows={10} />}>
+      <ProductsPageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ProductsPageContent({ searchParams }: AdminProjectsPageProps) {
   let productRows: Awaited<ReturnType<typeof getAdminProductsList>>["rows"] =
     [];
   let loadError: string | null = null;
@@ -104,5 +114,3 @@ async function ProductsPage({ searchParams }: AdminProjectsPageProps) {
     </AdminShell>
   );
 }
-
-export default ProductsPage;

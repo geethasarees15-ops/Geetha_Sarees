@@ -1,3 +1,4 @@
+import { AdminDashboardSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { DashboardView } from "@/features/admin/dashboard/DashboardView";
 import {
   getDashboardStats,
@@ -5,6 +6,7 @@ import {
 } from "@/lib/admin/getDashboardStats";
 import { publicErrorMessage } from "@/lib/api/public-error";
 import { Metadata } from "next";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,15 @@ export const metadata: Metadata = {
   description: "Store overview, analytics, reports and notifications",
 };
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<AdminDashboardSkeleton />}>
+      <DashboardPageContent />
+    </Suspense>
+  );
+}
+
+async function DashboardPageContent() {
   let stats = getEmptyDashboardStats();
   let statsError: string | null = null;
 

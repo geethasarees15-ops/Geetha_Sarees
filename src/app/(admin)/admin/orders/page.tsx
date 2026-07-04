@@ -1,4 +1,5 @@
 import AdminShell from "@/components/admin/AdminShell";
+import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DataTable } from "@/features/cms";
 import { OrdersColumns } from "@/features/orders";
@@ -8,6 +9,7 @@ import {
   needsPaymentAttention,
 } from "@/lib/orders/paymentStatus";
 import { createServiceRoleClient } from "@/lib/supabase/service";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,15 @@ type AdminOrderEdge = {
   };
 };
 
-async function OrdersPage({ searchParams }: AdminOrdersPageProps) {
+export default function OrdersPage({ searchParams }: AdminOrdersPageProps) {
+  return (
+    <Suspense fallback={<AdminTablePageSkeleton statCards={2} tableRows={8} />}>
+      <OrdersPageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
   void searchParams;
 
   let fetchError: string | null = null;
@@ -41,38 +51,20 @@ async function OrdersPage({ searchParams }: AdminOrdersPageProps) {
 
   try {
     const supabase = createServiceRoleClient();
-    const [ordersRes, linesRes] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("id, payment_status, order_status, created_at")
-        .order("created_at", { ascending: false }),
-      supabase.from("order_lines").select("id, orderId, product_id"),
-    ]);
+    const ordersRes = await supabase
+      .from("orders")
+      .select("id, payment_status, order_status, created_at")
+      .order("created_at", { ascending: false });
 
-    if (ordersRes.error || linesRes.error) {
-      fetchError = ordersRes.error?.message || linesRes.error?.message || null;
+    if (ordersRes.error) {
+      fetchError = ordersRes.error.message;
     } else {
-      const linesByOrderId = new Map<
-        string,
-        Array<{ id: string; product_id: string | null }>
-      >();
-      (linesRes.data ?? []).forEach((line) => {
-        if (!line.orderId) return;
-        const list = linesByOrderId.get(line.orderId) ?? [];
-        list.push({ id: line.id, product_id: line.product_id });
-        linesByOrderId.set(line.orderId, list);
-      });
-
       orders = (ordersRes.data ?? []).map((row) => ({
         node: {
           id: row.id,
           payment_status: row.payment_status,
           order_status: row.order_status,
-          order_linesCollection: {
-            edges: (linesByOrderId.get(row.id) ?? []).map((line) => ({
-              node: line,
-            })),
-          },
+          order_linesCollection: { edges: [] },
         },
       }));
     }
@@ -145,5 +137,3 @@ async function OrdersPage({ searchParams }: AdminOrdersPageProps) {
     </AdminShell>
   );
 }
-
-export default OrdersPage;

@@ -146,6 +146,21 @@ input[type="number"] {
   background: hsl(var(--primary));
 }
 
+@keyframes admin-page-enter {
+  from {
+    opacity: 0.72;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-page-enter {
+  animation: admin-page-enter 0.18s ease-out;
+}
+
 html,
 body {
   overflow-x: hidden;

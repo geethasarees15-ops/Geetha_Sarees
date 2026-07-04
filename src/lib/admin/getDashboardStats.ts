@@ -4,6 +4,15 @@ import {
   needsPaymentAttention,
   normalizeOrderStatus,
 } from "@/lib/orders/paymentStatus";
+import { cache } from "react";
+
+const ORDER_SUMMARY_SELECT =
+  "id, amount, currency, email, name, payment_status, order_status, created_at";
+
+const ORDER_LINES_SELECT =
+  "orderId, product_id, quantity, price, product:products!order_lines_to_product ( name )";
+
+const SUPABASE_IN_BATCH_SIZE = 300;
 
 const MONTH_LABELS = [
   "Jan",
@@ -93,9 +102,37 @@ type OrderRow = {
 type ProductRow = {
   id: string;
   name: string;
-  featured: boolean | null;
   stock: number | null;
 };
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function fetchPaidOrderLines(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  paidOrderIds: string[],
+): Promise<OrderLineRow[]> {
+  if (paidOrderIds.length === 0) return [];
+
+  const batches = chunkArray(paidOrderIds, SUPABASE_IN_BATCH_SIZE);
+  const results = await Promise.all(
+    batches.map((ids) =>
+      supabase.from("order_lines").select(ORDER_LINES_SELECT).in("orderId", ids),
+    ),
+  );
+
+  const firstError = results.find((result) => result.error)?.error;
+  if (firstError) {
+    throw new Error(firstError.message);
+  }
+
+  return results.flatMap((result) => (result.data ?? []) as OrderLineRow[]);
+}
 
 type OrderLineRow = {
   orderId: string | null;
@@ -202,71 +239,110 @@ function toRecentOrderRow(o: OrderRow): RecentOrderRow {
   };
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
   const supabase = createServiceRoleClient();
 
-  const [ordersRes, productsRes, collectionsRes, profilesRes, orderLinesRes] =
-    await Promise.all([
-      supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false }),
-      supabase.from("products").select("id, name, featured, stock"),
-      supabase.from("collections").select("id", { count: "exact", head: true }),
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase
-        .from("order_lines")
-        .select(
-          "orderId, product_id, quantity, price, product:products!order_lines_to_product ( name )",
-        ),
-    ]);
+  const [
+    ordersRes,
+    totalProductsRes,
+    featuredProductsRes,
+    lowStockCountRes,
+    outOfStockCountRes,
+    lowStockSampleRes,
+    outOfStockSampleRes,
+    collectionsRes,
+    profilesRes,
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(ORDER_SUMMARY_SELECT)
+      .order("created_at", { ascending: false }),
+    supabase.from("products").select("id", { count: "exact", head: true }),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("featured", true),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .gte("stock", 1)
+      .lt("stock", 5),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("stock", 0),
+    supabase
+      .from("products")
+      .select("id, name, stock")
+      .gte("stock", 1)
+      .lt("stock", 5)
+      .order("stock", { ascending: true })
+      .limit(8),
+    supabase
+      .from("products")
+      .select("id, name, stock")
+      .eq("stock", 0)
+      .limit(5),
+    supabase.from("collections").select("id", { count: "exact", head: true }),
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+  ]);
 
   const firstError =
     ordersRes.error ||
-    productsRes.error ||
+    totalProductsRes.error ||
+    featuredProductsRes.error ||
+    lowStockCountRes.error ||
+    outOfStockCountRes.error ||
+    lowStockSampleRes.error ||
+    outOfStockSampleRes.error ||
     collectionsRes.error ||
-    profilesRes.error ||
-    orderLinesRes.error;
+    profilesRes.error;
 
   if (firstError) {
     throw new Error(firstError.message);
   }
 
   const allOrders = (ordersRes.data ?? []) as OrderRow[];
-  const productRows = (productsRes.data ?? []) as ProductRow[];
-  const topProductRows = (orderLinesRes.data ?? []) as OrderLineRow[];
-
-  const lowStockRows = productRows.filter(
-    (p) => (p.stock ?? 0) >= 1 && (p.stock ?? 0) < 5,
-  );
-  const outOfStockRows = productRows.filter((p) => (p.stock ?? 0) === 0);
+  const paidOrderIds = allOrders
+    .filter((order) => isPaidPaymentStatus(order.payment_status))
+    .map((order) => order.id);
+  const topProductRows = await fetchPaidOrderLines(supabase, paidOrderIds);
 
   return computeStats({
     allOrders,
-    productRows,
+    totalProducts: totalProductsRes.count ?? 0,
+    featuredProducts: featuredProductsRes.count ?? 0,
+    lowStockCount: lowStockCountRes.count ?? 0,
+    outOfStockCount: outOfStockCountRes.count ?? 0,
+    lowStockRows: (lowStockSampleRes.data ?? []) as ProductRow[],
+    outOfStockRows: (outOfStockSampleRes.data ?? []) as ProductRow[],
     collectionCount: collectionsRes.count ?? 0,
     customerCount: profilesRes.count ?? 0,
-    lowStockRows,
-    outOfStockRows,
     topProductRows,
   });
-}
+});
 
 function computeStats({
   allOrders,
-  productRows,
-  collectionCount,
-  customerCount,
+  totalProducts,
+  featuredProducts,
+  lowStockCount,
+  outOfStockCount,
   lowStockRows,
   outOfStockRows,
+  collectionCount,
+  customerCount,
   topProductRows,
 }: {
   allOrders: OrderRow[];
-  productRows: ProductRow[];
-  collectionCount: number;
-  customerCount: number;
+  totalProducts: number;
+  featuredProducts: number;
+  lowStockCount: number;
+  outOfStockCount: number;
   lowStockRows: ProductRow[];
   outOfStockRows: ProductRow[];
+  collectionCount: number;
+  customerCount: number;
   topProductRows: OrderLineRow[];
 }): DashboardStats {
   const now = new Date();
@@ -401,10 +477,10 @@ function computeStats({
     ordersThisMonth: ordersThisMonth.length,
     ordersLastMonth: ordersLastMonth.length,
     ordersChangePct: pctChange(ordersThisMonth.length, ordersLastMonth.length),
-    totalProducts: productRows.length,
-    featuredProducts: productRows.filter((p) => p.featured).length,
-    lowStockCount: lowStockRows.length,
-    outOfStockCount: outOfStockRows.length,
+    totalProducts,
+    featuredProducts,
+    lowStockCount,
+    outOfStockCount,
     totalCollections: collectionCount,
     totalCustomers: customerCount,
     paidOrdersCount: paidOrders.length,

@@ -218,29 +218,40 @@ export async function resolveBulkOrderGuardConfig(): Promise<BulkOrderGuardConfi
 }
 
 export async function resolveStockControlConfig(): Promise<StockControlConfig> {
-  try {
-    const setting = await getIntegrationSetting(INTEGRATION_KEYS.stockControl);
-    if (!setting) {
+  return resolveStockControlConfigCached();
+}
+
+const resolveStockControlConfigCached = cache(
+  async (): Promise<StockControlConfig> => {
+    try {
+      const setting = await getIntegrationSetting(
+        INTEGRATION_KEYS.stockControl,
+      );
+      if (!setting) {
+        return {
+          enabled: false,
+          lowStockThreshold: DEFAULT_STOCK_LOW_THRESHOLD,
+        };
+      }
+
+      const value = setting.value as Record<string, unknown>;
+      const parsedThreshold = Number(
+        value.lowStockThreshold ?? DEFAULT_STOCK_LOW_THRESHOLD,
+      );
+      const lowStockThreshold = Number.isFinite(parsedThreshold)
+        ? Math.min(99, Math.max(1, Math.round(parsedThreshold)))
+        : DEFAULT_STOCK_LOW_THRESHOLD;
+
+      return {
+        enabled: setting.isEnabled,
+        lowStockThreshold,
+      };
+    } catch (error) {
+      console.error("[settings] resolveStockControlConfig failed:", error);
       return { enabled: false, lowStockThreshold: DEFAULT_STOCK_LOW_THRESHOLD };
     }
-
-    const value = setting.value as Record<string, unknown>;
-    const parsedThreshold = Number(
-      value.lowStockThreshold ?? DEFAULT_STOCK_LOW_THRESHOLD,
-    );
-    const lowStockThreshold = Number.isFinite(parsedThreshold)
-      ? Math.min(99, Math.max(1, Math.round(parsedThreshold)))
-      : DEFAULT_STOCK_LOW_THRESHOLD;
-
-    return {
-      enabled: setting.isEnabled,
-      lowStockThreshold,
-    };
-  } catch (error) {
-    console.error("[settings] resolveStockControlConfig failed:", error);
-    return { enabled: false, lowStockThreshold: DEFAULT_STOCK_LOW_THRESHOLD };
-  }
-}
+  },
+);
 
 function toRoundedAmount(value: unknown, fallback: number) {
   const parsed = Number(value);
