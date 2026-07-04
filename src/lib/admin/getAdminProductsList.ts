@@ -1,9 +1,11 @@
 import db from "@/lib/supabase/db";
 import { collections, medias, products } from "@/lib/supabase/schema";
-import { desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, lt, or, sql, type SQL } from "drizzle-orm";
 import { cache } from "react";
 
 export const ADMIN_PRODUCTS_LIST_TAG = "admin-products-list";
+
+export type AdminProductsStockFilter = "all" | "low" | "out";
 
 export type AdminProductTableNode = {
   id: string;
@@ -38,6 +40,8 @@ export type AdminProductsListParams = {
   page?: number;
   pageSize?: number;
   query?: string;
+  stockFilter?: AdminProductsStockFilter;
+  lowStockThreshold?: number;
 };
 
 export type AdminProductsListResult = {
@@ -104,6 +108,36 @@ function mapAdminProductRows(
   }));
 }
 
+function buildAdminProductsWhereClause(params: {
+  query: string;
+  stockFilter: AdminProductsStockFilter;
+  lowStockThreshold: number;
+}): SQL | undefined {
+  const conditions: SQL[] = [];
+  const normalizedQuery = params.query.replace(/[%_]/g, "\\$&");
+
+  if (normalizedQuery) {
+    conditions.push(
+      or(
+        ilike(products.name, `%${normalizedQuery}%`),
+        ilike(products.slug, `%${normalizedQuery}%`),
+        ilike(products.productCode, `%${normalizedQuery}%`),
+        ilike(collections.label, `%${normalizedQuery}%`),
+      )!,
+    );
+  }
+
+  if (params.stockFilter === "low") {
+    conditions.push(lt(products.stock, params.lowStockThreshold));
+  } else if (params.stockFilter === "out") {
+    conditions.push(eq(products.stock, 0));
+  }
+
+  if (conditions.length === 0) return undefined;
+  if (conditions.length === 1) return conditions[0];
+  return and(...conditions);
+}
+
 /** Lean admin catalog query — no HTML description blobs. */
 export async function loadAdminProductsListFromDb(
   params: AdminProductsListParams = {},
@@ -112,15 +146,16 @@ export async function loadAdminProductsListFromDb(
   const page = Math.max(1, params.page ?? 1);
   const offset = (page - 1) * pageSize;
   const query = (params.query ?? "").trim();
-  const normalizedQuery = query.replace(/[%_]/g, "\\$&");
-  const whereClause = normalizedQuery
-    ? or(
-        ilike(products.name, `%${normalizedQuery}%`),
-        ilike(products.slug, `%${normalizedQuery}%`),
-        ilike(products.productCode, `%${normalizedQuery}%`),
-        ilike(collections.label, `%${normalizedQuery}%`),
-      )
-    : undefined;
+  const stockFilter = params.stockFilter ?? "all";
+  const lowStockThreshold = Math.min(
+    99,
+    Math.max(1, Math.round(params.lowStockThreshold ?? 5)),
+  );
+  const whereClause = buildAdminProductsWhereClause({
+    query,
+    stockFilter,
+    lowStockThreshold,
+  });
 
   const [rows, countRows] = await Promise.all([
     db

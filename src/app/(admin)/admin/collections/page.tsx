@@ -18,7 +18,7 @@ type AdminCollectionsPageProps = {
 
 const AdminCollectionsPageQuery = gql(/* GraphQL */ `
   query AdminCollectionsPageQuery {
-    collectionsCollection(orderBy: [{ title: AscNullsLast }]) {
+    collectionsCollection(orderBy: [{ label: AscNullsLast }]) {
       edges {
         node {
           __typename
@@ -37,12 +37,12 @@ async function collectionsPage({ searchParams }: AdminCollectionsPageProps) {
 
   return (
     <AdminShell
-      heading="Collections"
-      description={"Edit collections from the dashboard. "}
+      heading="Categories"
+      description="Manage product categories shown on the storefront."
     >
       <section className="flex justify-end items-center pb-5 w-full">
         <Link href="/admin/collections/new" className={cn(buttonVariants())}>
-          New Collection
+          New Category
         </Link>
       </section>
 

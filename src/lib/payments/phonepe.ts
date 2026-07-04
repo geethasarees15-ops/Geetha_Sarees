@@ -178,10 +178,7 @@ export function verifyPhonePeWebhookSignature(params: {
 
   try {
     if (expected.length !== provided.length) return false;
-    return crypto.timingSafeEqual(
-      Buffer.from(expected),
-      Buffer.from(provided),
-    );
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
   } catch {
     return false;
   }

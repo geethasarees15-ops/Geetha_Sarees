@@ -15,7 +15,7 @@ import { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/
 const documents = {
   "\n  query UPDATE_COLLECTION_PAGE_QUERY($collectionId: String) {\n    collectionsCollection(filter: { id: { eq: $collectionId } }, first: 1) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionFromFragment\n        }\n      }\n    }\n  }\n":
     types.Update_Collection_Page_QueryDocument,
-  "\n  query AdminCollectionsPageQuery {\n    collectionsCollection(orderBy: [{ title: AscNullsLast }]) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionColumnsFragment\n        }\n      }\n    }\n  }\n":
+  "\n  query AdminCollectionsPageQuery {\n    collectionsCollection(orderBy: [{ label: AscNullsLast }]) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionColumnsFragment\n        }\n      }\n    }\n  }\n":
     types.AdminCollectionsPageQueryDocument,
   "\n  query EditTestimonialPageQuery($testimonialId: String) {\n    testimonialsCollection(filter: { id: { eq: $testimonialId } }, first: 1) {\n      edges {\n        node {\n          __typename\n          id\n          ...TestimonialFormFragment\n        }\n      }\n    }\n  }\n":
     types.EditTestimonialPageQueryDocument,
@@ -41,7 +41,7 @@ const documents = {
     types.CollectionBannerFragmentFragmentDoc,
   "\n  fragment CollectionCardFragment on collections {\n    id\n    label\n    slug\n    featuredImage: medias {\n      key\n      alt\n    }\n  }\n":
     types.CollectionCardFragmentFragmentDoc,
-  "\n  fragment CollectionColumnsFragment on collections {\n    id\n    title\n    label\n    description\n    slug\n  }\n":
+  "\n  fragment CollectionColumnsFragment on collections {\n    id\n    label\n    description\n    slug\n  }\n":
     types.CollectionColumnsFragmentFragmentDoc,
   "\n  fragment CollectionFromFragment on collections {\n    id\n    slug\n    label\n    description\n    title\n    featured_image_id\n  }\n":
     types.CollectionFromFragmentFragmentDoc,
@@ -129,8 +129,8 @@ export function gql(
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function gql(
-  source: "\n  query AdminCollectionsPageQuery {\n    collectionsCollection(orderBy: [{ title: AscNullsLast }]) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionColumnsFragment\n        }\n      }\n    }\n  }\n",
-): (typeof documents)["\n  query AdminCollectionsPageQuery {\n    collectionsCollection(orderBy: [{ title: AscNullsLast }]) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionColumnsFragment\n        }\n      }\n    }\n  }\n"];
+  source: "\n  query AdminCollectionsPageQuery {\n    collectionsCollection(orderBy: [{ label: AscNullsLast }]) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionColumnsFragment\n        }\n      }\n    }\n  }\n",
+): (typeof documents)["\n  query AdminCollectionsPageQuery {\n    collectionsCollection(orderBy: [{ label: AscNullsLast }]) {\n      edges {\n        node {\n          __typename\n          id\n          ...CollectionColumnsFragment\n        }\n      }\n    }\n  }\n"];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -207,8 +207,8 @@ export function gql(
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function gql(
-  source: "\n  fragment CollectionColumnsFragment on collections {\n    id\n    title\n    label\n    description\n    slug\n  }\n",
-): (typeof documents)["\n  fragment CollectionColumnsFragment on collections {\n    id\n    title\n    label\n    description\n    slug\n  }\n"];
+  source: "\n  fragment CollectionColumnsFragment on collections {\n    id\n    label\n    description\n    slug\n  }\n",
+): (typeof documents)["\n  fragment CollectionColumnsFragment on collections {\n    id\n    label\n    description\n    slug\n  }\n"];
 /**
  * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

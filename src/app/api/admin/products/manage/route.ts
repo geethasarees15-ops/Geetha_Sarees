@@ -1,3 +1,4 @@
+import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import db from "@/lib/supabase/db";
 import { orderLines, products } from "@/lib/supabase/schema";
@@ -34,7 +35,7 @@ export async function DELETE(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof deleteSchema>>;
     return NextResponse.json(
-      { message: "Invalid delete payload", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid delete payload", parseError.error),
       { status: 400 },
     );
   }
@@ -121,7 +122,7 @@ export async function PATCH(request: NextRequest) {
       z.infer<typeof updateStockSchema>
     >;
     return NextResponse.json(
-      { message: "Invalid stock payload", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid stock payload", parseError.error),
       { status: 400 },
     );
   }

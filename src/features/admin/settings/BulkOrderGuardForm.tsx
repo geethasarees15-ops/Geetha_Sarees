@@ -86,8 +86,7 @@ export function BulkOrderGuardForm() {
   );
 
   const onSave = async () => {
-    const threshold =
-      thresholdRef.current?.commit() ?? form.threshold;
+    const threshold = thresholdRef.current?.commit() ?? form.threshold;
     setIsSaving(true);
     try {
       const res = await fetchWithTimeout("/api/admin/integrations", {

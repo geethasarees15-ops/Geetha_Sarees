@@ -86,8 +86,7 @@ export function useStorefrontProductSearch(
           productsCollection: null,
           matchingCollections: [],
           fetching: false,
-          error:
-            error instanceof Error ? error.message : "Failed to load products",
+          error: "Failed to load products",
         });
       });
 
@@ -158,8 +157,7 @@ export function useStorefrontFeaturedProducts(
           productsCollection: null,
           matchingCollections: [],
           fetching: false,
-          error:
-            error instanceof Error ? error.message : "Failed to load products",
+          error: "Failed to load products",
         });
       });
 

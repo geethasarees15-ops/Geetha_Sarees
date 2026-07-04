@@ -37,6 +37,7 @@ import {
   LayoutDashboard,
   Receipt,
   MessageSquareQuote,
+  Settings,
 } from "lucide-react";
 
 export type Icon = LucideIcon;
@@ -78,6 +79,7 @@ export const Icons = {
   package: Package,
   globe: Globe,
   image: Image,
+  settings: Settings,
 
   gitHub: (props: LucideProps) => (
     <svg viewBox="0 0 438.549 438.549" {...props}>

@@ -35,8 +35,8 @@ async function EditCollectionPage({
 
   return (
     <AdminShell
-      heading="Add Collection"
-      description="Input the field below, after that press add Collections."
+      heading="Edit Category"
+      description="Update the category name, description, or image."
     >
       <div className="">
         <CollectionForm collection={data.collectionsCollection.edges[0].node} />

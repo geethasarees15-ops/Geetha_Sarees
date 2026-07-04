@@ -1,9 +1,16 @@
 import {
+  buildBannerImageAlt,
   buildProductShopHref,
   resolveHomeBannerSlideHref,
 } from "./home-banner-links";
 
 describe("home banner links", () => {
+  it("builds image alt from heading and subheading", () => {
+    expect(buildBannerImageAlt("Festive Silk", "Wedding weaves")).toBe(
+      "Festive Silk — Wedding weaves",
+    );
+  });
+
   it("builds shop href from slug", () => {
     expect(buildProductShopHref("silk-saree-st000239")).toBe(
       "/shop/silk-saree-st000239",

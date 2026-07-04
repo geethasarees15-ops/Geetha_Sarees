@@ -228,17 +228,8 @@ const ProductsColumns: ColumnDef<ProductRow>[] = [
     },
   },
   {
-    accessorKey: "slug",
-    header: () => <div className="">Slug</div>,
-    cell: ({ row }) => {
-      const product = row.original.node;
-
-      return <div className="font-medium">{product.slug}</div>;
-    },
-  },
-  {
     accessorKey: "Collection",
-    header: () => <div className="">Collection</div>,
+    header: () => <div className="">Category</div>,
     cell: ({ row }) => {
       const product = row.original.node;
 

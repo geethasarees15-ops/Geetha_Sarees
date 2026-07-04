@@ -2112,7 +2112,6 @@ export type AdminCollectionsPageQueryQuery = {
       node: {
         __typename: "collections";
         id: string;
-        title: string;
         label: string;
         description: string;
         slug: string;
@@ -2458,7 +2457,6 @@ export type CollectionCardFragmentFragment = {
 export type CollectionColumnsFragmentFragment = {
   __typename?: "collections";
   id: string;
-  title: string;
   label: string;
   description: string;
   slug: string;
@@ -3342,7 +3340,6 @@ export const CollectionColumnsFragmentFragmentDoc = {
         kind: "SelectionSet",
         selections: [
           { kind: "Field", name: { kind: "Name", value: "id" } },
-          { kind: "Field", name: { kind: "Name", value: "title" } },
           { kind: "Field", name: { kind: "Name", value: "label" } },
           { kind: "Field", name: { kind: "Name", value: "description" } },
           { kind: "Field", name: { kind: "Name", value: "slug" } },
@@ -4212,7 +4209,7 @@ export const AdminCollectionsPageQueryDocument = {
                       fields: [
                         {
                           kind: "ObjectField",
-                          name: { kind: "Name", value: "title" },
+                          name: { kind: "Name", value: "label" },
                           value: { kind: "EnumValue", value: "AscNullsLast" },
                         },
                       ],
@@ -4274,7 +4271,6 @@ export const AdminCollectionsPageQueryDocument = {
         kind: "SelectionSet",
         selections: [
           { kind: "Field", name: { kind: "Name", value: "id" } },
-          { kind: "Field", name: { kind: "Name", value: "title" } },
           { kind: "Field", name: { kind: "Name", value: "label" } },
           { kind: "Field", name: { kind: "Name", value: "description" } },
           { kind: "Field", name: { kind: "Name", value: "slug" } },

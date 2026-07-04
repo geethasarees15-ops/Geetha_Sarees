@@ -116,7 +116,10 @@ function UserNav() {
               </>
             )}
 
-            <DropdownMenuItem disabled={isLoggingOut} onClick={() => void logout()}>
+            <DropdownMenuItem
+              disabled={isLoggingOut}
+              onClick={() => void logout()}
+            >
               {isLoggingOut ? "Signing out…" : "Log out"}
               <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
             </DropdownMenuItem>

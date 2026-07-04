@@ -15,7 +15,10 @@ import type {
 import { siteConfig } from "@/config/site";
 import db from "@/lib/supabase/db";
 import { apiSettings, medias } from "@/lib/supabase/schema";
-import { resolveHomeBannerSlideHref } from "@/lib/admin/home-banner-links";
+import {
+  buildBannerImageAlt,
+  resolveHomeBannerSlideHref,
+} from "@/lib/admin/home-banner-links";
 import { loadProductSlugsForBannerSlides } from "@/lib/admin/home-banner-product-slugs.server";
 import { eq, inArray } from "drizzle-orm";
 import { keytoUrl } from "@/lib/utils";
@@ -691,7 +694,9 @@ export async function getHomeBannerSlides(): Promise<HomeBannerSlide[] | null> {
         const imageMediaId = String(item.imageMediaId ?? "").trim();
         const image =
           mediaLookup.get(imageMediaId) ?? String(item.image ?? "").trim();
-        const imageAlt = String(item.imageAlt ?? "").trim();
+        const imageAlt =
+          String(item.imageAlt ?? "").trim() ||
+          buildBannerImageAlt(title, subtitle, index);
         const id = String(item.id ?? "").trim() || `slide-${index + 1}`;
 
         if (!title || !subtitle || !href || !cta || !image || !imageAlt) {

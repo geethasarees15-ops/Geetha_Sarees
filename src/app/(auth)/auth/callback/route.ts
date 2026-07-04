@@ -1,5 +1,8 @@
 import { isAdminUser } from "@/lib/auth/admin";
-import { safeAuthErrorMessage, safeAuthRedirectError } from "@/lib/auth/safe-auth-errors";
+import {
+  safeAuthErrorMessage,
+  safeAuthRedirectError,
+} from "@/lib/auth/safe-auth-errors";
 import { getPostAuthRedirectUrl } from "@/lib/auth/callback";
 import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
 import {
@@ -79,7 +82,10 @@ export async function GET(request: NextRequest) {
     requestHost === "ssr-tex-shop.vercel.app" &&
     canonicalHost !== requestHost
   ) {
-    const canonicalCallback = new URL(request.nextUrl.pathname, getCanonicalSiteOrigin());
+    const canonicalCallback = new URL(
+      request.nextUrl.pathname,
+      getCanonicalSiteOrigin(),
+    );
     request.nextUrl.searchParams.forEach((value, key) => {
       canonicalCallback.searchParams.set(key, value);
     });
@@ -125,7 +131,10 @@ export async function GET(request: NextRequest) {
       try {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          console.error("[auth/callback] exchangeCodeForSession failed:", error);
+          console.error(
+            "[auth/callback] exchangeCodeForSession failed:",
+            error,
+          );
           return authFailureRedirect(
             request,
             requestedNext,

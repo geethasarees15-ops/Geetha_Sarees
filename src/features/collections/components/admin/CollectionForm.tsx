@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createInsertSchema } from "drizzle-zod";
 import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import {
   Form,
@@ -16,8 +16,6 @@ import {
 } from "@/components/ui/form";
 
 import { Input } from "@/components/ui/input";
-
-import { InsertCollection, collections } from "@/lib/supabase/schema";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -39,6 +37,15 @@ const CollectionFromFragment = gql(/* GraphQL */ `
     featured_image_id
   }
 `);
+
+const collectionFormSchema = z.object({
+  name: z.string().trim().min(1, "Category name is required."),
+  description: z.string().trim().min(1, "Description is required."),
+  featuredImageId: z.string().trim().min(1, "Category image is required."),
+});
+
+type CollectionFormValues = z.infer<typeof collectionFormSchema>;
+
 type CollectionFormProps = {
   collection?: DocumentType<typeof CollectionFromFragment>;
 };
@@ -48,24 +55,23 @@ function CollectionForm({ collection }: CollectionFormProps) {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
 
-  const form = useForm<InsertCollection>({
-    resolver: zodResolver(createInsertSchema(collections)),
+  const form = useForm<CollectionFormValues>({
+    resolver: zodResolver(collectionFormSchema),
     defaultValues: {
-      ...collection,
-      featuredImageId: collection ? collection.featured_image_id : undefined,
+      name: collection?.label || collection?.title || "",
+      description: collection?.description || "",
+      featuredImageId: collection?.featured_image_id || "",
     },
   });
 
   const { register, control, handleSubmit } = form;
 
-  const onSubmit = handleSubmit(async (data: InsertCollection) => {
+  const onSubmit = handleSubmit(async (data: CollectionFormValues) => {
     setIsPending(true);
     try {
       const payload = {
-        slug: data.slug,
-        label: data.label,
+        name: data.name.trim(),
         description: data.description,
-        title: data.title,
         featuredImageId: data.featuredImageId,
       };
 
@@ -80,12 +86,12 @@ function CollectionForm({ collection }: CollectionFormProps) {
           const err = (await res.json().catch(() => null)) as {
             message?: string;
           } | null;
-          throw new Error(err?.message || "Failed to update collection.");
+          throw new Error(err?.message || "Failed to update category.");
         }
 
         router.replace("/admin/collections");
         router.refresh();
-        toast({ title: "Collection updated successfully." });
+        toast({ title: "Category updated successfully." });
         return;
       }
 
@@ -99,15 +105,15 @@ function CollectionForm({ collection }: CollectionFormProps) {
         const err = (await res.json().catch(() => null)) as {
           message?: string;
         } | null;
-        throw new Error(err?.message || "Failed to create collection.");
+        throw new Error(err?.message || "Failed to create category.");
       }
 
       router.replace("/admin/collections");
       router.refresh();
-      toast({ title: "Collection created successfully." });
+      toast({ title: "Category created successfully." });
     } catch (error) {
       toast({
-        title: "Unable to save collection",
+        title: "Unable to save category",
         description: error instanceof Error ? error.message : "Please retry.",
         variant: "destructive",
       });
@@ -125,38 +131,18 @@ function CollectionForm({ collection }: CollectionFormProps) {
       >
         <div className="flex flex-col gap-y-5 max-w-[500px]">
           <FormItem>
-            <FormLabel className="text-sm">Label*</FormLabel>
+            <FormLabel className="text-sm">Category name*</FormLabel>
             <FormControl>
               <Input
-                aria-invalid={!!form.formState.errors.label}
-                placeholder="Type Collection label."
-                {...register("label")}
+                aria-invalid={!!form.formState.errors.name}
+                placeholder="e.g. Silk Sarees"
+                {...register("name")}
               />
             </FormControl>
-            <FormMessage />
-          </FormItem>
-          <FormItem>
-            <FormLabel className="text-sm">Title*</FormLabel>
-            <FormControl>
-              <Input
-                aria-invalid={!!form.formState.errors.title}
-                placeholder="Type Collection title."
-                {...register("title")}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel className="text-sm">Slug*</FormLabel>
-            <FormControl>
-              <Input
-                defaultValue={collection?.slug}
-                aria-invalid={!!form.formState.errors.slug}
-                placeholder="Type Collection slug."
-                {...register("slug")}
-              />
-            </FormControl>
+            <FormDescription>
+              Shown on the storefront as the category name. The URL is created
+              automatically when you first save.
+            </FormDescription>
             <FormMessage />
           </FormItem>
 
@@ -164,9 +150,8 @@ function CollectionForm({ collection }: CollectionFormProps) {
             <FormLabel className="text-sm">Description*</FormLabel>
             <FormControl>
               <Textarea
-                defaultValue={collection?.description}
                 aria-invalid={!!form.formState.errors.description}
-                placeholder="Type Collection description."
+                placeholder="Short description for this category."
                 {...register("description")}
               />
             </FormControl>
@@ -178,20 +163,22 @@ function CollectionForm({ collection }: CollectionFormProps) {
             name="featuredImageId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Featured Image*</FormLabel>
+                <FormLabel>Category image*</FormLabel>
                 <Suspense>
                   <div className="">
                     <ImageDialog
                       defaultValue={collection?.featured_image_id}
                       onChange={field.onChange}
                       value={field.value}
+                      selectLabel="Select category image"
+                      changeLabel="Change category image"
                     />
                   </div>
                 </Suspense>
 
                 <FormDescription>
-                  Drag n Drop the image to above section or click the button to
-                  select from Image gallery.
+                  Click the button to choose an image from the media library or
+                  upload a new one.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

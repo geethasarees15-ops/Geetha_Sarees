@@ -1,17 +1,11 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { buttonVariants } from "@/components/ui/button";
-import { StockControlForm } from "@/features/admin/settings/StockControlForm";
 import { ProductsColumns, ProductsDataTable } from "@/features/products";
 import { publicErrorMessage } from "@/lib/api/public-error";
-import {
-  resolveBulkOrderGuardConfig,
-  resolveStockControlConfig,
-} from "@/lib/integrations/settings";
 import { getAdminProductsList } from "@/lib/admin/getAdminProductsList";
-import db from "@/lib/supabase/db";
-import { carts, products } from "@/lib/supabase/schema";
+import type { AdminProductsStockFilter } from "@/lib/admin/getAdminProductsList";
+import { resolveStockControlConfig } from "@/lib/integrations/settings";
 import { cn } from "@/lib/utils";
-import { gte, lt, sql } from "drizzle-orm";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -42,40 +36,20 @@ async function ProductsPage({ searchParams }: AdminProjectsPageProps) {
     );
     const query =
       typeof searchParams.q === "string" ? searchParams.q.trim() : "";
+    const stockParam =
+      typeof searchParams.stock === "string" ? searchParams.stock : "all";
+    const stockFilter: AdminProductsStockFilter =
+      stockParam === "low" || stockParam === "out" ? stockParam : "all";
 
-    const [productsPage, bulkOrderGuard, stockControl] = await Promise.all([
-      getAdminProductsList({ page, pageSize, query }),
-      resolveBulkOrderGuardConfig(),
-      resolveStockControlConfig(),
-    ]);
+    const stockControl = await resolveStockControlConfig();
+    const productsPage = await getAdminProductsList({
+      page,
+      pageSize,
+      query,
+      stockFilter,
+      lowStockThreshold: stockControl.lowStockThreshold,
+    });
     productRows = productsPage.rows;
-
-    const [bulkHitCountRows, lowStockCountRows] = await Promise.all([
-      bulkOrderGuard.enabled
-        ? db
-            .select({
-              count: sql<number>`count(distinct ${carts.productId})::int`,
-            })
-            .from(carts)
-            .where(gte(carts.quantity, bulkOrderGuard.threshold))
-        : Promise.resolve([{ count: 0 }]),
-      stockControl.enabled
-        ? db
-            .select({
-              count: sql<number>`count(*)::int`,
-            })
-            .from(products)
-            .where(lt(products.stock, stockControl.lowStockThreshold))
-        : Promise.resolve([{ count: 0 }]),
-    ]);
-
-    const threshold = bulkOrderGuard.threshold;
-    const bulkHitCount = bulkOrderGuard.enabled
-      ? Number(bulkHitCountRows[0]?.count ?? 0)
-      : 0;
-    const lowStockCount = stockControl.enabled
-      ? Number(lowStockCountRows[0]?.count ?? 0)
-      : 0;
     const totalProducts = productsPage.totalCount;
 
     return (
@@ -88,41 +62,6 @@ async function ProductsPage({ searchParams }: AdminProjectsPageProps) {
             New Product
           </Link>
         </section>
-        <section className="pb-5">
-          <StockControlForm />
-        </section>
-        <section className="grid gap-4 pb-5 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-lg border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Stock visibility threshold
-            </p>
-            <p className="mt-1 text-2xl font-semibold">
-              {stockControl.enabled
-                ? `< ${stockControl.lowStockThreshold}`
-                : "Disabled"}
-            </p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Products below threshold
-            </p>
-            <p className="mt-1 text-2xl font-semibold">{lowStockCount}</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Bulk guard threshold
-            </p>
-            <p className="mt-1 text-2xl font-semibold">
-              {bulkOrderGuard.enabled ? `${threshold}+` : "Disabled"}
-            </p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Products at/above threshold in carts
-            </p>
-            <p className="mt-1 text-2xl font-semibold">{bulkHitCount}</p>
-          </div>
-        </section>
 
         <ProductsDataTable
           columns={ProductsColumns}
@@ -131,6 +70,8 @@ async function ProductsPage({ searchParams }: AdminProjectsPageProps) {
           page={productsPage.page}
           pageSize={productsPage.pageSize}
           appliedQuery={query}
+          appliedStockFilter={stockFilter}
+          lowStockThreshold={stockControl.lowStockThreshold}
           bulkDeleteEndpoint="/api/admin/products/manage"
           bulkDeleteLabel="Delete selected products"
           enableDragSelect

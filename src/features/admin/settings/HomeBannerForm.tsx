@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ImageDialog } from "@/features/medias";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
-import { buildProductShopHref } from "@/lib/admin/home-banner-links";
+import { buildBannerImageAlt, buildProductShopHref } from "@/lib/admin/home-banner-links";
 import {
   AdminLoadingState,
   LoadingButtonLabel,
@@ -81,7 +81,7 @@ function normalizeSlideForSave(slide: SlideForm, index: number) {
   const subtitle = slide.subtitle.trim() || DEFAULT_SUBTITLE;
   const href = slide.href.trim() || "/shop";
   const cta = slide.cta.trim() || "Shop now";
-  const imageAlt = slide.imageAlt.trim() || title;
+  const imageAlt = buildBannerImageAlt(title, subtitle, index);
 
   return {
     id: slide.id.trim() || `slide-${index + 1}`,
@@ -169,7 +169,16 @@ export function HomeBannerForm() {
         setForm({
           enabled: payload.homeBannerSlides?.isEnabled ?? true,
           slides:
-            parsedSlides.length > 0 ? parsedSlides : [createDefaultSlide(1)],
+            parsedSlides.length > 0
+              ? parsedSlides.map((slide, index) => ({
+                  ...slide,
+                  imageAlt: buildBannerImageAlt(
+                    slide.title,
+                    slide.subtitle,
+                    index,
+                  ),
+                }))
+              : [createDefaultSlide(1)],
         });
       } catch (error) {
         toast({
@@ -201,9 +210,18 @@ export function HomeBannerForm() {
   ) => {
     setForm((prev) => ({
       ...prev,
-      slides: prev.slides.map((slide, i) =>
-        i === index ? { ...slide, [key]: value } : slide,
-      ),
+      slides: prev.slides.map((slide, i) => {
+        if (i !== index) return slide;
+        const next = { ...slide, [key]: value };
+        if (key === "title" || key === "subtitle") {
+          next.imageAlt = buildBannerImageAlt(
+            key === "title" ? String(value) : next.title,
+            key === "subtitle" ? String(value) : next.subtitle,
+            index,
+          );
+        }
+        return next;
+      }),
     }));
   };
 
@@ -372,29 +390,6 @@ export function HomeBannerForm() {
             </div>
 
             <div className="grid gap-2">
-              <Label>Slide Image</Label>
-              <ImageDialog
-                value={slide.imageMediaId}
-                defaultValue={slide.imageMediaId}
-                onChange={(mediaId) =>
-                  updateSlide(index, "imageMediaId", mediaId)
-                }
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor={`slide-image-url-${index}`}>
-                Slide Image URL (fallback)
-              </Label>
-              <Input
-                id={`slide-image-url-${index}`}
-                value={slide.image}
-                onChange={(e) => updateSlide(index, "image", e.target.value)}
-                placeholder="https://.../banner-image.webp"
-              />
-            </div>
-
-            <div className="grid gap-2">
               <Label htmlFor={`slide-title-${index}`}>Heading</Label>
               <Input
                 id={`slide-title-${index}`}
@@ -411,6 +406,40 @@ export function HomeBannerForm() {
                 value={slide.subtitle}
                 onChange={(e) => updateSlide(index, "subtitle", e.target.value)}
                 placeholder="Kanjivaram, soft silk, and wedding weaves..."
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Slide image</Label>
+              <ImageDialog
+                value={slide.imageMediaId}
+                defaultValue={slide.imageMediaId}
+                onChange={(mediaId) =>
+                  updateSlide(index, "imageMediaId", mediaId)
+                }
+                selectLabel="Select slide image"
+                changeLabel="Change slide image"
+              />
+              <p className="text-xs text-muted-foreground">
+                Image alt text is generated automatically from the heading and
+                subheading.
+              </p>
+              {slide.imageAlt ? (
+                <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  Alt text: {slide.imageAlt}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor={`slide-image-url-${index}`}>
+                Slide image URL (fallback)
+              </Label>
+              <Input
+                id={`slide-image-url-${index}`}
+                value={slide.image}
+                onChange={(e) => updateSlide(index, "image", e.target.value)}
+                placeholder="https://.../banner-image.webp"
               />
             </div>
 
@@ -475,16 +504,6 @@ export function HomeBannerForm() {
                   custom destination.
                 </p>
               )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor={`slide-alt-${index}`}>Image Alt Text</Label>
-              <Input
-                id={`slide-alt-${index}`}
-                value={slide.imageAlt}
-                onChange={(e) => updateSlide(index, "imageAlt", e.target.value)}
-                placeholder="Model in Kanjivaram silk saree"
-              />
             </div>
           </CardContent>
         </Card>

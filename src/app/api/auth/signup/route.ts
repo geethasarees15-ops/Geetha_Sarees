@@ -13,7 +13,10 @@ export async function POST(request: Request) {
   const { limited } = await checkAuthRateLimit(ip);
   if (limited) {
     return NextResponse.json(
-      { message: "Too many sign-up attempts. Please wait a minute and try again." },
+      {
+        message:
+          "Too many sign-up attempts. Please wait a minute and try again.",
+      },
       { status: 429 },
     );
   }
@@ -22,7 +25,10 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ message: "Invalid request body." }, { status: 400 });
+    return NextResponse.json(
+      { message: "Invalid request body." },
+      { status: 400 },
+    );
   }
 
   const parsed = signupSchema.safeParse(body);

@@ -1,3 +1,4 @@
+import { logServerError } from "@/lib/api/public-error";
 import { UPLOAD_LIMIT_BYTES, UPLOAD_LIMIT_MB } from "@/lib/image/uploadLimits";
 import { processUploadedImage } from "@/lib/image/processUpload";
 import db from "@/lib/supabase/db";
@@ -67,7 +68,8 @@ export async function createDirectUploadSession(params: {
     .createSignedUploadUrl(storagePath);
 
   if (error || !data?.signedUrl || !data.path) {
-    throw new Error(error?.message ?? "Could not create upload session.");
+    logServerError("directUpload/createSession", error);
+    throw new Error("Could not create upload session.");
   }
 
   return {

@@ -1,4 +1,7 @@
-import { publicErrorMessage } from "@/lib/api/public-error";
+import {
+  publicErrorMessage,
+  publicValidationPayload,
+} from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import db from "@/lib/supabase/db";
 import { testimonials } from "@/lib/supabase/schema";
@@ -41,10 +44,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof createSchema>>;
     return NextResponse.json(
-      {
-        message: "Invalid testimonial payload",
-        error: parseError.error.flatten(),
-      },
+      publicValidationPayload("Invalid testimonial payload", parseError.error),
       { status: 400 },
     );
   }
@@ -85,10 +85,7 @@ export async function PUT(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof updateSchema>>;
     return NextResponse.json(
-      {
-        message: "Invalid testimonial payload",
-        error: parseError.error.flatten(),
-      },
+      publicValidationPayload("Invalid testimonial payload", parseError.error),
       { status: 400 },
     );
   }

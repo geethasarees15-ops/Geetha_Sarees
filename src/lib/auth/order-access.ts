@@ -41,10 +41,7 @@ export function verifyOrderAccessToken(
     const expected = createOrderAccessToken(orderId, createdAt);
     const provided = token.trim();
     if (expected.length !== provided.length) return false;
-    return crypto.timingSafeEqual(
-      Buffer.from(expected),
-      Buffer.from(provided),
-    );
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
   } catch {
     return false;
   }

@@ -5,7 +5,8 @@ const AUTH_ERROR_MAP: Record<string, string> = {
   invalid_grant: "Sign-in could not be completed. Please try again.",
   email_not_confirmed: "Please confirm your email before signing in.",
   user_not_found: "If an account exists, check your email for next steps.",
-  over_request_rate_limit: "Too many attempts. Please wait a minute and try again.",
+  over_request_rate_limit:
+    "Too many attempts. Please wait a minute and try again.",
   otp_expired: "This link has expired. Request a new one.",
   same_password: "Choose a different password than your current one.",
 };

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DeleteDialog from "@/components/ui/deleteDialog";
 import { gql, DocumentType } from "@/gql";
@@ -13,7 +13,6 @@ import { useToast } from "@/components/ui/use-toast";
 export const CollectionColumnsFragment = gql(/* GraphQL */ `
   fragment CollectionColumnsFragment on collections {
     id
-    title
     label
     description
     slug
@@ -22,10 +21,10 @@ export const CollectionColumnsFragment = gql(/* GraphQL */ `
 
 function CollectionRowActions({
   collectionId,
-  label,
+  name,
 }: {
   collectionId: string;
-  label: string;
+  name: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -45,7 +44,7 @@ function CollectionRowActions({
         throw new Error(payload?.message || "Delete failed");
       }
 
-      toast({ title: `"${label}" deleted.` });
+      toast({ title: `"${name}" deleted.` });
       router.refresh();
     } catch (error) {
       toast({
@@ -59,7 +58,7 @@ function CollectionRowActions({
   return (
     <div className="flex items-center justify-end gap-2">
       <Link href={`/admin/collections/${collectionId}`}>
-        <Button size="sm" variant="outline" aria-label={`Edit ${label}`}>
+        <Button size="sm" variant="outline" aria-label={`Edit ${name}`}>
           <Pencil className="mr-1.5 h-3.5 w-3.5" />
           Edit
         </Button>
@@ -69,8 +68,8 @@ function CollectionRowActions({
           void onDelete();
         }}
         triggerLabel="Delete"
-        title={`Delete "${label}"?`}
-        description="Products in this collection will become uncategorized. This cannot be undone."
+        title={`Delete "${name}"?`}
+        description="Products in this category will become uncategorized. This cannot be undone."
         actionLabel="Delete"
       />
     </div>
@@ -82,7 +81,7 @@ const CollectionsColumns: ColumnDef<{
 }>[] = [
   {
     accessorKey: "label",
-    header: () => <div className="text-left capitalize">Label</div>,
+    header: () => <div className="text-left capitalize">Category name</div>,
     cell: ({ row }) => {
       const collection = row.original.node;
 
@@ -97,21 +96,16 @@ const CollectionsColumns: ColumnDef<{
     },
   },
   {
-    accessorKey: "slug",
-    header: () => <div className="">Slug</div>,
+    accessorKey: "description",
+    header: () => <div className="text-left">Description</div>,
     cell: ({ row }) => {
       const collection = row.original.node;
 
-      return <div className="font-medium">{collection.slug}</div>;
-    },
-  },
-  {
-    accessorKey: "title",
-    header: () => <div className="text-left capitalize">Title</div>,
-    cell: ({ row }) => {
-      const collection = row.original.node;
-
-      return <p className="font-medium capitalize px-3">{collection.title}</p>;
+      return (
+        <p className="max-w-md truncate px-3 text-sm text-muted-foreground">
+          {collection.description}
+        </p>
+      );
     },
   },
   {
@@ -123,7 +117,7 @@ const CollectionsColumns: ColumnDef<{
       return (
         <CollectionRowActions
           collectionId={collection.id}
-          label={collection.label}
+          name={collection.label}
         />
       );
     },

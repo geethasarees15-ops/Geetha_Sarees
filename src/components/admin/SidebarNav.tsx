@@ -24,6 +24,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
     globe: "text-blue-600",
     instagram: "text-pink-500",
     tag: "text-orange-500",
+    settings: "text-slate-600",
   };
 
   if (!items?.length) return null;
@@ -32,9 +33,11 @@ export function SidebarNav({ items }: SidebarNavProps) {
     <nav className="flex w-full flex-col gap-0.5" aria-label="Admin">
       {items.map((item, index) => {
         const Icon = Icons[item.icon ?? "chevronLeft"];
+        const isExactOnly = item.href === "/admin/settings";
         const isActive =
           pathname === item.href ||
-          (item.href !== "/admin/dashboard" &&
+          (!isExactOnly &&
+            item.href !== "/admin/dashboard" &&
             pathname.startsWith(`${item.href}/`));
 
         return item.href ? (

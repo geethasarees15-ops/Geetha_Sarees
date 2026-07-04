@@ -1,4 +1,7 @@
-import { publicErrorMessage } from "@/lib/api/public-error";
+import {
+  publicErrorMessage,
+  publicValidationPayload,
+} from "@/lib/api/public-error";
 import { invalidateAdminMediaCache } from "@/lib/admin/media-library";
 import { requireAdminApiUser } from "@/lib/auth/require-admin";
 import { processUploadedImage } from "@/lib/image/processUpload";
@@ -18,7 +21,10 @@ export async function POST(request: NextRequest) {
   const validation = mediaSchema.safeParse(data);
 
   if (validation.success === false) {
-    return NextResponse.json(validation.error.format(), { status: 400 });
+    return NextResponse.json(
+      publicValidationPayload("Invalid upload data.", validation.error),
+      { status: 400 },
+    );
   }
 
   const uploadedPaths: string[] = [];
@@ -40,9 +46,7 @@ export async function POST(request: NextRequest) {
       uploadedPaths.push(file.name);
     } catch (err) {
       console.error("[medias] upload failed:", err);
-      errors.push(
-        `${file.name}: ${publicErrorMessage(err, "Upload failed.")}`,
-      );
+      errors.push(`${file.name}: ${publicErrorMessage(err, "Upload failed.")}`);
     }
   }
 

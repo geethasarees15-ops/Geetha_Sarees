@@ -29,7 +29,7 @@ export function normalizeProductFormPayload(
     featured: Boolean(data.featured),
     badge,
     stock,
-    tags: Array.isArray(data.tags) ? data.tags : [],
+    tags: [],
     collectionId: data.collectionId || null,
     discountEnabled: Boolean(data.discountEnabled),
     discountPercent: data.discountEnabled

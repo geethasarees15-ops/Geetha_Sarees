@@ -42,7 +42,8 @@ export function isBlockedSignupEmail(email: string): boolean {
   const domain = normalized.slice(at + 1);
 
   if (DISPOSABLE_DOMAINS.has(domain)) return true;
-  if (TEST_EMAIL_PREFIXES.some((prefix) => local.startsWith(prefix))) return true;
+  if (TEST_EMAIL_PREFIXES.some((prefix) => local.startsWith(prefix)))
+    return true;
 
   return false;
 }

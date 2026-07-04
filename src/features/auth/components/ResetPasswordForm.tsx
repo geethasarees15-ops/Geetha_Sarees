@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "@/lib/supabase/client";
+import { safeAuthErrorMessage } from "@/lib/auth/safe-auth-errors";
 import { PasswordInput } from "./PasswordInput";
 
 const resetPasswordSchema = z
@@ -78,7 +79,10 @@ export function ResetPasswordForm() {
     if (error) {
       toast({
         title: "Could not update password",
-        description: error.message,
+        description: safeAuthErrorMessage(
+          error,
+          "Could not update password. Please try again.",
+        ),
       });
       return;
     }
@@ -93,7 +97,10 @@ export function ResetPasswordForm() {
 
   if (sessionReady === null) {
     return (
-      <div className="h-32 w-full animate-pulse rounded-lg bg-muted" aria-hidden />
+      <div
+        className="h-32 w-full animate-pulse rounded-lg bg-muted"
+        aria-hidden
+      />
     );
   }
 

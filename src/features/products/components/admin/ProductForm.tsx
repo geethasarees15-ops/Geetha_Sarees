@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import TagsField from "@/components/ui/tagsField";
 import { useToast } from "@/components/ui/use-toast";
 import {
   AdminLoadingState,
@@ -55,6 +54,7 @@ import {
   normalizeProductFormPayload,
   productStorefrontVisibilitySummary,
 } from "@/lib/admin/normalize-product-form-payload";
+import { buildBulkSharedPayloadFromForm } from "@/lib/admin/normalize-bulk-product-shared";
 import {
   getOriginalProductPrice,
   getSaleProductPrice,
@@ -66,6 +66,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@urql/next";
 import { createInsertSchema } from "drizzle-zod";
 import Link from "next/link";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import {
   Suspense,
@@ -99,9 +100,10 @@ const BULK_SHARED_FIELDS = [
   "collectionId",
   "badge",
   "rating",
-  "tags",
   "price",
   "stock",
+  "discountEnabled",
+  "discountPercent",
 ] as const;
 
 type ApiSettingRecord = {
@@ -146,17 +148,11 @@ function hasAnySizeOptionConfigured(options: SizeOptionForm[]) {
   });
 }
 
-type BulkSharedPayload = {
-  name: string;
-  description: string;
-  isDraft: boolean;
-  collectionId: string | null;
-  badge: string | null;
-  rating: string;
-  price: string;
-  tags: string[];
-  stock: number;
-};
+type BulkSharedPayload = ReturnType<typeof buildBulkSharedPayloadFromForm>;
+
+const productFormSchema = createInsertSchema(products).omit({ slug: true }).extend({
+  slug: z.string().optional(),
+});
 
 export const ProductFormQuery = gql(/* GraphQL */ `
   query ProductFormQuery {
@@ -220,7 +216,7 @@ function ProductFrom({ product }: ProductsFormProps) {
   });
 
   const form = useForm<InsertProducts>({
-    resolver: zodResolver(createInsertSchema(products)),
+    resolver: zodResolver(productFormSchema),
     defaultValues: {
       ...product,
       featured: product?.featured ?? false,
@@ -510,19 +506,21 @@ function ProductFrom({ product }: ProductsFormProps) {
     }
 
     const values = form.getValues();
-    const shared: BulkSharedPayload = {
-      name: String(values.name ?? "").trim(),
-      description: String(values.description ?? ""),
-      isDraft: Boolean(values.isDraft),
-      collectionId: values.collectionId ?? null,
-      badge: values.badge ? String(values.badge) : null,
-      rating: String(values.rating ?? "4"),
-      price: String(values.price ?? "0"),
-      tags: Array.isArray(values.tags) ? values.tags : [],
-      stock: Number.isFinite(Number(values.stock))
-        ? Math.max(0, Math.round(Number(values.stock)))
-        : 0,
-    };
+
+    let shared: BulkSharedPayload;
+    try {
+      shared = buildBulkSharedPayloadFromForm(values);
+    } catch (error) {
+      toast({
+        title: "Invalid bulk details",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Check discount and required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -534,7 +532,18 @@ function ProductFrom({ product }: ProductsFormProps) {
         const result = await runBulkDraftUpload({
           files: bulkFiles,
           selectedMediaIds,
-          shared,
+          shared: {
+            name: shared.baseName,
+            description: shared.description,
+            isDraft: shared.isDraft,
+            collectionId: shared.collectionId,
+            badge: shared.badge,
+            rating: shared.rating,
+            price: shared.price,
+            stock: shared.stock,
+            discountEnabled: shared.discountEnabled,
+            discountPercent: shared.discountPercent,
+          },
           onProgress: (update) => {
             setBulkProgress(update);
             setBulkPhase(
@@ -698,7 +707,7 @@ function ProductFrom({ product }: ProductsFormProps) {
               />
             </FormControl>
             <FormDescription>
-              Auto-generated for bulk uploads. This value is read-only.
+              Auto-generated when the product is saved (e.g. ST000045).
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -733,37 +742,12 @@ function ProductFrom({ product }: ProductsFormProps) {
                 {...register("name")}
               />
             </FormControl>
+            <FormDescription>
+              The storefront URL is created automatically from this name when
+              you first save.
+            </FormDescription>
             <FormMessage />
           </FormItem>
-
-          {!inBulkMode ? (
-            <FormItem>
-              <FormLabel className="text-sm">Slug*</FormLabel>
-              <FormControl>
-                <Input
-                  defaultValue={product?.slug}
-                  aria-invalid={!!form.formState.errors.slug}
-                  placeholder="Type Product slug."
-                  {...register("slug")}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          ) : (
-            <FormItem>
-              <FormLabel className="text-sm">Slug</FormLabel>
-              <FormControl>
-                <Input
-                  readOnly
-                  value="Auto-generated: product-stXXXXXX"
-                  aria-readonly
-                />
-              </FormControl>
-              <FormDescription>
-                Bulk mode auto-generates slug per product code.
-              </FormDescription>
-            </FormItem>
-          )}
 
           <FormItem>
             <FormLabel className="text-sm">Description*</FormLabel>
@@ -827,14 +811,14 @@ function ProductFrom({ product }: ProductsFormProps) {
                 name={"collectionId"}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{"Collections"}</FormLabel>
+                    <FormLabel>Category</FormLabel>
                     <Select
                       value={field.value || undefined}
                       onValueChange={field.onChange}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a collection" />
+                          <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -851,7 +835,7 @@ function ProductFrom({ product }: ProductsFormProps) {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      {"Select a Collection for the products."}
+                      Choose which storefront category this product belongs to.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -871,14 +855,6 @@ function ProductFrom({ product }: ProductsFormProps) {
                 placeholder="Rating (0-5)."
                 {...register("rating")}
               />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel className="text-sm">Tags</FormLabel>
-            <FormControl>
-              <TagsField name={"tags"} defaultValue={product?.tags || []} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -1197,18 +1173,20 @@ function ProductFrom({ product }: ProductsFormProps) {
               name="featuredImageId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Featured Image*</FormLabel>
+                  <FormLabel>Product image*</FormLabel>
                   <Suspense>
                     <ImageDialog
                       defaultValue={product?.featuredImageId}
                       onChange={field.onChange}
                       value={field.value}
+                      selectLabel="Select product image"
+                      changeLabel="Change product image"
                     />
                   </Suspense>
 
                   <FormDescription>
-                    Drag n Drop the image to above section or click the button
-                    to select from Image gallery.
+                    Click the button to choose an image from the media library or
+                    upload a new one.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

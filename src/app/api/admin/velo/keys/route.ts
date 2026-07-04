@@ -1,3 +1,4 @@
+import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import {
   createVeloApiKey,
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof createSchema>>;
     return NextResponse.json(
-      { message: "Invalid payload", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid payload", parseError.error),
       { status: 400 },
     );
   }
@@ -63,7 +64,7 @@ export async function DELETE(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof revokeSchema>>;
     return NextResponse.json(
-      { message: "Invalid payload", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid payload", parseError.error),
       { status: 400 },
     );
   }

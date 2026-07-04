@@ -19,7 +19,7 @@ export const dashboardConfig: DashboardConfig = {
       items: [],
     },
     {
-      title: "Collections",
+      title: "Categories",
       href: "/admin/collections",
       icon: "folder",
       items: [],
@@ -94,6 +94,12 @@ export const dashboardConfig: DashboardConfig = {
       title: "Offer Codes",
       href: "/admin/settings/offer-codes",
       icon: "tag",
+      items: [],
+    },
+    {
+      title: "Settings",
+      href: "/admin/settings",
+      icon: "settings",
       items: [],
     },
   ],

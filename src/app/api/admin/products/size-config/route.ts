@@ -1,3 +1,4 @@
+import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import {
   getProductSizeConfig,
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof saveSchema>>;
     return NextResponse.json(
-      { message: "Invalid payload", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid payload", parseError.error),
       { status: 400 },
     );
   }

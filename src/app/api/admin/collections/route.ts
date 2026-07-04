@@ -1,21 +1,42 @@
-import { publicErrorMessage } from "@/lib/api/public-error";
+import {
+  publicErrorMessage,
+  publicValidationPayload,
+} from "@/lib/api/public-error";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import db from "@/lib/supabase/db";
 import { collections } from "@/lib/supabase/schema";
 import { slugify } from "@/lib/utils";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-function normalizeCollectionSlug(slug: string, label: string) {
-  const fromLabel = slugify(label);
-  const fromSlug = slugify(slug);
-  const slugNeedsFix =
-    /\s/.test(slug) || slug !== slug.toLowerCase() || slug !== fromSlug;
-  if (slugNeedsFix) return fromLabel || fromSlug;
-  return fromSlug || fromLabel;
+function collectionNameToSlug(name: string) {
+  return slugify(name.trim()) || "category";
+}
+
+async function buildUniqueCollectionSlug(name: string, excludeId?: string) {
+  const base = collectionNameToSlug(name);
+  let candidate = base;
+  let suffix = 2;
+
+  while (true) {
+    const existing = await db
+      .select({ id: collections.id })
+      .from(collections)
+      .where(
+        excludeId
+          ? and(eq(collections.slug, candidate), ne(collections.id, excludeId))
+          : eq(collections.slug, candidate),
+      )
+      .limit(1);
+
+    if (existing.length === 0) return candidate;
+
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
 }
 
 async function revalidateCollectionPages() {
@@ -27,9 +48,7 @@ async function revalidateCollectionPages() {
 }
 
 const collectionPayloadSchema = z.object({
-  slug: z.string().trim().min(1),
-  label: z.string().trim().min(1),
-  title: z.string().trim().min(1),
+  name: z.string().trim().min(1),
   description: z.string().trim().min(1),
   featuredImageId: z.string().trim().min(1),
 });
@@ -54,19 +73,18 @@ export async function POST(request: NextRequest) {
       z.infer<typeof collectionPayloadSchema>
     >;
     return NextResponse.json(
-      {
-        message: "Invalid collection payload",
-        error: parseError.error.flatten(),
-      },
+      publicValidationPayload("Invalid category payload", parseError.error),
       { status: 400 },
     );
   }
 
   try {
+    const name = parsed.data.name.trim();
+    const slug = await buildUniqueCollectionSlug(name);
     const insertValues = {
-      slug: normalizeCollectionSlug(parsed.data.slug, parsed.data.label),
-      label: parsed.data.label,
-      title: parsed.data.title,
+      slug,
+      label: name,
+      title: name,
       description: parsed.data.description,
       featuredImageId: parsed.data.featuredImageId,
     };
@@ -77,7 +95,7 @@ export async function POST(request: NextRequest) {
     console.error("[admin/collections] POST failed:", error);
     return NextResponse.json(
       {
-        message: publicErrorMessage(error, "Failed to create collection."),
+        message: publicErrorMessage(error, "Failed to create category."),
       },
       { status: 400 },
     );
@@ -93,9 +111,7 @@ export async function PUT(request: NextRequest) {
   const payload = await request.json().catch(() => null);
   const updatePayloadSchema = z.object({
     id: z.string().trim().min(1),
-    slug: z.string().trim().min(1),
-    label: z.string().trim().min(1),
-    title: z.string().trim().min(1),
+    name: z.string().trim().min(1),
     description: z.string().trim().min(1),
     featuredImageId: z.string().trim().min(1),
   });
@@ -106,19 +122,16 @@ export async function PUT(request: NextRequest) {
       z.infer<typeof updatePayloadSchema>
     >;
     return NextResponse.json(
-      {
-        message: "Invalid collection payload",
-        error: parseError.error.flatten(),
-      },
+      publicValidationPayload("Invalid category payload", parseError.error),
       { status: 400 },
     );
   }
 
   const id = parsed.data.id;
+  const name = parsed.data.name.trim();
   const setValues = {
-    slug: normalizeCollectionSlug(parsed.data.slug, parsed.data.label),
-    label: parsed.data.label,
-    title: parsed.data.title,
+    label: name,
+    title: name,
     description: parsed.data.description,
     featuredImageId: parsed.data.featuredImageId,
   };
@@ -132,7 +145,7 @@ export async function PUT(request: NextRequest) {
 
     if (rows.length < 1) {
       return NextResponse.json(
-        { message: "Collection was not updated. Please retry." },
+        { message: "Category was not updated. Please retry." },
         { status: 404 },
       );
     }
@@ -143,7 +156,7 @@ export async function PUT(request: NextRequest) {
     console.error("[admin/collections] PUT failed:", error);
     return NextResponse.json(
       {
-        message: publicErrorMessage(error, "Failed to update collection."),
+        message: publicErrorMessage(error, "Failed to update category."),
       },
       { status: 400 },
     );
@@ -161,7 +174,7 @@ export async function DELETE(request: NextRequest) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { message: "Collection id is required." },
+      { message: "Category id is required." },
       { status: 400 },
     );
   }
@@ -174,7 +187,7 @@ export async function DELETE(request: NextRequest) {
 
     if (rows.length < 1) {
       return NextResponse.json(
-        { message: "Collection not found." },
+        { message: "Category not found." },
         { status: 404 },
       );
     }
@@ -185,7 +198,7 @@ export async function DELETE(request: NextRequest) {
     console.error("[admin/collections] DELETE failed:", error);
     return NextResponse.json(
       {
-        message: publicErrorMessage(error, "Failed to delete collection."),
+        message: publicErrorMessage(error, "Failed to delete category."),
       },
       { status: 400 },
     );

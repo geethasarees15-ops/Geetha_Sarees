@@ -58,9 +58,10 @@ export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies });
 
   if (!validation.success)
-    return new NextResponse(JSON.stringify("Invalid data format."), {
-      status: 400,
-    });
+    return NextResponse.json(
+      { message: "Invalid checkout data." },
+      { status: 400 },
+    );
 
   const checkout = validation.data;
 

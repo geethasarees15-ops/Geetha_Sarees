@@ -16,7 +16,16 @@ import {
 
 import { AdminTableSearch } from "@/components/admin/AdminTableSearch";
 import { ADMIN_PRODUCTS_SEARCH } from "@/lib/admin/admin-search-config";
+import type { AdminProductsStockFilter } from "@/lib/admin/getAdminProductsList";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -36,6 +45,8 @@ interface DataTableProps<TData, TValue> {
   page: number;
   pageSize: number;
   appliedQuery?: string;
+  appliedStockFilter?: AdminProductsStockFilter;
+  lowStockThreshold?: number;
   enableDragSelect?: boolean;
   bulkDeleteEndpoint?: string;
   bulkDeleteLabel?: string;
@@ -48,6 +59,8 @@ function DataTable<TData, TValue>({
   page,
   pageSize,
   appliedQuery: initialAppliedQuery = "",
+  appliedStockFilter: initialAppliedStockFilter = "all",
+  lowStockThreshold = 5,
   enableDragSelect = false,
   bulkDeleteEndpoint,
   bulkDeleteLabel = "Delete selected",
@@ -65,6 +78,8 @@ function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [appliedSearch, setAppliedSearch] = React.useState(initialAppliedQuery);
   const [draftSearch, setDraftSearch] = React.useState(initialAppliedQuery);
+  const [appliedStockFilter, setAppliedStockFilter] =
+    React.useState<AdminProductsStockFilter>(initialAppliedStockFilter);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [drag, setDrag] = React.useState<{
     startX: number;
@@ -84,6 +99,10 @@ function DataTable<TData, TValue>({
     setAppliedSearch(initialAppliedQuery);
     setDraftSearch(initialAppliedQuery);
   }, [initialAppliedQuery]);
+
+  React.useEffect(() => {
+    setAppliedStockFilter(initialAppliedStockFilter);
+  }, [initialAppliedStockFilter]);
 
   const pushQueryParams = React.useCallback(
     (next: Record<string, string | null>) => {
@@ -114,6 +133,26 @@ function DataTable<TData, TValue>({
     setDraftSearch("");
     setRowSelection({});
     pushQueryParams({ q: null, page: "1" });
+  }, [pushQueryParams]);
+
+  const applyStockFilter = React.useCallback(
+    (value: AdminProductsStockFilter) => {
+      setAppliedStockFilter(value);
+      setRowSelection({});
+      pushQueryParams({
+        stock: value === "all" ? null : value,
+        page: "1",
+      });
+    },
+    [pushQueryParams],
+  );
+
+  const clearFilters = React.useCallback(() => {
+    setAppliedSearch("");
+    setDraftSearch("");
+    setAppliedStockFilter("all");
+    setRowSelection({});
+    pushQueryParams({ q: null, stock: null, page: "1" });
   }, [pushQueryParams]);
 
   const table = useReactTable({
@@ -151,12 +190,29 @@ function DataTable<TData, TValue>({
     [rowSelection],
   );
   const filteredCount = totalCount;
-  const isFiltering = appliedSearch.trim().length > 0;
+  const isSearchActive = appliedSearch.trim().length > 0;
+  const isStockFilterActive = appliedStockFilter !== "all";
+  const isFiltering = isSearchActive || isStockFilterActive;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  const stockFilterLabel =
+    appliedStockFilter === "low"
+      ? `below threshold (< ${lowStockThreshold})`
+      : appliedStockFilter === "out"
+        ? "out of stock (0)"
+        : null;
+
+  const emptyResultsMessage = isSearchActive
+    ? `No results for "${appliedSearch.trim()}".`
+    : appliedStockFilter === "low"
+      ? `No products with stock below ${lowStockThreshold}.`
+      : appliedStockFilter === "out"
+        ? "No out-of-stock products."
+        : "No results.";
 
   React.useEffect(() => {
     table.setPageIndex(0);
-  }, [appliedSearch, table]);
+  }, [appliedSearch, appliedStockFilter, table]);
 
   React.useEffect(() => {
     if (!drag || !enableDragSelect) return;
@@ -268,6 +324,61 @@ function DataTable<TData, TValue>({
         filteredCount={filteredCount}
         totalCount={totalCount}
       />
+      <section
+        className="rounded-lg border bg-muted/20 p-4"
+        aria-label="Filter products by stock"
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Stock filter</h3>
+          {isStockFilterActive ? (
+            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+              Filter active
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              Threshold from Settings
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="grid w-full max-w-xs gap-2">
+            <Label htmlFor="products-stock-filter">Inventory status</Label>
+            <Select
+              value={appliedStockFilter}
+              onValueChange={(value) =>
+                applyStockFilter(value as AdminProductsStockFilter)
+              }
+            >
+              <SelectTrigger id="products-stock-filter" className="h-10">
+                <SelectValue placeholder="All products" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All products</SelectItem>
+                <SelectItem value="low">
+                  Below threshold (&lt; {lowStockThreshold})
+                </SelectItem>
+                <SelectItem value="out">Out of stock (0)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {isFiltering ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10"
+              onClick={clearFilters}
+            >
+              Clear all filters
+            </Button>
+          ) : null}
+        </div>
+        {isStockFilterActive ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredCount} product{filteredCount === 1 ? "" : "s"}{" "}
+            {stockFilterLabel}.
+          </p>
+        ) : null}
+      </section>
       {bulkDeleteEndpoint ? (
         <div className="flex items-center gap-2">
           <Button
@@ -371,9 +482,7 @@ function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {appliedSearch.trim()
-                    ? `No results for "${appliedSearch.trim()}".`
-                    : "No results."}
+                  {emptyResultsMessage}
                 </TableCell>
               </TableRow>
             )}

@@ -32,10 +32,7 @@ export async function POST(request: NextRequest) {
   );
 
   if (!userResponse.user) {
-    return NextResponse.json(
-      { message: `Error, userId: ${validate.data.userId} not found.` },
-      { status: 404 },
-    );
+    return NextResponse.json({ message: "User not found." }, { status: 404 });
   }
 
   const { data: updatedUser, error } = await client.auth.admin.updateUserById(

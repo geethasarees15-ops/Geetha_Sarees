@@ -1,9 +1,10 @@
 import { publicErrorMessage } from "@/lib/api/public-error";
 import {
-  BulkDraftSharedData,
   createDraftProductsFromMedia,
+  type BulkDraftSharedData,
 } from "@/_actions/products";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
+import { parseBulkSharedInput } from "@/lib/admin/normalize-bulk-product-shared";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import { processUploadedImage } from "@/lib/image/processUpload";
 import { uploadMediaToSupabase } from "@/lib/storage/uploadMedia";
@@ -14,27 +15,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const MAX_BULK_FILES = 50;
-
-const bulkSharedSchema = z.object({
-  name: z.string().trim().min(2, "Name is required for bulk mode."),
-  description: z.string().default(""),
-  isDraft: z.boolean().default(true),
-  collectionId: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .transform((value) => (value ? value : null)),
-  badge: z
-    .enum(["new_product", "best_sale", "featured"])
-    .optional()
-    .nullable()
-    .transform((value) => value ?? null),
-  rating: z.string().trim().min(1).default("4"),
-  price: z.string().trim().min(1).default("0"),
-  tags: z.array(z.string()).default([]),
-  stock: z.number().int().min(0).max(99999).default(0),
-});
 
 function errorJson(
   message: string,
@@ -75,21 +55,27 @@ export async function POST(request: NextRequest) {
         return errorJson("Invalid shared bulk product details.", 400);
       }
 
-      const parsedShared = bulkSharedSchema.safeParse(sharedJson);
-      if (!parsedShared.success) {
-        return errorJson("Invalid shared bulk product details.", 400);
+      try {
+        const normalized = parseBulkSharedInput(sharedJson);
+        shared = {
+          baseName: normalized.baseName,
+          description: normalized.description,
+          isDraft: normalized.isDraft,
+          collectionId: normalized.collectionId,
+          badge: normalized.badge,
+          rating: normalized.rating,
+          price: normalized.price,
+          stock: normalized.stock,
+          discountEnabled: normalized.discountEnabled,
+          discountPercent: normalized.discountPercent,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Invalid shared bulk product details.";
+        return errorJson(message, 400);
       }
-      shared = {
-        baseName: parsedShared.data.name,
-        description: parsedShared.data.description,
-        isDraft: parsedShared.data.isDraft,
-        collectionId: parsedShared.data.collectionId,
-        badge: parsedShared.data.badge,
-        rating: parsedShared.data.rating,
-        price: parsedShared.data.price,
-        tags: parsedShared.data.tags,
-        stock: parsedShared.data.stock,
-      };
     }
 
     let requestedMediaIds: string[] = [];
@@ -227,10 +213,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("[bulk-draft] request failed:", error);
-    const message = publicErrorMessage(
-      error,
-      "Bulk upload request failed.",
-    );
+    const message = publicErrorMessage(error, "Bulk upload request failed.");
     return errorJson(message, 500, [message]);
   }
 }

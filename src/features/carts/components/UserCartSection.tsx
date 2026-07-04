@@ -250,7 +250,11 @@ function UserCartSection({
   }
 
   if (error && !cartData) {
-    return <div>Error: {error.message}</div>;
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-sm text-muted-foreground">
+        We could not load your cart. Please refresh the page or sign in again.
+      </div>
+    );
   }
 
   const addOneHandler = async (

@@ -3,6 +3,7 @@ import {
   getDashboardStats,
   getEmptyDashboardStats,
 } from "@/lib/admin/getDashboardStats";
+import { publicErrorMessage } from "@/lib/api/public-error";
 import { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -20,12 +21,10 @@ export default async function DashboardPage() {
     stats = await getDashboardStats();
   } catch (err) {
     console.error("[admin/dashboard] getDashboardStats failed:", err);
-    const raw =
-      err instanceof Error ? err.message : "Could not load dashboard data.";
-    statsError =
-      raw.includes("ENOTFOUND") && raw.includes("supabase")
-        ? "Database connection failed. On Vercel, set DATABASE_URL to the pooler URI (aws-1-ap-south-1, port 6543) or keep the legacy db.* URL — the app rewrites it automatically on deploy."
-        : raw;
+    statsError = publicErrorMessage(
+      err,
+      "Could not load dashboard data. Please refresh the page.",
+    );
   }
 
   return <DashboardView stats={stats} statsError={statsError} />;

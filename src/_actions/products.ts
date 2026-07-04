@@ -4,9 +4,18 @@ import db from "@/lib/supabase/db";
 import { InsertProducts, productMedias, products } from "@/lib/supabase/schema";
 import { requireAdminActionUser } from "@/lib/auth/require-admin";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
+import {
+  buildUniqueProductSlug,
+  createNextProductCode,
+  PRODUCT_CODE_LOCK_ID,
+} from "@/lib/admin/product-slug";
+import {
+  buildBulkProductInsertValues,
+  type NormalizedBulkDraftShared,
+} from "@/lib/admin/normalize-bulk-product-shared";
+import { normalizeProductFormPayload } from "@/lib/admin/normalize-product-form-payload";
 import { eq, inArray, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
-import { slugify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 
 function revalidateProductCatalogPaths() {
@@ -18,17 +27,32 @@ function revalidateProductCatalogPaths() {
   revalidatePath("/collections");
 }
 
-type SearchProductsActionProps = {
-  query: string;
-  limit?: number;
-  collections?: string;
-  sort?: string;
-};
-
 export const createProductAction = async (product: InsertProducts) => {
   await requireAdminActionUser();
-  createInsertSchema(products).parse(product);
-  const data = await db.insert(products).values(product).returning();
+  const normalized = normalizeProductFormPayload(product);
+
+  const data = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(${PRODUCT_CODE_LOCK_ID})`,
+    );
+
+    const productCode = await createNextProductCode(tx);
+    const slug = await buildUniqueProductSlug(
+      tx,
+      normalized.name,
+      productCode,
+    );
+    const values = {
+      ...normalized,
+      productCode,
+      slug,
+      tags: [] as string[],
+    };
+
+    createInsertSchema(products).parse(values);
+    return tx.insert(products).values(values).returning();
+  });
+
   revalidateProductCatalogPaths();
   await invalidateStorefrontCache();
   return data;
@@ -39,10 +63,33 @@ export const updateProductAction = async (
   product: InsertProducts,
 ) => {
   await requireAdminActionUser();
-  createInsertSchema(products).parse(product);
+
+  const [existing] = await db
+    .select({
+      slug: products.slug,
+      productCode: products.productCode,
+    })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+
+  if (!existing) {
+    throw new Error("Product not found.");
+  }
+
+  const normalized = normalizeProductFormPayload(product);
+  const values = {
+    ...normalized,
+    slug: existing.slug,
+    productCode: existing.productCode,
+    tags: [] as string[],
+  };
+
+  createInsertSchema(products).parse(values);
+
   const insertedProduct = await db
     .update(products)
-    .set(product)
+    .set(values)
     .where(eq(products.id, productId))
     .returning();
 
@@ -63,17 +110,7 @@ type DraftSourceMedia = {
   originalFileName: string;
 };
 
-export type BulkDraftSharedData = {
-  baseName?: string;
-  description?: string;
-  isDraft?: boolean;
-  collectionId?: string | null;
-  badge?: InsertProducts["badge"] | null;
-  rating?: string;
-  price?: string;
-  tags?: string[];
-  stock?: number;
-};
+export type BulkDraftSharedData = NormalizedBulkDraftShared;
 
 export type BulkDraftCreateResult = {
   id: string;
@@ -82,12 +119,23 @@ export type BulkDraftCreateResult = {
   slug: string;
 };
 
-const PRODUCT_CODE_LOCK_ID = 873214;
-
 function getFileNameBase(fileName: string) {
   const cleaned = fileName.replace(/\.[^/.]+$/, "").trim();
   return cleaned || "Product";
 }
+
+const DEFAULT_BULK_SHARED: NormalizedBulkDraftShared = {
+  baseName: "Product",
+  description: "",
+  isDraft: true,
+  collectionId: null,
+  badge: null,
+  rating: "4",
+  price: "0",
+  stock: 0,
+  discountEnabled: false,
+  discountPercent: null,
+};
 
 export async function createDraftProductsFromMedia(
   mediaItems: DraftSourceMedia[],
@@ -95,6 +143,8 @@ export async function createDraftProductsFromMedia(
 ): Promise<BulkDraftCreateResult[]> {
   await requireAdminActionUser();
   if (mediaItems.length === 0) return [];
+
+  const normalizedShared = shared ?? DEFAULT_BULK_SHARED;
 
   return db.transaction(async (tx) => {
     await tx.execute(
@@ -109,7 +159,7 @@ export async function createDraftProductsFromMedia(
           limit 1`,
     );
     const lastCode = lastCodeRows[0]?.product_code ?? null;
-    const lastNumber = Number.parseInt(lastCode?.replace(/^ST/, "") ?? "0", 10);
+    const lastNumber = Number.parseInt(lastCode?.replace(/^ST/i, "") ?? "0", 10);
     const start = Number.isFinite(lastNumber) ? lastNumber : 0;
 
     const createdProducts: BulkDraftCreateResult[] = [];
@@ -117,27 +167,24 @@ export async function createDraftProductsFromMedia(
     for (let index = 0; index < mediaItems.length; index += 1) {
       const currentNumber = start + index + 1;
       const productCode = `ST${String(currentNumber).padStart(6, "0")}`;
-      const slug = slugify(`product-${productCode}`);
       const fileNameBase = getFileNameBase(mediaItems[index].originalFileName);
-      const nameBase = (shared?.baseName || fileNameBase).trim();
+      const nameBase = (normalizedShared.baseName || fileNameBase).trim();
       const productName = `${nameBase} ${productCode}`;
+      const slug = await buildUniqueProductSlug(tx, productName, productCode);
+
+      const insertValues = buildBulkProductInsertValues({
+        shared: normalizedShared,
+        productName,
+        slug,
+        productCode,
+        featuredImageId: mediaItems[index].mediaId,
+      });
+
+      createInsertSchema(products).parse(insertValues);
 
       const [created] = await tx
         .insert(products)
-        .values({
-          name: productName,
-          slug,
-          productCode,
-          isDraft: shared?.isDraft ?? true,
-          featuredImageId: mediaItems[index].mediaId,
-          description: shared?.description ?? "",
-          collectionId: shared?.collectionId ?? null,
-          badge: shared?.badge ?? null,
-          rating: shared?.rating ?? "4",
-          price: shared?.price ?? "0",
-          tags: shared?.tags ?? [],
-          stock: Math.max(0, Math.round(shared?.stock ?? 0)),
-        })
+        .values(insertValues)
         .returning({
           id: products.id,
           name: products.name,

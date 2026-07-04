@@ -1,3 +1,4 @@
+import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import {
   INTEGRATION_KEYS,
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     const parseError = parsed as z.SafeParseError<z.infer<typeof saveSchema>>;
     return NextResponse.json(
-      { message: "Invalid payload", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid payload", parseError.error),
       { status: 400 },
     );
   }
@@ -239,10 +240,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof homeBannerPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid home banner payload",
-          error: homeParseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid home banner payload",
+          homeParseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -273,10 +274,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof cashfreePayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid Cashfree payload",
-          error: cashfreeParseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid Cashfree payload",
+          cashfreeParseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -301,10 +302,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof phonepePayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid PhonePe payload",
-          error: phonepeParseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid PhonePe payload",
+          phonepeParseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -330,10 +331,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof whatsappPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid WhatsApp payload",
-          error: whatsappParseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid WhatsApp payload",
+          whatsappParseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -362,10 +363,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof announcementBarPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid announcement bar payload",
-          error: announcementParseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid announcement bar payload",
+          announcementParseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -383,10 +384,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof bulkOrderGuardPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid bulk order guard payload",
-          error: bulkOrderError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid bulk order guard payload",
+          bulkOrderError.error,
+        ),
         { status: 400 },
       );
     }
@@ -404,10 +405,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof stockControlPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid stock control payload",
-          error: stockControlError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid stock control payload",
+          stockControlError.error,
+        ),
         { status: 400 },
       );
     }
@@ -431,10 +432,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof courierChargesPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid courier charges payload",
-          error: courierError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid courier charges payload",
+          courierError.error,
+        ),
         { status: 400 },
       );
     }
@@ -451,10 +452,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof offerCodesPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Invalid offer codes payload",
-          error: parseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Invalid offer codes payload",
+          parseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -486,10 +487,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof phonepePayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "PhonePe settings are incomplete for enabled mode",
-          error: parseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "PhonePe settings are incomplete for enabled mode",
+          parseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -502,10 +503,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof cashfreePayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "Cashfree settings are incomplete for enabled mode",
-          error: parseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "Cashfree settings are incomplete for enabled mode",
+          parseError.error,
+        ),
         { status: 400 },
       );
     }
@@ -518,10 +519,10 @@ export async function POST(request: NextRequest) {
         z.infer<typeof whatsappPayloadSchema>
       >;
       return NextResponse.json(
-        {
-          message: "WhatsApp settings are incomplete for enabled mode",
-          error: parseError.error.flatten(),
-        },
+        publicValidationPayload(
+          "WhatsApp settings are incomplete for enabled mode",
+          parseError.error,
+        ),
         { status: 400 },
       );
     }

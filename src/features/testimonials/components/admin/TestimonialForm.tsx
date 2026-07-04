@@ -329,6 +329,16 @@ function TestimonialForm({ testimonial }: TestimonialFormProps) {
                     defaultValue={testimonial?.featured_image_id}
                     onChange={field.onChange}
                     value={field.value}
+                    selectLabel={
+                      kind === "video"
+                        ? "Select poster image"
+                        : "Select background image"
+                    }
+                    changeLabel={
+                      kind === "video"
+                        ? "Change poster image"
+                        : "Change background image"
+                    }
                   />
                 </Suspense>
                 <FormDescription>

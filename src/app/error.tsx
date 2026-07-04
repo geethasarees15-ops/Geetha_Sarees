@@ -4,7 +4,7 @@ import { ErrorPageShell } from "@/components/errors/ErrorPageShell";
 import { publicErrorMessage } from "@/lib/api/public-error";
 import { useEffect } from "react";
 
-export default function AdminError({
+export default function RootError({
   error,
   reset,
 }: {
@@ -12,21 +12,19 @@ export default function AdminError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[admin]", error.digest, error);
+    console.error("[app/error]", error.digest, error);
   }, [error]);
 
   return (
     <ErrorPageShell
-      title="Admin could not load"
+      title="Something went wrong"
       description={publicErrorMessage(
         error,
-        "Something went wrong loading the admin panel. Try again or sign in again.",
+        "We could not load this page. Please try again.",
       )}
       onRetry={() => reset()}
-      primaryHref="/sign-in"
-      primaryLabel="Sign in"
-      secondaryHref="/"
-      secondaryLabel="Store home"
+      primaryHref="/"
+      primaryLabel="Back to home"
     />
   );
 }

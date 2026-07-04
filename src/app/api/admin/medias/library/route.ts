@@ -1,3 +1,4 @@
+import { publicValidationPayload } from "@/lib/api/public-error";
 import {
   ADMIN_MEDIA_PAGE_SIZE,
   fetchMediaLibraryPage,
@@ -78,7 +79,7 @@ export async function DELETE(request: NextRequest) {
       z.infer<typeof DELETE_SCHEMA>
     >;
     return NextResponse.json(
-      { message: "Invalid delete request", error: parseError.error.flatten() },
+      publicValidationPayload("Invalid delete request", parseError.error),
       { status: 400 },
     );
   }

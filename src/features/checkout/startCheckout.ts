@@ -71,7 +71,7 @@ export async function startCheckout({
   const result = await stripe?.redirectToCheckout({ sessionId });
 
   if (result?.error) {
-    throw new Error(result.error.message);
+    throw new Error("Could not open payment checkout. Please try again.");
   }
 }
 

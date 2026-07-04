@@ -20,6 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { createClient } from "@/lib/supabase/client";
+import {
+  safeAuthErrorMessage,
+  safeAuthRedirectError,
+} from "@/lib/auth/safe-auth-errors";
 import { getRedirectFromSearchParams } from "@/lib/auth/redirect";
 import { authSchema } from "../validations";
 import { PasswordInput } from "./PasswordInput";
@@ -43,8 +47,16 @@ export function SignInForm() {
 
   React.useEffect(() => {
     const error = searchParams.get("error");
-    if (error) toast({ title: "Error", description: error });
-  }, [searchParams]);
+    if (error) {
+      toast({
+        title: "Error",
+        description: safeAuthRedirectError(
+          error,
+          "Sign-in could not be completed. Please try again.",
+        ),
+      });
+    }
+  }, [searchParams, toast]);
 
   function onSubmit({ email, password }: FormData) {
     startTransition(async () => {
@@ -54,7 +66,13 @@ export function SignInForm() {
       });
 
       if (error) {
-        toast({ title: "Error", description: error.message });
+        toast({
+          title: "Error",
+          description: safeAuthErrorMessage(
+            error,
+            "Sign-in failed. Check your email and password.",
+          ),
+        });
       } else {
         toast({ title: "Login Sucess" });
         router.refresh();
