@@ -393,12 +393,13 @@ function computeStats({
   const pending = allOrders.filter((o) => needsPaymentAttention(o));
 
   for (const order of pending.slice(0, 5)) {
+    const customerLabel = (order.name ?? order.email ?? "Customer").trim();
     notifications.push({
       id: `order-${order.id}`,
       type: "order",
-      title: `Order needs attention`,
-      description: `${order.name ?? order.email ?? order.id} — ${order.payment_status}`,
-      href: "/admin/orders",
+      title: "Unpaid order",
+      description: `${customerLabel} · ${order.payment_status} · ${order.id.slice(0, 8)}`,
+      href: `/admin/orders/${order.id}`,
       priority: "high",
     });
   }

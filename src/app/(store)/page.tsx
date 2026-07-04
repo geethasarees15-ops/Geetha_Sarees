@@ -3,6 +3,7 @@ import { Icons } from "@/components/layouts/icons";
 import {
   HomeHeroCarousel,
   HomeCategoriesCarousel,
+  HomePriceCarousel,
   HomeTestimonialsCarousel,
   HomeShoppableReels,
   HomeExploreLinks,
@@ -11,6 +12,7 @@ import { heroSlides } from "@/config/heroSlides";
 import { getHomeBannerSlides } from "@/lib/integrations/settings";
 import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
 import { getLandingPageDataCached } from "@/lib/storefront/landing-data";
+import { getShopByPriceBucketsCached } from "@/lib/storefront/shop-by-price";
 import { resolveStorefrontContact } from "@/lib/integrations/settings";
 import type { Metadata } from "next";
 
@@ -32,12 +34,14 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [homeBannerSlides, data, draftProductIds, contact] = await Promise.all([
-    getHomeBannerSlides(),
-    getLandingPageDataCached(),
-    getDraftProductIdsCached(),
-    resolveStorefrontContact(),
-  ]);
+  const [homeBannerSlides, data, draftProductIds, contact, priceBuckets] =
+    await Promise.all([
+      getHomeBannerSlides(),
+      getLandingPageDataCached(),
+      getDraftProductIdsCached(),
+      resolveStorefrontContact(),
+      getShopByPriceBucketsCached(),
+    ]);
 
   const draftIds = new Set(draftProductIds);
   const products = data?.products;
@@ -66,6 +70,10 @@ export default async function Home() {
 
         {collectionScrollCards?.edges?.length ? (
           <HomeCategoriesCarousel collections={collectionScrollCards.edges} />
+        ) : null}
+
+        {priceBuckets.length ? (
+          <HomePriceCarousel buckets={priceBuckets} />
         ) : null}
 
         {featuredProducts.length ? (

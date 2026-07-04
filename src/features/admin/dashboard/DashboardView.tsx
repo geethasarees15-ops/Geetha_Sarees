@@ -5,9 +5,13 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
+  ChevronRight,
   FileText,
+  Package,
+  ShoppingBag,
   TrendingDown,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 import { CalendarDateRangePicker, Overview, RecentSales } from "@/features/cms";
 import { Button } from "@/components/ui/button";
@@ -20,7 +24,10 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import type { DashboardStats } from "@/lib/admin/getDashboardStats";
+import type {
+  DashboardStats,
+  DashboardNotification,
+} from "@/lib/admin/getDashboardStats";
 import { cn, formatInr } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 
@@ -85,6 +92,78 @@ function MetricCard({
         {alert}
       </CardContent>
     </Card>
+  );
+}
+
+function notificationIcon(type: DashboardNotification["type"]) {
+  switch (type) {
+    case "order":
+      return ShoppingBag;
+    case "payment":
+      return Wallet;
+    default:
+      return Package;
+  }
+}
+
+function notificationTone(priority: DashboardNotification["priority"]) {
+  if (priority === "high") {
+    return {
+      iconWrap: "bg-red-50 text-red-700 ring-1 ring-red-200",
+      row: "hover:border-red-200 hover:bg-red-50/40",
+    };
+  }
+  if (priority === "medium") {
+    return {
+      iconWrap: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
+      row: "hover:border-amber-200 hover:bg-amber-50/40",
+    };
+  }
+  return {
+    iconWrap: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+    row: "hover:border-emerald-200 hover:bg-emerald-50/40",
+  };
+}
+
+function DashboardNotificationRow({
+  notification,
+}: {
+  notification: DashboardNotification;
+}) {
+  const Icon = notificationIcon(notification.type);
+  const tone = notificationTone(notification.priority);
+
+  return (
+    <li>
+      <Link
+        href={notification.href}
+        className={cn(
+          "flex items-center gap-3 rounded-lg border border-border/70 bg-background px-3 py-3 transition-colors",
+          tone.row,
+        )}
+      >
+        <div
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+            tone.iconWrap,
+          )}
+        >
+          <Icon className="h-4 w-4" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {notification.title}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {notification.description}
+          </p>
+        </div>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+      </Link>
+    </li>
   );
 }
 
@@ -463,37 +542,9 @@ export function DashboardView({ stats, statsError }: Props) {
                 All clear — no pending alerts right now.
               </p>
             ) : (
-              <ul className="divide-y divide-border/60">
+              <ul className="space-y-2">
                 {stats.notifications.map((n) => (
-                  <li key={n.id}>
-                    <Link
-                      href={n.href}
-                      className="flex gap-3 py-3 transition-colors hover:bg-muted/40 first:pt-0 last:pb-0"
-                    >
-                      <div
-                        className={cn(
-                          "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-                          n.priority === "high"
-                            ? "bg-red-500"
-                            : n.priority === "medium"
-                              ? "bg-amber-500"
-                              : "bg-emerald-500",
-                        )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{n.title}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {n.description}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className="h-6 shrink-0 capitalize text-[10px] font-normal"
-                      >
-                        {n.type}
-                      </Badge>
-                    </Link>
-                  </li>
+                  <DashboardNotificationRow key={n.id} notification={n} />
                 ))}
               </ul>
             )}
