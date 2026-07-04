@@ -32,6 +32,7 @@ import {
   AdminLoadingState,
   LoadingButtonLabel,
 } from "@/components/admin/AdminLoadingState";
+import { BoundedNumberInput } from "@/components/admin/BoundedNumberInput";
 import { AdminSaveProgressOverlay } from "@/components/admin/AdminSaveProgressOverlay";
 import { BadgeSelectField } from "@/features/cms";
 import { ImageDialog } from "@/features/medias";
@@ -268,7 +269,7 @@ function ProductFrom({ product }: ProductsFormProps) {
 
         if (!product && enabled) {
           const currentStock = Number(form.getValues("stock"));
-          if (!Number.isFinite(currentStock) || currentStock <= 0) {
+          if (!Number.isFinite(currentStock)) {
             form.setValue("stock", 1);
           }
         }
@@ -949,29 +950,39 @@ function ProductFrom({ product }: ProductsFormProps) {
             </FormItem>
           ) : null}
 
-          <FormItem>
-            <FormLabel className="text-sm">Stock</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                min={0}
-                defaultValue={product?.stock ?? undefined}
-                aria-invalid={!!form.formState.errors.stock}
-                placeholder={
-                  stockControl.enabled
-                    ? "Stock quantity (default 1 for new product)"
-                    : "Stock quantity"
-                }
-                {...register("stock", { valueAsNumber: true })}
-              />
-            </FormControl>
-            <FormDescription>
-              {stockControl.enabled
-                ? `Low-stock notice appears below ${stockControl.lowStockThreshold}.`
-                : "Stock control is disabled; storefront behavior remains unchanged."}
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
+          <FormField
+            control={control}
+            name="stock"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm">Stock</FormLabel>
+                <FormControl>
+                  <BoundedNumberInput
+                    min={0}
+                    max={99999}
+                    value={
+                      Number.isFinite(Number(field.value))
+                        ? Math.max(0, Math.round(Number(field.value)))
+                        : 0
+                    }
+                    onValueChange={field.onChange}
+                    aria-invalid={!!form.formState.errors.stock}
+                    placeholder={
+                      stockControl.enabled
+                        ? "Stock quantity (default 1 for new product)"
+                        : "Stock quantity"
+                    }
+                  />
+                </FormControl>
+                <FormDescription>
+                  {stockControl.enabled
+                    ? `Low-stock notice appears below ${stockControl.lowStockThreshold}.`
+                    : "Stock control is disabled; storefront behavior remains unchanged."}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormItem>
             <FormLabel className="text-sm">Enable Size</FormLabel>

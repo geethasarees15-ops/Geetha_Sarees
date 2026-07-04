@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   AdminLoadingState,
   LoadingButtonLabel,
 } from "@/components/admin/AdminLoadingState";
+import { BoundedNumberInput } from "@/components/admin/BoundedNumberInput";
+import type { BoundedNumberInputHandle } from "@/components/admin/BoundedNumberInput";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 
 type ApiSettingRecord = {
@@ -37,6 +38,7 @@ export function StockControlForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const thresholdRef = useRef<BoundedNumberInputHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +87,8 @@ export function StockControlForm() {
   );
 
   const onSave = async () => {
+    const lowStockThreshold =
+      thresholdRef.current?.commit() ?? form.lowStockThreshold;
     setIsSaving(true);
     try {
       const res = await fetchWithTimeout("/api/admin/integrations", {
@@ -93,7 +97,7 @@ export function StockControlForm() {
         body: JSON.stringify({
           key: "stock_control",
           isEnabled: form.enabled,
-          value: { lowStockThreshold: form.lowStockThreshold },
+          value: { lowStockThreshold },
         }),
       });
 
@@ -105,7 +109,7 @@ export function StockControlForm() {
       toast({
         title: "Stock setting saved",
         description: form.enabled
-          ? `Low stock will show below ${form.lowStockThreshold}.`
+          ? `Low stock will show below ${lowStockThreshold}.`
           : "Stock control is disabled. Storefront stays as usual.",
       });
     } catch (error) {
@@ -141,20 +145,15 @@ export function StockControlForm() {
 
         <div className="grid gap-2 max-w-[220px]">
           <Label htmlFor="low-stock-threshold">Low stock threshold</Label>
-          <Input
+          <BoundedNumberInput
+            ref={thresholdRef}
             id="low-stock-threshold"
-            type="number"
             min={1}
             max={99}
             value={form.lowStockThreshold}
-            onChange={(event) => {
-              const value = Number(event.target.value);
-              if (!Number.isFinite(value)) return;
-              setForm((prev) => ({
-                ...prev,
-                lowStockThreshold: Math.min(99, Math.max(1, Math.round(value))),
-              }));
-            }}
+            onValueChange={(lowStockThreshold) =>
+              setForm((prev) => ({ ...prev, lowStockThreshold }))
+            }
           />
           <p className="text-xs text-muted-foreground">
             Low-stock text is shown only when stock is below this value.

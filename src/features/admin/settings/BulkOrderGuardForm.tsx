@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   AdminLoadingState,
   LoadingButtonLabel,
 } from "@/components/admin/AdminLoadingState";
+import { BoundedNumberInput } from "@/components/admin/BoundedNumberInput";
+import type { BoundedNumberInputHandle } from "@/components/admin/BoundedNumberInput";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 
 type ApiSettingRecord = {
@@ -37,6 +38,7 @@ export function BulkOrderGuardForm() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const thresholdRef = useRef<BoundedNumberInputHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +86,8 @@ export function BulkOrderGuardForm() {
   );
 
   const onSave = async () => {
+    const threshold =
+      thresholdRef.current?.commit() ?? form.threshold;
     setIsSaving(true);
     try {
       const res = await fetchWithTimeout("/api/admin/integrations", {
@@ -92,7 +96,7 @@ export function BulkOrderGuardForm() {
         body: JSON.stringify({
           key: "bulk_order_guard",
           isEnabled: form.enabled,
-          value: { threshold: form.threshold },
+          value: { threshold },
         }),
       });
 
@@ -103,7 +107,7 @@ export function BulkOrderGuardForm() {
 
       toast({
         title: "Bulk order setting saved",
-        description: `Guard is ${form.enabled ? "enabled" : "disabled"} at ${form.threshold}+ per product line.`,
+        description: `Guard is ${form.enabled ? "enabled" : "disabled"} at ${threshold}+ per product line.`,
       });
     } catch (error) {
       toast({
@@ -138,20 +142,15 @@ export function BulkOrderGuardForm() {
 
         <div className="grid gap-2 max-w-[220px]">
           <Label htmlFor="bulk-threshold">Threshold quantity</Label>
-          <Input
+          <BoundedNumberInput
+            ref={thresholdRef}
             id="bulk-threshold"
-            type="number"
             min={2}
             max={99}
             value={form.threshold}
-            onChange={(e) => {
-              const value = Number(e.target.value);
-              if (!Number.isFinite(value)) return;
-              setForm((prev) => ({
-                ...prev,
-                threshold: Math.min(99, Math.max(2, Math.round(value))),
-              }));
-            }}
+            onValueChange={(threshold) =>
+              setForm((prev) => ({ ...prev, threshold }))
+            }
           />
           <p className="text-xs text-muted-foreground">
             Popup triggers when a single product line reaches this quantity.
