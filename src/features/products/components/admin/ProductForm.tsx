@@ -150,9 +150,11 @@ function hasAnySizeOptionConfigured(options: SizeOptionForm[]) {
 
 type BulkSharedPayload = ReturnType<typeof buildBulkSharedPayloadFromForm>;
 
-const productFormSchema = createInsertSchema(products).omit({ slug: true }).extend({
-  slug: z.string().optional(),
-});
+const productFormSchema = createInsertSchema(products)
+  .omit({ slug: true })
+  .extend({
+    slug: z.string().optional(),
+  });
 
 export const ProductFormQuery = gql(/* GraphQL */ `
   query ProductFormQuery {
@@ -1185,8 +1187,8 @@ function ProductFrom({ product }: ProductsFormProps) {
                   </Suspense>
 
                   <FormDescription>
-                    Click the button to choose an image from the media library or
-                    upload a new one.
+                    Click the button to choose an image from the media library
+                    or upload a new one.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

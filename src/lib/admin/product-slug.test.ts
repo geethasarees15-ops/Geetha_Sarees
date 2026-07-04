@@ -1,7 +1,4 @@
-import {
-  buildUniqueProductSlug,
-  productNameToSlug,
-} from "./product-slug";
+import { buildUniqueProductSlug, productNameToSlug } from "./product-slug";
 
 describe("productNameToSlug", () => {
   it("slugifies product names", () => {

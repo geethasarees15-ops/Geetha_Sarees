@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/select";
 import { ImageDialog } from "@/features/medias";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
-import { buildBannerImageAlt, buildProductShopHref } from "@/lib/admin/home-banner-links";
+import {
+  buildBannerImageAlt,
+  buildProductShopHref,
+} from "@/lib/admin/home-banner-links";
 import {
   AdminLoadingState,
   LoadingButtonLabel,

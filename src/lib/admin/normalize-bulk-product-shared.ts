@@ -125,9 +125,7 @@ export function buildBulkSharedPayloadFromForm(values: {
     collectionId:
       typeof values.collectionId === "string" ? values.collectionId : null,
     badge:
-      values.badge == null || values.badge === ""
-        ? null
-        : String(values.badge),
+      values.badge == null || values.badge === "" ? null : String(values.badge),
     rating: String(values.rating ?? "4"),
     price: String(values.price ?? "0"),
     stock: Number.isFinite(Number(values.stock))

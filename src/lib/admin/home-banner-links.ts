@@ -11,8 +11,7 @@ export function buildBannerImageAlt(
   subtitle: string,
   index = 0,
 ): string {
-  const heading =
-    title.trim() || `${DEFAULT_BANNER_TITLE_PREFIX} ${index + 1}`;
+  const heading = title.trim() || `${DEFAULT_BANNER_TITLE_PREFIX} ${index + 1}`;
   const subheading = subtitle.trim() || DEFAULT_BANNER_SUBTITLE;
   return `${heading} — ${subheading}`;
 }

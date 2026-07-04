@@ -37,11 +37,7 @@ export const createProductAction = async (product: InsertProducts) => {
     );
 
     const productCode = await createNextProductCode(tx);
-    const slug = await buildUniqueProductSlug(
-      tx,
-      normalized.name,
-      productCode,
-    );
+    const slug = await buildUniqueProductSlug(tx, normalized.name, productCode);
     const values = {
       ...normalized,
       productCode,
@@ -159,7 +155,10 @@ export async function createDraftProductsFromMedia(
           limit 1`,
     );
     const lastCode = lastCodeRows[0]?.product_code ?? null;
-    const lastNumber = Number.parseInt(lastCode?.replace(/^ST/i, "") ?? "0", 10);
+    const lastNumber = Number.parseInt(
+      lastCode?.replace(/^ST/i, "") ?? "0",
+      10,
+    );
     const start = Number.isFinite(lastNumber) ? lastNumber : 0;
 
     const createdProducts: BulkDraftCreateResult[] = [];
