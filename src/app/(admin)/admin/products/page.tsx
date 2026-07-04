@@ -1,13 +1,10 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
-import { buttonVariants } from "@/components/ui/button";
 import { ProductsColumns, ProductsDataTable } from "@/features/products";
 import { publicErrorMessage } from "@/lib/api/public-error";
 import { getAdminProductsList } from "@/lib/admin/getAdminProductsList";
 import type { AdminProductsStockFilter } from "@/lib/admin/getAdminProductsList";
 import { resolveStockControlConfig } from "@/lib/integrations/settings";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
@@ -60,19 +57,9 @@ async function ProductsPageContent({ searchParams }: AdminProjectsPageProps) {
       lowStockThreshold: stockControl.lowStockThreshold,
     });
     productRows = productsPage.rows;
-    const totalProducts = productsPage.totalCount;
 
     return (
-      <AdminShell
-        heading="Products"
-        description={`Manage all ${totalProducts} products in your catalog.`}
-      >
-        <section className="flex justify-end items-center pb-5 w-full">
-          <Link href="/admin/products/new" className={cn(buttonVariants())}>
-            New Product
-          </Link>
-        </section>
-
+      <AdminShell heading="Products">
         <ProductsDataTable
           columns={ProductsColumns}
           data={productRows}
@@ -97,10 +84,7 @@ async function ProductsPageContent({ searchParams }: AdminProjectsPageProps) {
   }
 
   return (
-    <AdminShell
-      heading="Products"
-      description="Product catalog could not be loaded."
-    >
+    <AdminShell heading="Products">
       <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-sm">
         <p className="font-semibold text-destructive">
           Failed to load products

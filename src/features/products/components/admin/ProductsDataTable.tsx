@@ -14,18 +14,11 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+import { AdminStockFilterMenu } from "@/components/admin/AdminStockFilterMenu";
 import { AdminTableSearch } from "@/components/admin/AdminTableSearch";
 import { ADMIN_PRODUCTS_SEARCH } from "@/lib/admin/admin-search-config";
 import type { AdminProductsStockFilter } from "@/lib/admin/getAdminProductsList";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -36,6 +29,8 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { selectAllFilteredRows } from "@/lib/admin/table-search";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 interface DataTableProps<TData, TValue> {
@@ -50,6 +45,7 @@ interface DataTableProps<TData, TValue> {
   enableDragSelect?: boolean;
   bulkDeleteEndpoint?: string;
   bulkDeleteLabel?: string;
+  newProductHref?: string;
 }
 
 function DataTable<TData, TValue>({
@@ -64,6 +60,7 @@ function DataTable<TData, TValue>({
   enableDragSelect = false,
   bulkDeleteEndpoint,
   bulkDeleteLabel = "Delete selected",
+  newProductHref = "/admin/products/new",
 }: DataTableProps<TData, TValue>) {
   const { toast } = useToast();
   const router = useRouter();
@@ -195,12 +192,11 @@ function DataTable<TData, TValue>({
   const isFiltering = isSearchActive || isStockFilterActive;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  const stockFilterLabel =
-    appliedStockFilter === "low"
-      ? `below threshold (< ${lowStockThreshold})`
-      : appliedStockFilter === "out"
-        ? "out of stock (0)"
-        : null;
+  const stockFilterSummary = isStockFilterActive
+    ? appliedStockFilter === "low"
+      ? `Low stock (< ${lowStockThreshold})`
+      : "Out of stock"
+    : null;
 
   const emptyResultsMessage = isSearchActive
     ? `No results for "${appliedSearch.trim()}".`
@@ -316,6 +312,7 @@ function DataTable<TData, TValue>({
     <div className="space-y-4">
       <AdminTableSearch
         {...ADMIN_PRODUCTS_SEARCH}
+        layout="compact"
         appliedQuery={appliedSearch}
         draftQuery={draftSearch}
         onDraftQueryChange={setDraftSearch}
@@ -323,91 +320,62 @@ function DataTable<TData, TValue>({
         onClearSearch={clearSearch}
         filteredCount={filteredCount}
         totalCount={totalCount}
+        hasActiveFilters={isFiltering}
+        onClearAllFilters={clearFilters}
+        filterSummary={stockFilterSummary}
+        toolbarEnd={
+          <AdminStockFilterMenu
+            value={appliedStockFilter}
+            lowStockThreshold={lowStockThreshold}
+            onChange={applyStockFilter}
+          />
+        }
       />
-      <section
-        className="rounded-lg border bg-muted/20 p-4"
-        aria-label="Filter products by stock"
-      >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold">Stock filter</h3>
-          {isStockFilterActive ? (
-            <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
-              Filter active
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              Threshold from Settings
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          <div className="grid w-full max-w-xs gap-2">
-            <Label htmlFor="products-stock-filter">Inventory status</Label>
-            <Select
-              value={appliedStockFilter}
-              onValueChange={(value) =>
-                applyStockFilter(value as AdminProductsStockFilter)
-              }
-            >
-              <SelectTrigger id="products-stock-filter" className="h-10">
-                <SelectValue placeholder="All products" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All products</SelectItem>
-                <SelectItem value="low">
-                  Below threshold (&lt; {lowStockThreshold})
-                </SelectItem>
-                <SelectItem value="out">Out of stock (0)</SelectItem>
-              </SelectContent>
-            </Select>
+      {bulkDeleteEndpoint || newProductHref ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {bulkDeleteEndpoint ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => selectAllFilteredRows(table, setRowSelection)}
+                  disabled={filteredCount === 0}
+                >
+                  {isFiltering
+                    ? `Select filtered (${filteredCount})`
+                    : "Select all"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setRowSelection({})}
+                  disabled={selectedIds.length === 0}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => void onBulkDelete()}
+                  disabled={selectedIds.length === 0 || isDeleting}
+                >
+                  {isDeleting
+                    ? "Deleting..."
+                    : `${bulkDeleteLabel} (${selectedIds.length})`}
+                </Button>
+                {enableDragSelect ? (
+                  <span className="text-xs text-muted-foreground">
+                    Tip: Drag on empty table space to box-select rows.
+                  </span>
+                ) : null}
+              </>
+            ) : null}
           </div>
-          {isFiltering ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10"
-              onClick={clearFilters}
+          {newProductHref ? (
+            <Link
+              href={newProductHref}
+              className={cn(buttonVariants(), "shrink-0")}
             >
-              Clear all filters
-            </Button>
-          ) : null}
-        </div>
-        {isStockFilterActive ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Showing {filteredCount} product{filteredCount === 1 ? "" : "s"}{" "}
-            {stockFilterLabel}.
-          </p>
-        ) : null}
-      </section>
-      {bulkDeleteEndpoint ? (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => selectAllFilteredRows(table, setRowSelection)}
-            disabled={filteredCount === 0}
-          >
-            {isFiltering ? `Select filtered (${filteredCount})` : "Select all"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setRowSelection({})}
-            disabled={selectedIds.length === 0}
-          >
-            Clear
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => void onBulkDelete()}
-            disabled={selectedIds.length === 0 || isDeleting}
-          >
-            {isDeleting
-              ? "Deleting..."
-              : `${bulkDeleteLabel} (${selectedIds.length})`}
-          </Button>
-          {enableDragSelect ? (
-            <span className="text-xs text-muted-foreground">
-              Tip: Drag on empty table space to box-select rows.
-            </span>
+              New Product
+            </Link>
           ) : null}
         </div>
       ) : null}

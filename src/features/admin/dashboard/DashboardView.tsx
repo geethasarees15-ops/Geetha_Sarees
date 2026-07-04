@@ -2,17 +2,12 @@
 
 import Link from "next/link";
 import {
-  IndianRupee,
-  Package,
-  ShoppingBag,
-  Users,
-  FolderOpen,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Bell,
   BarChart3,
+  Bell,
   FileText,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import { CalendarDateRangePicker, Overview, RecentSales } from "@/features/cms";
 import { Button } from "@/components/ui/button";
@@ -26,13 +21,21 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { DashboardStats } from "@/lib/admin/getDashboardStats";
-import { formatInr } from "@/lib/utils";
+import { cn, formatInr } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 
 type Props = {
   stats: DashboardStats;
   statsError?: string | null;
 };
+
+const panelClass = "border-border/70 bg-card shadow-none";
+const sectionHeaderClass = "space-y-1 p-4 pb-0";
+const sectionTitleClass = "text-sm font-semibold tracking-tight";
+const sectionDescClass = "text-xs text-muted-foreground";
+const metricLabelClass =
+  "text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground";
+const metricValueClass = "text-2xl font-semibold tracking-tight tabular-nums";
 
 function ChangeLabel({ pct }: { pct: number | null }) {
   if (pct === null) {
@@ -42,447 +45,457 @@ function ChangeLabel({ pct }: { pct: number | null }) {
   }
   const up = pct >= 0;
   return (
-    <p
-      className={`text-xs flex items-center gap-1 ${up ? "text-emerald-600" : "text-amber-600"}`}
-    >
+    <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
       {up ? (
-        <TrendingUp className="h-3 w-3" />
+        <TrendingUp className="h-3 w-3 text-emerald-600" />
       ) : (
-        <TrendingDown className="h-3 w-3" />
+        <TrendingDown className="h-3 w-3 text-amber-600" />
       )}
-      {up ? "+" : ""}
-      {pct}% from last month
+      <span className={up ? "text-emerald-700" : "text-amber-700"}>
+        {up ? "+" : ""}
+        {pct}%
+      </span>
+      <span>vs last month</span>
     </p>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  change,
+  detail,
+  alert,
+}: {
+  label: string;
+  value: React.ReactNode;
+  change?: React.ReactNode;
+  detail?: React.ReactNode;
+  alert?: React.ReactNode;
+}) {
+  return (
+    <Card className={panelClass}>
+      <CardContent className="p-4">
+        <p className={metricLabelClass}>{label}</p>
+        <div className={cn("mt-2", metricValueClass)}>{value}</div>
+        {change}
+        {detail ? (
+          <p className="mt-1.5 text-xs text-muted-foreground">{detail}</p>
+        ) : null}
+        {alert}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionCard({
+  title,
+  description,
+  children,
+  className,
+  contentClassName,
+}: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <Card className={cn(panelClass, className)}>
+      <CardHeader className={sectionHeaderClass}>
+        <CardTitle className={sectionTitleClass}>{title}</CardTitle>
+        {description ? (
+          <CardDescription className={sectionDescClass}>
+            {description}
+          </CardDescription>
+        ) : null}
+      </CardHeader>
+      <CardContent className={cn("p-4 pt-3", contentClassName)}>
+        {children}
+      </CardContent>
+    </Card>
   );
 }
 
 export function DashboardView({ stats, statsError }: Props) {
   return (
-    <div className="flex-col md:flex">
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6">
-        {statsError ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-amber-500/40 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-          >
-            <p className="font-medium">
-              Some dashboard data could not be loaded
-            </p>
-            <p className="mt-1 text-xs opacity-90">{statsError}</p>
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-              SRI SAI RAGHAVENDRA TEX Dashboard
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Store overview — products, orders, collections & alerts
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <CalendarDateRangePicker />
-            <Button variant="outline" asChild>
-              <Link href="/admin/orders">View orders</Link>
-            </Button>
-          </div>
+    <div className="space-y-5">
+      {statsError ? (
+        <div
+          role="alert"
+          className="rounded-md border border-amber-500/35 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"
+        >
+          <p className="font-medium">Some dashboard data could not be loaded</p>
+          <p className="mt-1 text-xs opacity-90">{statsError}</p>
         </div>
+      ) : null}
 
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="notifications" className="relative">
-              Notifications
-              {stats.notifications.length > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="ml-2 h-5 min-w-5 px-1 text-[10px]"
-                >
-                  {stats.notifications.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          Dashboard
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <CalendarDateRangePicker />
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/orders">View orders</Link>
+          </Button>
+        </div>
+      </div>
 
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Revenue
-                  </CardTitle>
-                  <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {formatInr(stats.totalRevenue)}
-                  </div>
-                  <ChangeLabel pct={stats.revenueChangePct} />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This month: {formatInr(stats.revenueThisMonth)}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="h-auto w-full justify-start gap-0.5 overflow-x-auto rounded-lg bg-muted/60 p-1">
+          <TabsTrigger value="overview" className="rounded-md px-3 py-1.5">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="rounded-md px-3 py-1.5">
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="rounded-md px-3 py-1.5">
+            Reports
+          </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="relative rounded-md px-3 py-1.5"
+          >
+            Notifications
+            {stats.notifications.length > 0 ? (
+              <Badge
+                variant="secondary"
+                className="ml-2 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-medium"
+              >
+                {stats.notifications.length}
+              </Badge>
+            ) : null}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard
+              label="Total revenue"
+              value={formatInr(stats.totalRevenue)}
+              change={<ChangeLabel pct={stats.revenueChangePct} />}
+              detail={`This month: ${formatInr(stats.revenueThisMonth)}`}
+            />
+            <MetricCard
+              label="Paid orders"
+              value={stats.paidOrdersCount}
+              change={<ChangeLabel pct={stats.ordersChangePct} />}
+              detail={`${stats.ordersThisMonth} this month · ${stats.pendingOrdersCount} need follow-up`}
+            />
+            <MetricCard
+              label="Products"
+              value={stats.totalProducts}
+              detail={`${stats.featuredProducts} featured on homepage`}
+              alert={
+                stats.lowStockCount > 0 || stats.outOfStockCount > 0 ? (
+                  <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-700">
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    {stats.lowStockCount} low · {stats.outOfStockCount} out of
+                    stock
                   </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Paid orders
-                  </CardTitle>
-                  <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.paidOrdersCount}
-                  </div>
-                  <ChangeLabel pct={stats.ordersChangePct} />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stats.ordersThisMonth} this month ·{" "}
-                    {stats.pendingOrdersCount} need follow-up
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Products
-                  </CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.totalProducts}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {stats.featuredProducts} featured on homepage
-                  </p>
-                  {(stats.lowStockCount > 0 || stats.outOfStockCount > 0) && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      {stats.lowStockCount} low · {stats.outOfStockCount} out of
-                      stock
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Collections
-                  </CardTitle>
-                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.totalCollections}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Saree categories live
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <Users className="inline h-3 w-3 mr-1" />
-                    {stats.totalCustomers} registered customers
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                ) : null
+              }
+            />
+            <MetricCard
+              label="Collections"
+              value={stats.totalCollections}
+              detail="Saree categories live"
+              alert={
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {stats.totalCustomers} registered customers
+                </p>
+              }
+            />
+          </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
-                <CardHeader>
-                  <CardTitle>Revenue overview</CardTitle>
-                  <CardDescription>
-                    Paid orders — last 12 months (INR)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pl-2">
-                  <Overview data={stats.monthlyRevenue} />
-                </CardContent>
-              </Card>
-              <Card className="col-span-3">
-                <CardHeader>
-                  <CardTitle>Recent paid orders</CardTitle>
-                  <CardDescription>
-                    Latest {stats.recentPaidOrders.length} paid order
-                    {stats.recentPaidOrders.length === 1 ? "" : "s"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RecentSales
-                    orders={stats.recentPaidOrders}
-                    emptyMessage="No paid orders yet."
-                  />
-                </CardContent>
-              </Card>
-            </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-7">
+            <SectionCard
+              className="col-span-4"
+              title="Revenue overview"
+              description="Paid orders — last 12 months (INR)"
+              contentClassName="pl-2"
+            >
+              <Overview data={stats.monthlyRevenue} />
+            </SectionCard>
+            <SectionCard
+              className="col-span-3"
+              title="Recent paid orders"
+              description={`Latest ${stats.recentPaidOrders.length} paid order${stats.recentPaidOrders.length === 1 ? "" : "s"}`}
+            >
+              <RecentSales
+                orders={stats.recentPaidOrders}
+                emptyMessage="No paid orders yet."
+              />
+            </SectionCard>
+          </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pending payment orders</CardTitle>
-                  <CardDescription>
-                    Contact customers who have not completed payment
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RecentSales
-                    orders={stats.recentPendingOrders}
-                    emptyMessage="No pending payment orders right now."
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent paid orders</CardTitle>
-                  <CardDescription>
-                    Latest completed sales for your records
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RecentSales
-                    orders={stats.recentPaidOrders}
-                    emptyMessage="No paid orders yet."
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SectionCard
+              title="Pending payment orders"
+              description="Contact customers who have not completed payment"
+            >
+              <RecentSales
+                orders={stats.recentPendingOrders}
+                emptyMessage="No pending payment orders right now."
+              />
+            </SectionCard>
+            <SectionCard
+              title="Recent paid orders"
+              description="Latest completed sales for your records"
+            >
+              <RecentSales
+                orders={stats.recentPaidOrders}
+                emptyMessage="No paid orders yet."
+              />
+            </SectionCard>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    Payment breakdown
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {stats.ordersByPayment.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No orders yet.
-                    </p>
-                  ) : (
-                    stats.ordersByPayment.map(({ status, count }) => (
-                      <div
-                        key={status}
-                        className="flex justify-between items-center text-sm"
-                      >
-                        <span className="capitalize">
-                          {status.replace(/_/g, " ")}
-                        </span>
-                        <Badge variant="secondary">{count}</Badge>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Top products (paid orders)
-                  </CardTitle>
-                  <CardDescription>
-                    Units sold and revenue from completed payments only
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {stats.topProducts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No paid sales yet.
-                    </p>
-                  ) : (
-                    stats.topProducts.map((p) => (
-                      <div
-                        key={p.productId}
-                        className="flex justify-between text-sm gap-2"
-                      >
-                        <Link
-                          href={`/admin/products/${p.productId}`}
-                          className="truncate hover:underline font-medium"
-                        >
-                          {p.name}
-                        </Link>
-                        <span className="text-muted-foreground shrink-0">
-                          {p.quantity} sold · {formatInr(p.revenue)}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Inventory health</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Total products</span>
-                    <strong>{stats.totalProducts}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Featured on home</span>
-                    <strong>{stats.featuredProducts}</strong>
-                  </div>
-                  <div className="flex justify-between text-amber-600">
-                    <span>Low stock (&lt;5)</span>
-                    <strong>{stats.lowStockCount}</strong>
-                  </div>
-                  <div className="flex justify-between text-red-600">
-                    <span>Out of stock</span>
-                    <strong>{stats.outOfStockCount}</strong>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly revenue</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <Overview data={stats.monthlyRevenue} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="reports" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Sales summary
-                </CardTitle>
-                <CardDescription>
-                  Snapshot for {siteConfig.name} — use Orders page for full
-                  detail
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-2 pr-4 font-medium">Metric</th>
-                        <th className="pb-2 font-medium">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      <tr>
-                        <td className="py-3 pr-4">Total revenue (paid)</td>
-                        <td className="py-3 font-semibold">
-                          {formatInr(stats.totalRevenue)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Revenue this month</td>
-                        <td className="py-3">
-                          {formatInr(stats.revenueThisMonth)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Revenue last month</td>
-                        <td className="py-3">
-                          {formatInr(stats.revenueLastMonth)}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Paid orders (total)</td>
-                        <td className="py-3">{stats.paidOrdersCount}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Paid orders this month</td>
-                        <td className="py-3">{stats.ordersThisMonth}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">
-                          Pending / unpaid (follow-up)
-                        </td>
-                        <td className="py-3">{stats.pendingOrdersCount}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Active collections</td>
-                        <td className="py-3">{stats.totalCollections}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Catalog products</td>
-                        <td className="py-3">{stats.totalProducts}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Registered customers</td>
-                        <td className="py-3">{stats.totalCustomers}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <Button asChild>
-                    <Link href="/admin/orders">Open orders</Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href="/admin/products">Open products</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Store alerts
-                </CardTitle>
-                <CardDescription>
-                  Orders and inventory that need your attention
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {stats.notifications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">
-                    All clear — no pending alerts right now.
+        <TabsContent value="analytics" className="mt-4 space-y-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <SectionCard title="Payment breakdown">
+              <div className="space-y-2.5">
+                {stats.ordersByPayment.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No orders yet.</p>
+                ) : (
+                  stats.ordersByPayment.map(({ status, count }) => (
+                    <div
+                      key={status}
+                      className="flex items-center justify-between border-b border-border/50 py-2 text-sm last:border-0"
+                    >
+                      <span className="capitalize text-foreground/90">
+                        {status.replace(/_/g, " ")}
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {count}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </SectionCard>
+            <SectionCard
+              title="Top products (paid orders)"
+              description="Units sold and revenue from completed payments only"
+            >
+              <div className="space-y-2.5">
+                {stats.topProducts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No paid sales yet.
                   </p>
                 ) : (
-                  <ul className="space-y-3">
-                    {stats.notifications.map((n) => (
-                      <li key={n.id}>
-                        <Link
-                          href={n.href}
-                          className="flex gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
-                        >
-                          <div
-                            className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                              n.priority === "high"
-                                ? "bg-red-500"
-                                : n.priority === "medium"
-                                  ? "bg-amber-500"
-                                  : "bg-emerald-500"
-                            }`}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium">{n.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {n.description}
-                            </p>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className="capitalize shrink-0"
-                          >
-                            {n.type}
-                          </Badge>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
+                  stats.topProducts.map((p) => (
+                    <div
+                      key={p.productId}
+                      className="flex gap-2 border-b border-border/50 py-2 text-sm last:border-0"
+                    >
+                      <Link
+                        href={`/admin/products/${p.productId}`}
+                        className="min-w-0 flex-1 truncate font-medium hover:underline"
+                      >
+                        {p.name}
+                      </Link>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {p.quantity} sold · {formatInr(p.revenue)}
+                      </span>
+                    </div>
+                  ))
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+              </div>
+            </SectionCard>
+            <SectionCard title="Inventory health">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between border-b border-border/50 py-2">
+                  <span className="text-muted-foreground">Total products</span>
+                  <span className="font-medium tabular-nums">
+                    {stats.totalProducts}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-border/50 py-2">
+                  <span className="text-muted-foreground">Featured on home</span>
+                  <span className="font-medium tabular-nums">
+                    {stats.featuredProducts}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-border/50 py-2 text-amber-800">
+                  <span>Low stock (&lt;5)</span>
+                  <span className="font-medium tabular-nums">
+                    {stats.lowStockCount}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 text-red-700">
+                  <span>Out of stock</span>
+                  <span className="font-medium tabular-nums">
+                    {stats.outOfStockCount}
+                  </span>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+          <SectionCard title="Monthly revenue" contentClassName="pl-2">
+            <Overview data={stats.monthlyRevenue} />
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="reports" className="mt-4 space-y-4">
+          <SectionCard
+            title={
+              <span className="inline-flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Sales summary
+              </span>
+            }
+            description={`Snapshot for ${siteConfig.name} — use Orders page for full detail`}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 pr-4">Metric</th>
+                    <th className="pb-2">Value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Total revenue (paid)
+                    </td>
+                    <td className="py-2.5 font-medium tabular-nums">
+                      {formatInr(stats.totalRevenue)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Revenue this month
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {formatInr(stats.revenueThisMonth)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Revenue last month
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {formatInr(stats.revenueLastMonth)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Paid orders (total)
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {stats.paidOrdersCount}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Paid orders this month
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {stats.ordersThisMonth}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Pending / unpaid (follow-up)
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {stats.pendingOrdersCount}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Active collections
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {stats.totalCollections}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Catalog products
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {stats.totalProducts}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 pr-4 text-muted-foreground">
+                      Registered customers
+                    </td>
+                    <td className="py-2.5 tabular-nums">
+                      {stats.totalCustomers}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border/60 pt-4">
+              <Button size="sm" asChild>
+                <Link href="/admin/orders">Open orders</Link>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/admin/products">Open products</Link>
+              </Button>
+            </div>
+          </SectionCard>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="mt-4 space-y-4">
+          <SectionCard
+            title={
+              <span className="inline-flex items-center gap-2">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                Store alerts
+              </span>
+            }
+            description="Orders and inventory that need your attention"
+          >
+            {stats.notifications.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                All clear — no pending alerts right now.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {stats.notifications.map((n) => (
+                  <li key={n.id}>
+                    <Link
+                      href={n.href}
+                      className="flex gap-3 py-3 transition-colors hover:bg-muted/40 first:pt-0 last:pb-0"
+                    >
+                      <div
+                        className={cn(
+                          "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                          n.priority === "high"
+                            ? "bg-red-500"
+                            : n.priority === "medium"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500",
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{n.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {n.description}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="h-6 shrink-0 capitalize text-[10px] font-normal"
+                      >
+                        {n.type}
+                      </Badge>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

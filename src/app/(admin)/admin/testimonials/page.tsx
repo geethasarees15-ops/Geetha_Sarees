@@ -1,15 +1,11 @@
 import AdminShell from "@/components/admin/AdminShell";
-import { buttonVariants } from "@/components/ui/button";
 import { gql } from "@/gql";
 import { getClient } from "@/lib/urql";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  TestimonialsColumns,
+  TestimonialsDataTable,
   TestimonialColumnsFragment,
 } from "@/features/testimonials";
-import { DataTable } from "@/features/cms";
 
 export const dynamic = "force-dynamic";
 
@@ -35,20 +31,8 @@ async function TestimonialsAdminPage() {
   if (!data) return notFound();
 
   return (
-    <AdminShell
-      heading="Testimonials"
-      description="Manage customer feedback shown on the homepage carousel."
-    >
-      <section className="flex w-full items-center justify-end pb-5">
-        <Link href="/admin/testimonials/new" className={cn(buttonVariants())}>
-          New testimonial
-        </Link>
-      </section>
-
-      <DataTable
-        columns={TestimonialsColumns}
-        data={data.testimonialsCollection?.edges || []}
-      />
+    <AdminShell heading="Testimonials">
+      <TestimonialsDataTable data={data.testimonialsCollection?.edges || []} />
     </AdminShell>
   );
 }

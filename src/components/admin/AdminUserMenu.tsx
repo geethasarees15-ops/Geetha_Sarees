@@ -1,6 +1,10 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { AdminUserAvatar } from "@/components/admin/AdminUserAvatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,12 +14,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { resolveAdminUserDisplay } from "@/lib/auth/admin-user-display";
 import { signOutGlobally } from "@/lib/auth/sign-out";
-import { getNameInitials } from "@/lib/utils";
 import { useAuth } from "@/providers/AuthProvider";
-import { ChevronUp } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 export function AdminUserMenu() {
   const router = useRouter();
@@ -24,9 +25,7 @@ export function AdminUserMenu() {
 
   if (!user) return null;
 
-  const displayName =
-    (user.user_metadata?.name as string | undefined)?.trim() || "Admin";
-  const initials = getNameInitials(displayName);
+  const profile = resolveAdminUserDisplay(user);
 
   const logout = async () => {
     if (isLoggingOut) return;
@@ -46,23 +45,27 @@ export function AdminUserMenu() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full justify-start gap-3 rounded-md px-3 py-2.5 hover:bg-muted"
-          aria-label={`${displayName} account menu`}
+          className="h-auto w-full justify-start gap-2.5 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted"
+          aria-label={`${profile.name} account menu`}
         >
-          <Avatar className="h-9 w-9 shrink-0 border border-primary/15">
-            <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <AdminUserAvatar
+            name={profile.name}
+            initials={profile.initials}
+            avatarUrl={profile.avatarUrl}
+            useUserIconFallback={profile.useUserIconFallback}
+          />
           <span className="min-w-0 flex-1 text-left">
-            <span className="block truncate text-sm font-medium text-foreground">
-              {displayName}
+            <span className="block truncate font-medium text-foreground">
+              {profile.name}
             </span>
             <span className="block truncate text-xs text-muted-foreground">
-              {user.email}
+              {profile.email}
             </span>
           </span>
-          <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronUp
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -71,18 +74,19 @@ export function AdminUserMenu() {
         side="top"
       >
         <DropdownMenuLabel className="font-normal">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 shrink-0 border border-primary/15">
-              <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+          <div className="flex items-center gap-2.5">
+            <AdminUserAvatar
+              name={profile.name}
+              initials={profile.initials}
+              avatarUrl={profile.avatarUrl}
+              useUserIconFallback={profile.useUserIconFallback}
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium leading-none">
-                {displayName}
+                {profile.name}
               </p>
               <p className="mt-1 truncate text-xs leading-none text-muted-foreground">
-                {user.email}
+                {profile.email}
               </p>
             </div>
           </div>

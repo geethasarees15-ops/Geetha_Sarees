@@ -1,9 +1,6 @@
 import AdminShell from "@/components/admin/AdminShell";
-import { buttonVariants } from "@/components/ui/button";
 import { gql } from "@/gql";
 import { getClient } from "@/lib/urql";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CollectionsDataTable } from "@/features/collections";
 
@@ -36,16 +33,7 @@ async function collectionsPage({ searchParams }: AdminCollectionsPageProps) {
   if (!data) return notFound();
 
   return (
-    <AdminShell
-      heading="Categories"
-      description="Manage product categories shown on the storefront."
-    >
-      <section className="flex justify-end items-center pb-5 w-full">
-        <Link href="/admin/collections/new" className={cn(buttonVariants())}>
-          New Category
-        </Link>
-      </section>
-
+    <AdminShell heading="Categories">
       <CollectionsDataTable data={data.collectionsCollection?.edges || []} />
     </AdminShell>
   );

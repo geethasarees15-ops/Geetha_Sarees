@@ -6,7 +6,7 @@ import BackButton from "../layouts/BackButton";
 
 type AdminShellProps = {
   heading: string;
-  description: string;
+  description?: string;
   showBackButton?: boolean;
   children: ReactNode;
 };
@@ -23,12 +23,16 @@ function AdminShell({
         {showBackButton && <BackButton />}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold w-[480px] mb-2 leading-tight">
+            <h1
+              className={`text-2xl font-semibold w-[480px] leading-tight ${description ? "mb-2" : ""}`}
+            >
               {heading}
             </h1>
-            <p className="max-w-xl text-zinc-500 text-md w-[580px] leading-tight">
-              {description}
-            </p>
+            {description ? (
+              <p className="max-w-xl text-zinc-500 text-md w-[580px] leading-tight">
+                {description}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

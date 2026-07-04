@@ -21,6 +21,9 @@ export function CollectionsDataTable({ data }: CollectionsDataTableProps) {
       columns={CollectionsColumns}
       data={data}
       search={ADMIN_COLLECTIONS_SEARCH}
+      searchLayout="compact"
+      newItemHref="/admin/collections/new"
+      newItemLabel="New Category"
     />
   );
 }

@@ -9,6 +9,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/admin/SidebarNav";
+import { AdminSidebarBrand } from "@/components/admin/AdminSidebarBrand";
 import { AdminSidebarFooter } from "@/components/admin/AdminSidebarFooter";
 import { dashboardConfig } from "@/config/dashboard";
 import { siteConfig } from "@/config/site";
@@ -51,9 +52,8 @@ export function AdminMobileNav({ triggerClassName }: AdminMobileNavProps) {
         className="flex w-[min(100vw-3rem,var(--admin-sidebar-width))] flex-col gap-0 border-r p-0"
       >
         <SheetHeader className="border-b px-4 py-3 text-left">
-          <SheetTitle className="text-base font-semibold">
-            {siteConfig.shortName} Admin
-          </SheetTitle>
+          <SheetTitle className="sr-only">{siteConfig.shortName} Admin</SheetTitle>
+          <AdminSidebarBrand className="flex items-center gap-3" />
         </SheetHeader>
 
         <div className="flex flex-1 flex-col overflow-hidden">

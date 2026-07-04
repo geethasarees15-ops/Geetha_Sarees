@@ -17,6 +17,7 @@ import {
   AdminTableSearch,
   AdminTableSearchConfig,
 } from "@/components/admin/AdminTableSearch";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -27,17 +28,27 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { filterAdminCollectionTableRows } from "@/lib/admin/table-search";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   search?: AdminTableSearchConfig;
+  searchLayout?: "default" | "compact";
+  toolbarEnd?: React.ReactNode;
+  newItemHref?: string;
+  newItemLabel?: string;
 }
 
 export default function DataTable<TData, TValue>({
   columns,
   data,
   search,
+  searchLayout = "default",
+  toolbarEnd,
+  newItemHref,
+  newItemLabel = "New",
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -104,6 +115,7 @@ export default function DataTable<TData, TValue>({
       {search ? (
         <AdminTableSearch
           {...search}
+          layout={searchLayout}
           appliedQuery={appliedSearch}
           draftQuery={draftSearch}
           onDraftQueryChange={setDraftSearch}
@@ -111,7 +123,20 @@ export default function DataTable<TData, TValue>({
           onClearSearch={clearSearch}
           filteredCount={filteredCount}
           totalCount={totalCount}
+          toolbarEnd={toolbarEnd}
+          hasActiveFilters={searchLayout === "compact" && isFiltering}
+          onClearAllFilters={searchLayout === "compact" ? clearSearch : undefined}
         />
+      ) : null}
+      {newItemHref ? (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Link
+            href={newItemHref}
+            className={cn(buttonVariants(), "shrink-0")}
+          >
+            {newItemLabel}
+          </Link>
+        </div>
       ) : null}
       <div className="rounded-md border">
         <Table>
