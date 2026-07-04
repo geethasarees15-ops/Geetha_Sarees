@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { siteConfig } from "@/config/site";
 import { contactActionHref, type StoreContact } from "@/lib/contact/links";
+import { useStorefrontContact } from "@/providers/ShopContactProvider";
 
 export type ContactPickerMode = "call" | "whatsapp";
 
@@ -40,8 +40,10 @@ export function FloatingContactPicker({
   triggerClassName,
   triggerLabel,
   triggerIcon,
-  contacts = siteConfig.contacts,
+  contacts,
 }: FloatingContactPickerProps) {
+  const storefrontContact = useStorefrontContact();
+  const contactList = contacts ?? storefrontContact.contacts;
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const styles = modeStyles[mode];
@@ -104,7 +106,7 @@ export function FloatingContactPicker({
         )}
         aria-hidden={!isOpen}
       >
-        {contacts.map((contact, index) => {
+        {contactList.map((contact, index) => {
           const href = contactActionHref(contact, mode);
           const external = mode === "whatsapp";
 

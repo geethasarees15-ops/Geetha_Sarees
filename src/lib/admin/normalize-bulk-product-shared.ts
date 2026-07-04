@@ -95,7 +95,10 @@ export function normalizeBulkDraftShared(
 export function parseBulkSharedInput(raw: unknown): NormalizedBulkDraftShared {
   const parsed = bulkSharedInputSchema.safeParse(raw);
   if (!parsed.success) {
-    const discountIssue = parsed.error.issues.find((issue) =>
+    const parseError = parsed as z.SafeParseError<
+      z.infer<typeof bulkSharedInputSchema>
+    >;
+    const discountIssue = parseError.error.issues.find((issue) =>
       issue.path.includes("discountPercent"),
     );
     if (discountIssue?.message) {

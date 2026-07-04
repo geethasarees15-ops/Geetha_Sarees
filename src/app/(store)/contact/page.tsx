@@ -1,6 +1,8 @@
 import InfoPage from "@/components/layouts/InfoPage";
-import { siteConfig } from "@/config/site";
-import { resolveStorefrontSocial } from "@/lib/integrations/settings";
+import {
+  resolveStorefrontContact,
+  resolveStorefrontSocial,
+} from "@/lib/integrations/settings";
 import Link from "next/link";
 import { Metadata } from "next";
 
@@ -13,7 +15,10 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ContactPage() {
-  const social = await resolveStorefrontSocial();
+  const [social, contact] = await Promise.all([
+    resolveStorefrontSocial(),
+    resolveStorefrontContact(),
+  ]);
 
   return (
     <InfoPage
@@ -25,22 +30,22 @@ export default async function ContactPage() {
           Visit our store
         </h2>
         <address className="not-italic space-y-0.5">
-          {siteConfig.addressLines.map((line) => (
+          {contact.addressLines.map((line) => (
             <p key={line}>{line}</p>
           ))}
-          {siteConfig.gstin ? (
+          {contact.gstin ? (
             <p className="pt-2 text-muted-foreground">
               <span className="font-medium text-foreground">GSTIN: </span>
-              {siteConfig.gstin}
+              {contact.gstin}
             </p>
           ) : null}
-          {siteConfig.email ? (
+          {contact.email ? (
             <p>
               <Link
-                href={`mailto:${siteConfig.email}`}
+                href={`mailto:${contact.email}`}
                 className="text-primary hover:underline"
               >
-                {siteConfig.email}
+                {contact.email}
               </Link>
             </p>
           ) : null}
@@ -50,17 +55,15 @@ export default async function ContactPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">Phone</h2>
         <ul className="space-y-1.5">
-          {siteConfig.contacts.map((contact) => (
-            <li key={contact.phoneHref}>
-              <span className="font-medium text-foreground">
-                {contact.name}
-              </span>
+          {contact.contacts.map((person) => (
+            <li key={person.phoneHref}>
+              <span className="font-medium text-foreground">{person.name}</span>
               {" — "}
               <Link
-                href={contact.phoneHref}
+                href={person.phoneHref}
                 className="text-primary hover:underline"
               >
-                {contact.phone}
+                {person.phone}
               </Link>
             </li>
           ))}

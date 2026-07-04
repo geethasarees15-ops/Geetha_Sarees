@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import Branding from "./Branding";
 import { siteConfig } from "@/config/site";
 import SocialMedias from "./SocialMedias";
+import { useStorefrontContact } from "@/providers/ShopContactProvider";
 
 function FooterLinkColumn({
   title,
@@ -42,6 +45,7 @@ function FooterLinkColumn({
 
 function MainFooter() {
   const { footerNav } = siteConfig;
+  const contact = useStorefrontContact();
 
   return (
     <footer className="mt-[80px] border-t border-primary/20 bg-muted/30 md:mt-[120px]">
@@ -68,24 +72,24 @@ function MainFooter() {
                   Store address
                 </h3>
                 <address className="space-y-0.5 not-italic text-sm leading-relaxed text-muted-foreground">
-                  {siteConfig.addressLines.map((line) => (
+                  {contact.addressLines.map((line) => (
                     <p key={line}>{line}</p>
                   ))}
-                  {siteConfig.gstin ? (
+                  {contact.gstin ? (
                     <p className="pt-2">
                       <span className="font-medium text-foreground/80">
                         GSTIN:{" "}
                       </span>
-                      {siteConfig.gstin}
+                      {contact.gstin}
                     </p>
                   ) : null}
-                  {siteConfig.email ? (
+                  {contact.email ? (
                     <p>
                       <Link
-                        href={`mailto:${siteConfig.email}`}
+                        href={`mailto:${contact.email}`}
                         className="break-all hover:text-primary hover:underline"
                       >
-                        {siteConfig.email}
+                        {contact.email}
                       </Link>
                     </p>
                   ) : null}
@@ -97,32 +101,32 @@ function MainFooter() {
                   Contact
                 </h3>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  {siteConfig.contacts.map((contact) => (
+                  {contact.contacts.map((person) => (
                     <li
-                      key={contact.phoneHref}
+                      key={person.phoneHref}
                       className="flex flex-col gap-0.5 sm:flex-row sm:gap-2"
                     >
                       <span className="shrink-0 font-medium text-foreground/80 sm:w-20">
-                        {contact.name}
+                        {person.name}
                       </span>
                       <Link
-                        href={contact.phoneHref}
+                        href={person.phoneHref}
                         className="hover:text-primary hover:underline"
                       >
-                        {contact.phone}
+                        {person.phone}
                       </Link>
                     </li>
                   ))}
-                  {siteConfig.email ? (
+                  {contact.email ? (
                     <li className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
                       <span className="shrink-0 font-medium text-foreground/80 sm:w-20">
                         Email
                       </span>
                       <Link
-                        href={`mailto:${siteConfig.email}`}
+                        href={`mailto:${contact.email}`}
                         className="break-all hover:text-primary hover:underline"
                       >
-                        {siteConfig.email}
+                        {contact.email}
                       </Link>
                     </li>
                   ) : null}

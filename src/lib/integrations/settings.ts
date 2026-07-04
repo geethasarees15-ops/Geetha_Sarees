@@ -12,6 +12,11 @@ import type {
   ResolvedStorefrontAnnouncements,
   StorefrontAnnouncement,
 } from "@/lib/announcements/types";
+import {
+  resolveShopContact,
+  type ResolvedShopContact,
+  type ShopContactPayload,
+} from "@/lib/admin/shop-contact";
 import { siteConfig } from "@/config/site";
 import db from "@/lib/supabase/db";
 import { apiSettings, medias } from "@/lib/supabase/schema";
@@ -28,6 +33,7 @@ export const INTEGRATION_KEYS = {
   phonepe: "phonepe",
   whatsapp: "whatsapp",
   storefrontSocial: "storefront_social",
+  storefrontContact: "storefront_contact",
   homeBannerSlides: "home_banner_slides",
   announcementBar: "announcement_bar",
   bulkOrderGuard: "bulk_order_guard",
@@ -52,6 +58,34 @@ export type ResolvedStorefrontSocial = {
   facebook: string;
   whatsapp: string;
 };
+
+const defaultShopContact = (): ResolvedShopContact => ({
+  addressLines: siteConfig.addressLines,
+  address: siteConfig.address,
+  gstin: siteConfig.gstin,
+  email: siteConfig.email,
+  contacts: siteConfig.contacts,
+  phone: siteConfig.phone,
+  phoneHref: siteConfig.phoneHref,
+});
+
+/** Merges admin-managed contact over site defaults for the whole storefront. */
+export async function resolveStorefrontContact(): Promise<ResolvedShopContact> {
+  const base = defaultShopContact();
+
+  try {
+    const setting = await getIntegrationSetting(
+      INTEGRATION_KEYS.storefrontContact,
+    );
+    if (!setting) return base;
+
+    const value = setting.value as Partial<ShopContactPayload>;
+    return resolveShopContact(base, value, setting.isEnabled);
+  } catch (error) {
+    console.error("[settings] resolveStorefrontContact failed:", error);
+    return base;
+  }
+}
 
 const defaultSocial = (): ResolvedStorefrontSocial => ({
   instagram: siteConfig.social.instagram,
@@ -376,6 +410,7 @@ type ApiSettingRow = NonNullable<
 
 const STOREFRONT_RUNTIME_KEYS: IntegrationKey[] = [
   INTEGRATION_KEYS.storefrontSocial,
+  INTEGRATION_KEYS.storefrontContact,
   INTEGRATION_KEYS.announcementBar,
   INTEGRATION_KEYS.bulkOrderGuard,
   INTEGRATION_KEYS.stockControl,
@@ -395,6 +430,16 @@ const loadStorefrontSettingsMap = cache(async () => {
     return new Map<IntegrationKey, ApiSettingRow>();
   }
 });
+
+function parseContactFromRow(
+  setting: ApiSettingRow | undefined,
+): ResolvedShopContact {
+  const base = defaultShopContact();
+  if (!setting) return base;
+
+  const value = setting.value as Partial<ShopContactPayload>;
+  return resolveShopContact(base, value, setting.isEnabled);
+}
 
 function parseSocialFromRow(
   setting: ApiSettingRow | undefined,
@@ -516,6 +561,7 @@ function parseOfferCodesFromRow(
 }
 
 export type StorefrontRuntimeBundle = {
+  contact: ResolvedShopContact;
   social: ResolvedStorefrontSocial;
   announcements: ResolvedStorefrontAnnouncements;
   bulkOrderGuard: BulkOrderGuardConfig;
@@ -529,6 +575,7 @@ export const resolveStorefrontRuntimeBundle = cache(
   async (): Promise<StorefrontRuntimeBundle> => {
     const map = await loadStorefrontSettingsMap();
     return {
+      contact: parseContactFromRow(map.get(INTEGRATION_KEYS.storefrontContact)),
       social: parseSocialFromRow(map.get(INTEGRATION_KEYS.storefrontSocial)),
       announcements: parseAnnouncementsFromRow(
         map.get(INTEGRATION_KEYS.announcementBar),

@@ -29,6 +29,11 @@ const SETTINGS_LINKS = [
     description: "Payment and integration API keys.",
   },
   {
+    title: "Shop Contact",
+    href: "/admin/settings/shop-contact",
+    description: "Store address, GSTIN, email, and phone numbers.",
+  },
+  {
     title: "Social URLs",
     href: "/admin/settings/social",
     description: "Instagram, WhatsApp, and other social links.",

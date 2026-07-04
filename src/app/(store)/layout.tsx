@@ -16,6 +16,7 @@ import { AnnouncementsProvider } from "@/providers/AnnouncementsProvider";
 import { BulkOrderGuardProvider } from "@/providers/BulkOrderGuardProvider";
 import { CourierChargesProvider } from "@/providers/CourierChargesProvider";
 import { OfferCodesProvider } from "@/providers/OfferCodesProvider";
+import { ShopContactProvider } from "@/providers/ShopContactProvider";
 import { SocialLinksProvider } from "@/providers/SocialLinksProvider";
 import { StockControlProvider } from "@/providers/StockControlProvider";
 import { ReactNode } from "react";
@@ -26,6 +27,7 @@ export const revalidate = 60;
 
 async function StoreLayout({ children }: Props) {
   const {
+    contact,
     social,
     announcements,
     bulkOrderGuard,
@@ -36,36 +38,38 @@ async function StoreLayout({ children }: Props) {
 
   return (
     <SocialLinksProvider social={social}>
-      <JsonLd
-        data={[
-          buildOrganizationJsonLd(),
-          buildWebsiteJsonLd(),
-          buildStoreJsonLd(),
-          buildSiteNavigationJsonLd(),
-        ]}
-      />
-      <AnnouncementsProvider announcements={announcements}>
-        <BulkOrderGuardProvider config={bulkOrderGuard}>
-          <StockControlProvider config={stockControl}>
-            <CourierChargesProvider config={courierCharges}>
-              <OfferCodesProvider config={offerCodes}>
-                <MobileMenuProvider>
-                  <Navbar />
-                  <main className="w-full max-w-[100vw] overflow-x-hidden pt-[var(--store-header-offset-mobile)] md:pt-[var(--store-header-offset-desktop)] pb-[var(--mobile-nav-height)] md:pb-0">
-                    {children}
-                  </main>
-                  <CartSheet />
-                  <StoreFloatingActions />
-                  <MobileBottomNav />
-                  <div className="md:contents pb-[var(--mobile-nav-height)] md:pb-0">
-                    <MainFooter />
-                  </div>
-                </MobileMenuProvider>
-              </OfferCodesProvider>
-            </CourierChargesProvider>
-          </StockControlProvider>
-        </BulkOrderGuardProvider>
-      </AnnouncementsProvider>
+      <ShopContactProvider contact={contact}>
+        <JsonLd
+          data={[
+            buildOrganizationJsonLd(),
+            buildWebsiteJsonLd(),
+            buildStoreJsonLd(),
+            buildSiteNavigationJsonLd(),
+          ]}
+        />
+        <AnnouncementsProvider announcements={announcements}>
+          <BulkOrderGuardProvider config={bulkOrderGuard}>
+            <StockControlProvider config={stockControl}>
+              <CourierChargesProvider config={courierCharges}>
+                <OfferCodesProvider config={offerCodes}>
+                  <MobileMenuProvider>
+                    <Navbar />
+                    <main className="w-full max-w-[100vw] overflow-x-hidden pt-[var(--store-header-offset-mobile)] md:pt-[var(--store-header-offset-desktop)] pb-[var(--mobile-nav-height)] md:pb-0">
+                      {children}
+                    </main>
+                    <CartSheet />
+                    <StoreFloatingActions />
+                    <MobileBottomNav />
+                    <div className="md:contents pb-[var(--mobile-nav-height)] md:pb-0">
+                      <MainFooter />
+                    </div>
+                  </MobileMenuProvider>
+                </OfferCodesProvider>
+              </CourierChargesProvider>
+            </StockControlProvider>
+          </BulkOrderGuardProvider>
+        </AnnouncementsProvider>
+      </ShopContactProvider>
     </SocialLinksProvider>
   );
 }

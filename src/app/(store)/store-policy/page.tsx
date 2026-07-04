@@ -1,5 +1,5 @@
 import InfoPage from "@/components/layouts/InfoPage";
-import { siteConfig } from "@/config/site";
+import { resolveStorefrontContact } from "@/lib/integrations/settings";
 import Link from "next/link";
 import { Metadata } from "next";
 import { STOREFRONT_STATIC_REVALIDATE_SECONDS } from "@/lib/cache/constants";
@@ -11,7 +11,9 @@ export const metadata: Metadata = {
   description: "Terms of use and store policies at SRI SAI RAGHAVENDRA TEX",
 };
 
-export default function StorePolicyPage() {
+export default async function StorePolicyPage() {
+  const contact = await resolveStorefrontContact();
+
   return (
     <InfoPage
       heading="Store Policy"
@@ -50,13 +52,19 @@ export default function StorePolicyPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">Wholesale</h2>
         <p>
-          Retail and wholesale enquiries are welcome. Reach us at{" "}
-          <Link
-            href={`mailto:${siteConfig.email}`}
-            className="text-primary hover:underline"
-          >
-            {siteConfig.email}
-          </Link>{" "}
+          Retail and wholesale enquiries are welcome. Reach us
+          {contact.email ? (
+            <>
+              {" "}
+              at{" "}
+              <Link
+                href={`mailto:${contact.email}`}
+                className="text-primary hover:underline"
+              >
+                {contact.email}
+              </Link>
+            </>
+          ) : null}{" "}
           or visit our store in Salem.
         </p>
       </section>

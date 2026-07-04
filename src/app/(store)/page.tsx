@@ -11,7 +11,7 @@ import { heroSlides } from "@/config/heroSlides";
 import { getHomeBannerSlides } from "@/lib/integrations/settings";
 import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
 import { getLandingPageDataCached } from "@/lib/storefront/landing-data";
-import { siteConfig } from "@/config/site";
+import { resolveStorefrontContact } from "@/lib/integrations/settings";
 import type { Metadata } from "next";
 
 export const revalidate = 300;
@@ -32,10 +32,11 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [homeBannerSlides, data, draftProductIds] = await Promise.all([
+  const [homeBannerSlides, data, draftProductIds, contact] = await Promise.all([
     getHomeBannerSlides(),
     getLandingPageDataCached(),
     getDraftProductIdsCached(),
+    resolveStorefrontContact(),
   ]);
 
   const draftIds = new Set(draftProductIds);
@@ -76,13 +77,13 @@ export default async function Home() {
         ) : null}
 
         <HomeExploreLinks />
-        <TrustFeatures />
+        <TrustFeatures phone={contact.phone} />
       </Shell>
     </main>
   );
 }
 
-function TrustFeatures() {
+function TrustFeatures({ phone }: { phone: string }) {
   const features = [
     {
       Icon: Icons.package,
@@ -92,7 +93,7 @@ function TrustFeatures() {
     {
       Icon: Icons.cart,
       title: "Contact Support",
-      description: `Call ${siteConfig.phone} or email us anytime.`,
+      description: `Call ${phone} or email us anytime.`,
     },
     {
       Icon: Icons.tag,

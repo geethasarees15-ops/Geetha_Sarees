@@ -246,56 +246,6 @@ export function DashboardView({ stats, statsError }: Props) {
                 </CardContent>
               </Card>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Quick links</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-2">
-                  <Button variant="outline" className="justify-start" asChild>
-                    <Link href="/admin/products/new">Add new saree</Link>
-                  </Button>
-                  <Button variant="outline" className="justify-start" asChild>
-                    <Link href="/admin/collections">Manage collections</Link>
-                  </Button>
-                  <Button variant="outline" className="justify-start" asChild>
-                    <Link href="/admin/medias">Upload images</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-base">Shop contact</CardTitle>
-                  <CardDescription>
-                    Shown on storefront footer & menu
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="text-sm space-y-1">
-                  {siteConfig.addressLines.map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                  <p className="pt-2 text-muted-foreground">
-                    GSTIN: {siteConfig.gstin}
-                  </p>
-                  <p className="pt-2">
-                    <a
-                      href={siteConfig.phoneHref}
-                      className="text-primary hover:underline"
-                    >
-                      {siteConfig.phone}
-                    </a>
-                    {" · "}
-                    <a
-                      href={`mailto:${siteConfig.email}`}
-                      className="text-primary hover:underline"
-                    >
-                      {siteConfig.email}
-                    </a>
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-4">

@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { siteConfig } from "@/config/site";
+import { useStorefrontContact } from "@/providers/ShopContactProvider";
 import { useBulkOrderGuardConfig } from "@/providers/BulkOrderGuardProvider";
 import { useStorefrontSocial } from "@/providers/SocialLinksProvider";
 
@@ -24,6 +24,7 @@ export function BulkOrderGuardDialog({
   onOpenChange,
 }: BulkOrderGuardDialogProps) {
   const social = useStorefrontSocial();
+  const contact = useStorefrontContact();
   const { threshold } = useBulkOrderGuardConfig();
 
   return (
@@ -48,7 +49,7 @@ export function BulkOrderGuardDialog({
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Button asChild className="w-full bg-[#0EA5E9] hover:bg-[#0284C7]">
-            <a href={siteConfig.phoneHref}>
+            <a href={contact.phoneHref}>
               <PhoneCall className="mr-2 h-4 w-4" />
               Call now
             </a>

@@ -1,5 +1,5 @@
 import InfoPage from "@/components/layouts/InfoPage";
-import { siteConfig } from "@/config/site";
+import { resolveStorefrontContact } from "@/lib/integrations/settings";
 import Link from "next/link";
 import { Metadata } from "next";
 import { STOREFRONT_STATIC_REVALIDATE_SECONDS } from "@/lib/cache/constants";
@@ -35,7 +35,9 @@ const faqs = [
   },
 ];
 
-export default function FaqPage() {
+export default async function FaqPage() {
+  const contact = await resolveStorefrontContact();
+
   return (
     <InfoPage
       heading="FAQ"
@@ -56,11 +58,8 @@ export default function FaqPage() {
           Contact us
         </Link>{" "}
         or call{" "}
-        <Link
-          href={siteConfig.phoneHref}
-          className="text-primary hover:underline"
-        >
-          {siteConfig.phone}
+        <Link href={contact.phoneHref} className="text-primary hover:underline">
+          {contact.phone}
         </Link>
         .
       </p>

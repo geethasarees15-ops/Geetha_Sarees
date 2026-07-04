@@ -1,5 +1,8 @@
 import InfoPage from "@/components/layouts/InfoPage";
-import { siteConfig } from "@/config/site";
+import {
+  resolveStorefrontContact,
+  resolveStorefrontSocial,
+} from "@/lib/integrations/settings";
 import Link from "next/link";
 import { Metadata } from "next";
 import { STOREFRONT_STATIC_REVALIDATE_SECONDS } from "@/lib/cache/constants";
@@ -11,7 +14,12 @@ export const metadata: Metadata = {
   description: "Delivery and return policy for SRI SAI RAGHAVENDRA TEX sarees",
 };
 
-export default function ShippingReturnsPage() {
+export default async function ShippingReturnsPage() {
+  const [contact, social] = await Promise.all([
+    resolveStorefrontContact(),
+    resolveStorefrontSocial(),
+  ]);
+
   return (
     <InfoPage
       heading="Shipping & Returns"
@@ -27,10 +35,7 @@ export default function ShippingReturnsPage() {
         </p>
         <p>
           Free delivery may apply on selected orders — message us on{" "}
-          <Link
-            href={siteConfig.social.whatsapp}
-            className="text-primary hover:underline"
-          >
+          <Link href={social.whatsapp} className="text-primary hover:underline">
             WhatsApp
           </Link>{" "}
           before placing your order.
@@ -56,11 +61,8 @@ export default function ShippingReturnsPage() {
 
       <p>
         Questions? Call{" "}
-        <Link
-          href={siteConfig.phoneHref}
-          className="text-primary hover:underline"
-        >
-          {siteConfig.phone}
+        <Link href={contact.phoneHref} className="text-primary hover:underline">
+          {contact.phone}
         </Link>
         .
       </p>

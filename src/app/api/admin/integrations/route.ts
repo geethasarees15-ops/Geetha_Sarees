@@ -17,6 +17,7 @@ const keySchema = z.enum([
   INTEGRATION_KEYS.phonepe,
   INTEGRATION_KEYS.whatsapp,
   INTEGRATION_KEYS.storefrontSocial,
+  INTEGRATION_KEYS.storefrontContact,
   INTEGRATION_KEYS.homeBannerSlides,
   INTEGRATION_KEYS.announcementBar,
   INTEGRATION_KEYS.bulkOrderGuard,
@@ -108,6 +109,18 @@ const offerCodesPayloadSchema = z.object({
   codes: z.array(offerCodeItemSchema).max(200),
 });
 
+const shopContactPersonSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  phone: z.string().trim().min(5).max(32),
+});
+
+const shopContactPayloadSchema = z.object({
+  addressLines: z.array(z.string().trim().min(1)).min(1).max(10),
+  gstin: z.string().trim().max(20),
+  email: z.union([z.string().trim().email(), z.literal("")]),
+  contacts: z.array(shopContactPersonSchema).min(1).max(8),
+});
+
 const cashfreePayloadSchema = z.object({
   clientId: z.string().trim().min(1),
   clientSecret: z.string().trim().min(1),
@@ -151,6 +164,7 @@ export async function GET() {
     phonepe,
     whatsapp,
     storefrontSocial,
+    storefrontContact,
     homeBannerSlides,
     announcementBar,
     bulkOrderGuard,
@@ -162,6 +176,7 @@ export async function GET() {
     getIntegrationSetting(INTEGRATION_KEYS.phonepe),
     getIntegrationSetting(INTEGRATION_KEYS.whatsapp),
     getIntegrationSetting(INTEGRATION_KEYS.storefrontSocial),
+    getIntegrationSetting(INTEGRATION_KEYS.storefrontContact),
     getIntegrationSetting(INTEGRATION_KEYS.homeBannerSlides),
     getIntegrationSetting(INTEGRATION_KEYS.announcementBar),
     getIntegrationSetting(INTEGRATION_KEYS.bulkOrderGuard),
@@ -175,6 +190,7 @@ export async function GET() {
     phonepe: phonepe ?? null,
     whatsapp: whatsapp ?? null,
     storefrontSocial: storefrontSocial ?? null,
+    storefrontContact: storefrontContact ?? null,
     homeBannerSlides: homeBannerSlides ?? null,
     announcementBar: announcementBar ?? null,
     bulkOrderGuard: bulkOrderGuard ?? null,
@@ -467,6 +483,51 @@ export async function POST(request: NextRequest) {
     normalizedValue.codes = Array.from(dedup.values());
   }
 
+  if (key === INTEGRATION_KEYS.storefrontContact) {
+    const rawContacts = Array.isArray(incomingValue.contacts)
+      ? incomingValue.contacts
+      : [];
+    const contacts = rawContacts
+      .map((item) => {
+        const row = item as Record<string, unknown>;
+        return {
+          name: String(row.name ?? "").trim(),
+          phone: String(row.phone ?? "").trim(),
+        };
+      })
+      .filter((row) => row.name && row.phone);
+
+    const rawAddressLines = Array.isArray(incomingValue.addressLines)
+      ? incomingValue.addressLines
+      : typeof incomingValue.addressLines === "string"
+        ? String(incomingValue.addressLines)
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+        : [];
+
+    const shopContactParsed = shopContactPayloadSchema.safeParse({
+      addressLines: rawAddressLines,
+      gstin: String(incomingValue.gstin ?? "").trim(),
+      email: String(incomingValue.email ?? "").trim(),
+      contacts,
+    });
+    if (!shopContactParsed.success) {
+      const parseError = shopContactParsed as z.SafeParseError<
+        z.infer<typeof shopContactPayloadSchema>
+      >;
+      return NextResponse.json(
+        publicValidationPayload(
+          "Invalid shop contact payload",
+          parseError.error,
+        ),
+        { status: 400 },
+      );
+    }
+
+    Object.assign(normalizedValue, shopContactParsed.data);
+  }
+
   const current = await getIntegrationSetting(key);
   const existingValue = (current?.value ?? {}) as Record<string, unknown>;
 
@@ -533,6 +594,14 @@ export async function POST(request: NextRequest) {
   if (key === INTEGRATION_KEYS.storefrontSocial) {
     revalidatePath("/", "layout");
     revalidatePath("/contact");
+  }
+
+  if (key === INTEGRATION_KEYS.storefrontContact) {
+    revalidatePath("/", "layout");
+    revalidatePath("/contact");
+    revalidatePath("/faq");
+    revalidatePath("/shipping-returns");
+    revalidatePath("/store-policy");
   }
 
   if (key === INTEGRATION_KEYS.homeBannerSlides) {
