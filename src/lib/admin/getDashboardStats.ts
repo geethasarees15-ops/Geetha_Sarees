@@ -98,6 +98,7 @@ type ProductRow = {
 };
 
 type OrderLineRow = {
+  orderId: string | null;
   product_id: string;
   quantity: number;
   price: string | number;
@@ -216,7 +217,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       supabase
         .from("order_lines")
         .select(
-          "product_id, quantity, price, product:products!order_lines_to_product ( name )",
+          "orderId, product_id, quantity, price, product:products!order_lines_to_product ( name )",
         ),
     ]);
 
@@ -280,16 +281,17 @@ function computeStats({
   const paidOrders = allOrders.filter((o) =>
     isPaidPaymentStatus(o.payment_status),
   );
+  const paidOrderIds = new Set(paidOrders.map((o) => o.id));
   const paidInRange = paidOrders.filter(
     (o) => toDate(o.created_at) >= twelveMonthsAgo,
   );
 
   const totalRevenue = paidOrders.reduce((s, o) => s + Number(o.amount), 0);
 
-  const ordersThisMonth = allOrders.filter(
+  const ordersThisMonth = paidOrders.filter(
     (o) => toDate(o.created_at) >= thisMonthStart,
   );
-  const ordersLastMonth = allOrders.filter((o) => {
+  const ordersLastMonth = paidOrders.filter((o) => {
     const created = toDate(o.created_at);
     return created >= lastMonthStart && created < thisMonthStart;
   });
@@ -366,7 +368,10 @@ function computeStats({
     string,
     { productId: string; name: string; quantity: number; revenue: number }
   >();
-  for (const row of topProductRows) {
+  const paidOrderLines = topProductRows.filter(
+    (row) => row.orderId && paidOrderIds.has(row.orderId),
+  );
+  for (const row of paidOrderLines) {
     const name = productNameFromLine(row);
     const qty = row.quantity;
     const rev = Number(row.price) * qty;

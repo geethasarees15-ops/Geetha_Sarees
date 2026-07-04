@@ -22,20 +22,7 @@ async function MainNavbar({ adminLayout = false }: MainNavbarProps) {
       {!adminLayout ? <AnnouncementBar /> : null}
       <nav className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
         {adminLayout ? (
-          <div className="flex min-h-[var(--admin-header-height-mobile)] w-full md:min-h-[var(--admin-header-height-desktop)]">
-            <div className="hidden w-full md:flex">
-              <div className="w-[var(--admin-sidebar-width)] shrink-0 border-r" />
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-x-5 px-6 lg:px-8">
-                <Suspense>
-                  <UserNav />
-                </Suspense>
-                <Link href="/">
-                  <span className="text-sm font-medium text-muted-foreground transition hover:text-foreground">
-                    View store
-                  </span>
-                </Link>
-              </div>
-            </div>
+          <div className="flex min-h-[var(--admin-header-height-mobile)] w-full md:hidden">
             <MobileNavbar adminLayout={adminLayout} />
           </div>
         ) : (

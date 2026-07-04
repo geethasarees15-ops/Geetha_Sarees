@@ -26,6 +26,10 @@ const updateSchema = baseSchema.extend({
   id: z.string().trim().min(1),
 });
 
+const deleteSchema = z.object({
+  id: z.string().trim().min(1),
+});
+
 async function ensureAdmin() {
   const user = await getSessionUser();
   const admin = await isAdminUser(user);
@@ -123,6 +127,47 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         message: publicErrorMessage(error, "Failed to update testimonial."),
+      },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const user = await ensureAdmin();
+  if (!user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  const payload = await request.json().catch(() => null);
+  const parsed = deleteSchema.safeParse(payload);
+  if (!parsed.success) {
+    const parseError = parsed as z.SafeParseError<z.infer<typeof deleteSchema>>;
+    return NextResponse.json(
+      publicValidationPayload("Invalid delete payload", parseError.error),
+      { status: 400 },
+    );
+  }
+
+  try {
+    const rows = await db
+      .delete(testimonials)
+      .where(eq(testimonials.id, parsed.data.id))
+      .returning({ id: testimonials.id });
+
+    if (rows.length < 1) {
+      return NextResponse.json(
+        { message: "Testimonial not found." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[admin/testimonials] DELETE failed:", error);
+    return NextResponse.json(
+      {
+        message: publicErrorMessage(error, "Failed to delete testimonial."),
       },
       { status: 400 },
     );

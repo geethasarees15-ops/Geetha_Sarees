@@ -1,9 +1,12 @@
 import { Suspense } from "react";
+import {
+  AdminMobileBrand,
+  AdminMobileNav,
+} from "@/components/admin/AdminMobileNav";
 import Branding from "./Branding";
 import { SideMenu } from "./SideMenu";
 import Link from "next/link";
 import { Icons } from "./icons";
-import { UserNav } from "@/features/auth";
 
 type Props = { adminLayout: boolean };
 
@@ -17,15 +20,23 @@ function MobileNavbar({ adminLayout }: Props) {
         className="absolute inset-y-0 left-0 z-[2] flex items-center"
         style={{ paddingLeft: edgeInset }}
       >
-        <SideMenu triggerClassName="ml-0" />
+        {adminLayout ? (
+          <AdminMobileNav triggerClassName="ml-0" />
+        ) : (
+          <SideMenu triggerClassName="ml-0" />
+        )}
       </div>
 
       <div className="flex h-full min-w-0 items-center justify-center px-[2.75rem]">
-        <Branding
-          size="nav"
-          align="center"
-          className="min-w-0 max-w-[min(100%,19rem)]"
-        />
+        {adminLayout ? (
+          <AdminMobileBrand />
+        ) : (
+          <Branding
+            size="nav"
+            align="center"
+            className="min-w-0 max-w-[min(100%,19rem)]"
+          />
+        )}
       </div>
 
       <div
@@ -43,9 +54,7 @@ function MobileNavbar({ adminLayout }: Props) {
             </Suspense>
           </Link>
         ) : (
-          <Suspense>
-            <UserNav />
-          </Suspense>
+          <span className="inline-flex h-11 w-11 shrink-0" aria-hidden />
         )}
       </div>
     </div>

@@ -2,16 +2,63 @@
 
 import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import DeleteDialog from "@/components/ui/deleteDialog";
 import { DocumentType } from "@/gql";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 import { TestimonialColumnsFragment } from "../query";
+
+function TestimonialRowActions({ testimonialId }: { testimonialId: string }) {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const onDelete = async () => {
+    try {
+      const res = await fetchWithTimeout("/api/admin/testimonials", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: testimonialId }),
+      });
+      const payload = (await res.json().catch(() => null)) as {
+        message?: string;
+      } | null;
+
+      if (!res.ok) {
+        throw new Error(payload?.message || "Delete failed");
+      }
+
+      toast({ title: "Testimonial deleted." });
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Please retry.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Link href={`/admin/testimonials/${testimonialId}`}>
+        <Button size="sm" variant="outline">
+          Edit
+        </Button>
+      </Link>
+      <DeleteDialog
+        onClickHandler={() => {
+          void onDelete();
+        }}
+        triggerLabel="Delete"
+        title="Delete testimonial?"
+        description="This permanently removes the testimonial from the homepage carousel."
+        actionLabel="Delete"
+      />
+    </div>
+  );
+}
 
 const TestimonialsColumns: ColumnDef<{
   node: DocumentType<typeof TestimonialColumnsFragment>;
@@ -69,31 +116,10 @@ const TestimonialsColumns: ColumnDef<{
   },
   {
     id: "actions",
-    header: () => <span className="block text-center">Actions</span>,
+    header: () => <div className="text-center capitalize">Actions</div>,
     cell: ({ row }) => {
       const item = row.original.node;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="flex flex-col items-start"
-          >
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <Link
-              href={`/admin/testimonials/${item.id}`}
-              className={buttonVariants({ variant: "ghost" })}
-            >
-              Edit testimonial
-            </Link>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+      return <TestimonialRowActions testimonialId={item.id} />;
     },
   },
 ];

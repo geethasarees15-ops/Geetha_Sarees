@@ -79,12 +79,6 @@ export const dashboardConfig: DashboardConfig = {
       items: [],
     },
     {
-      title: "Bulk Order",
-      href: "/admin/settings/bulk-order",
-      icon: "tag",
-      items: [],
-    },
-    {
       title: "Courier & GST",
       href: "/admin/settings/courier",
       icon: "globe",

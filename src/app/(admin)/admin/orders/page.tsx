@@ -91,7 +91,7 @@ async function OrdersPage({ searchParams }: AdminOrdersPageProps) {
   return (
     <AdminShell
       heading="Orders"
-      description="View and manage customer orders and payment status."
+      description="Paid orders count toward sales. Pending or unpaid orders are for customer follow-up."
     >
       <div className="space-y-6">
         {fetchError ? (
@@ -101,12 +101,17 @@ async function OrdersPage({ searchParams }: AdminOrdersPageProps) {
           </Alert>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Total
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/40 p-4">
+            <p className="text-xs uppercase tracking-wide text-emerald-700">
+              Paid orders
             </p>
-            <p className="mt-1 text-2xl font-semibold">{orders.length}</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-700">
+              {paidOrders.length}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Counted in dashboard revenue and top products
+            </p>
           </div>
           <div className="rounded-lg border border-amber-300/50 bg-amber-50/40 p-4">
             <p className="text-xs uppercase tracking-wide text-amber-700">
@@ -115,30 +120,26 @@ async function OrdersPage({ searchParams }: AdminOrdersPageProps) {
             <p className="mt-1 text-2xl font-semibold text-amber-700">
               {pendingOrders.length}
             </p>
-          </div>
-          <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/40 p-4">
-            <p className="text-xs uppercase tracking-wide text-emerald-700">
-              Paid
-            </p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-700">
-              {paidOrders.length}
+            <p className="mt-1 text-xs text-muted-foreground">
+              Follow up — ask why payment was not completed
             </p>
           </div>
         </div>
 
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Pending / unpaid orders</h2>
+          <p className="text-sm text-muted-foreground">
+            Contact these customers — not included in sales analytics.
+          </p>
           <DataTable columns={OrdersColumns} data={pendingOrders} />
         </section>
 
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Paid orders</h2>
+          <p className="text-sm text-muted-foreground">
+            Completed payments — used for revenue and top product reports.
+          </p>
           <DataTable columns={OrdersColumns} data={paidOrders} />
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">All orders</h2>
-          <DataTable columns={OrdersColumns} data={orders} />
         </section>
       </div>
     </AdminShell>

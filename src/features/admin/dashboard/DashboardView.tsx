@@ -128,15 +128,19 @@ export function DashboardView({ stats, statsError }: Props) {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Orders</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Paid orders
+                  </CardTitle>
                   <ShoppingBag className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalOrders}</div>
+                  <div className="text-2xl font-bold">
+                    {stats.paidOrdersCount}
+                  </div>
                   <ChangeLabel pct={stats.ordersChangePct} />
                   <p className="text-xs text-muted-foreground mt-1">
-                    {stats.paidOrdersCount} paid · {stats.pendingOrdersCount}{" "}
-                    pending
+                    {stats.ordersThisMonth} this month ·{" "}
+                    {stats.pendingOrdersCount} need follow-up
                   </p>
                 </CardContent>
               </Card>
@@ -219,7 +223,7 @@ export function DashboardView({ stats, statsError }: Props) {
                 <CardHeader>
                   <CardTitle>Pending payment orders</CardTitle>
                   <CardDescription>
-                    Orders that need payment follow-up
+                    Contact customers who have not completed payment
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -231,17 +235,15 @@ export function DashboardView({ stats, statsError }: Props) {
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle>All recent orders</CardTitle>
+                  <CardTitle>Recent paid orders</CardTitle>
                   <CardDescription>
-                    Latest {stats.recentOrders.length} order
-                    {stats.recentOrders.length === 1 ? "" : "s"} across all
-                    statuses
+                    Latest completed sales for your records
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <RecentSales
-                    orders={stats.recentOrders}
-                    emptyMessage="No orders yet."
+                    orders={stats.recentPaidOrders}
+                    emptyMessage="No paid orders yet."
                   />
                 </CardContent>
               </Card>
@@ -280,13 +282,16 @@ export function DashboardView({ stats, statsError }: Props) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
-                    Top products (units sold)
+                    Top products (paid orders)
                   </CardTitle>
+                  <CardDescription>
+                    Units sold and revenue from completed payments only
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {stats.topProducts.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      No order lines yet.
+                      No paid sales yet.
                     </p>
                   ) : (
                     stats.topProducts.map((p) => (
@@ -383,20 +388,16 @@ export function DashboardView({ stats, statsError }: Props) {
                         </td>
                       </tr>
                       <tr>
-                        <td className="py-3 pr-4">Total orders</td>
-                        <td className="py-3">{stats.totalOrders}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Orders this month</td>
-                        <td className="py-3">{stats.ordersThisMonth}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 pr-4">Paid orders</td>
+                        <td className="py-3 pr-4">Paid orders (total)</td>
                         <td className="py-3">{stats.paidOrdersCount}</td>
                       </tr>
                       <tr>
+                        <td className="py-3 pr-4">Paid orders this month</td>
+                        <td className="py-3">{stats.ordersThisMonth}</td>
+                      </tr>
+                      <tr>
                         <td className="py-3 pr-4">
-                          Pending / unpaid attention
+                          Pending / unpaid (follow-up)
                         </td>
                         <td className="py-3">{stats.pendingOrdersCount}</td>
                       </tr>

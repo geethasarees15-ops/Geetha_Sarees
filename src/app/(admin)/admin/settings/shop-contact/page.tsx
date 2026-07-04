@@ -1,13 +1,5 @@
-import AdminShell from "@/components/admin/AdminShell";
-import { ShopContactForm } from "@/features/admin/settings/ShopContactForm";
+import { redirect } from "next/navigation";
 
 export default function AdminShopContactSettingsPage() {
-  return (
-    <AdminShell
-      heading="Shop Contact"
-      description="Edit store address, GSTIN, email, and phone numbers shown on the storefront."
-    >
-      <ShopContactForm />
-    </AdminShell>
-  );
+  redirect("/admin/settings");
 }
