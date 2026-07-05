@@ -54,4 +54,4 @@ export const scrollSnapReelItemClass =
   "w-[44vw] max-w-[180px] shrink-0 grow-0 sm:w-auto sm:max-w-none sm:basis-[34%] md:basis-[26%] lg:basis-[20%]";
 
 export const scrollSnapPriceItemClass =
-  "w-[28vw] max-w-[124px] shrink-0 grow-0 sm:w-auto sm:max-w-none sm:basis-[30%] md:basis-[18%] lg:basis-[14%] xl:basis-[12%]";
+  "w-[46vw] max-w-[200px] shrink-0 grow-0 sm:w-auto sm:max-w-none sm:basis-[42%] md:basis-[30%] lg:basis-[24%] xl:basis-[20%]";

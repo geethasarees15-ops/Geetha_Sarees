@@ -18,12 +18,12 @@ describe("lazy stock reservation sweep policy", () => {
 
   it("throttles repeated sweeps within the interval", () => {
     const start = 1_000_000;
-    expect(
-      shouldRunLazyStockSweep(start, start + 30_000, false, 60_000),
-    ).toBe(false);
-    expect(
-      shouldRunLazyStockSweep(start, start + 60_000, false, 60_000),
-    ).toBe(true);
+    expect(shouldRunLazyStockSweep(start, start + 30_000, false, 60_000)).toBe(
+      false,
+    );
+    expect(shouldRunLazyStockSweep(start, start + 60_000, false, 60_000)).toBe(
+      true,
+    );
   });
 
   it("resets throttle baseline for tests", () => {
