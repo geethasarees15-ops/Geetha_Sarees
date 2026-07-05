@@ -102,7 +102,11 @@ export function validateCashfreeCredentialEnvironment(params: {
     clientSecret,
   );
 
-  if (environment === "production" && sandboxCredential && !productionCredential) {
+  if (
+    environment === "production" &&
+    sandboxCredential &&
+    !productionCredential
+  ) {
     return "Production mode requires live Cashfree credentials, not sandbox/test keys.";
   }
 
@@ -150,7 +154,9 @@ export function validateCashfreeRuntimeConfig(
   });
 }
 
-export function validateCashfreeOrderAmount(amountInRupees: number): string | null {
+export function validateCashfreeOrderAmount(
+  amountInRupees: number,
+): string | null {
   if (!Number.isFinite(amountInRupees) || amountInRupees < 1) {
     return "Order amount must be at least ₹1.";
   }

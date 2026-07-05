@@ -20,9 +20,9 @@ describe("cashfree-standards", () => {
   });
 
   it("validates payment session ids", () => {
-    expect(
-      validatePaymentSessionId("session_0nUQzx_LqpugkZrspPSp14Lp2a"),
-    ).toBe(true);
+    expect(validatePaymentSessionId("session_0nUQzx_LqpugkZrspPSp14Lp2a")).toBe(
+      true,
+    );
     expect(validatePaymentSessionId("invalid")).toBe(false);
   });
 
