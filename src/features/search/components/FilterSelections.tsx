@@ -89,17 +89,29 @@ function FilterSelections({ collectionsSection, shopLayout = true }: Props) {
   const debouncedPrice = useDebounce(query.priceRange ?? [0, 10000], 500);
 
   React.useEffect(() => {
+    if (query.priceRange === undefined) return;
+
     const [min, max] = debouncedPrice;
-    if (
-      query.priceRange !== undefined &&
-      !(query.priceRange[0] === 0 && query.priceRange[1] === 10000)
-    )
-      startTransition(() => {
-        router.push(
-          `${pathname}?${createQueryString("price_range", `${min}-${max}`)}`,
-        );
-      });
-  }, [debouncedPrice]);
+    const [queryMin, queryMax] = query.priceRange;
+
+    // Wait until debounce catches up with URL/query state before syncing the URL.
+    if (min !== queryMin || max !== queryMax) return;
+    if (min === 0 && max === 10000) return;
+
+    const nextRange = `${min}-${max}`;
+    if (searchParams.get("price_range") === nextRange) return;
+
+    startTransition(() => {
+      router.push(`${pathname}?${createQueryString("price_range", nextRange)}`);
+    });
+  }, [
+    createQueryString,
+    debouncedPrice,
+    pathname,
+    query.priceRange,
+    router,
+    searchParams,
+  ]);
 
   const collectionChangeHandler = (collectionId: string) => {
     const oldValue = query.collections ?? [];

@@ -4,6 +4,7 @@ import type {
   SearchQuery,
   SearchQueryVariables,
 } from "@/gql/graphql";
+import { getEffectiveProductPrice } from "@/lib/products/discount";
 import type { StorefrontProductSearchVariables } from "@/lib/storefront/search-params";
 import { getClient } from "@/lib/urql";
 import { CACHE_TAGS } from "@/lib/cache/constants";
@@ -17,9 +18,7 @@ import {
 import {
   FeaturedProductsQueryDocument,
   SearchInCollectionQueryDocument,
-  SearchInCollectionWithPriceQueryDocument,
   SearchQueryDocument,
-  SearchWithPriceQueryDocument,
 } from "./documents";
 
 function stableKey(parts: Record<string, unknown>) {
@@ -31,18 +30,50 @@ export type StorefrontProductSearchResult = {
   matchingCollections: StorefrontCollectionMatch[];
 };
 
+type ProductSearchEdge = NonNullable<
+  SearchQuery["productsCollection"]
+>["edges"][number];
+
+function parsePaginationOffset(after?: string | null): number {
+  if (!after) return 0;
+  const parsed = Number.parseInt(after, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function filterEdgesByEffectivePrice(
+  edges: ProductSearchEdge[],
+  lower: number,
+  upper: number,
+) {
+  return edges.filter(({ node }) => {
+    const effectivePrice = getEffectiveProductPrice(node);
+    return effectivePrice >= lower && effectivePrice <= upper;
+  });
+}
+
+function paginateEdges(
+  edges: ProductSearchEdge[],
+  first: number,
+  after?: string | null,
+): SearchQuery["productsCollection"] {
+  const offset = parsePaginationOffset(after);
+  const page = edges.slice(offset, offset + first);
+  const nextOffset = offset + page.length;
+
+  return {
+    edges: page,
+    pageInfo: {
+      hasNextPage: nextOffset < edges.length,
+      endCursor: nextOffset < edges.length ? String(nextOffset) : null,
+    },
+  };
+}
+
 function pickSearchDocument(variables: StorefrontProductSearchVariables) {
   const hasCollection = Boolean(variables.collections?.length);
-  const hasPrice = Boolean(variables.lower && variables.upper);
 
-  if (hasCollection && hasPrice) {
-    return SearchInCollectionWithPriceQueryDocument;
-  }
   if (hasCollection) {
     return SearchInCollectionQueryDocument;
-  }
-  if (hasPrice) {
-    return SearchWithPriceQueryDocument;
   }
   return SearchQueryDocument;
 }
@@ -72,16 +103,45 @@ export async function fetchProductSearchCached(
     ),
   })}`;
 
+  const hasPrice = Boolean(queryVariables.lower && queryVariables.upper);
+  const priceLower = Number(queryVariables.lower);
+  const priceUpper = Number(queryVariables.upper);
+
   const productsCollection = await withStorefrontCache(
     cacheKey,
     async () => {
       const document = pickSearchDocument(queryVariables);
+      const graphqlVariables = {
+        ...(queryVariables as SearchQueryVariables),
+        lower: undefined,
+        upper: undefined,
+        first: hasPrice ? 200 : queryVariables.first,
+        after: hasPrice ? undefined : queryVariables.after,
+      };
+
       const { data, error } = await getClient().query<SearchQuery>(
         document,
-        queryVariables as SearchQueryVariables,
+        graphqlVariables,
       );
       if (error) throw error;
-      return data?.productsCollection ?? null;
+
+      const collection = data?.productsCollection ?? null;
+      if (!collection || !hasPrice) return collection;
+      if (!Number.isFinite(priceLower) || !Number.isFinite(priceUpper)) {
+        return collection;
+      }
+
+      const filtered = filterEdgesByEffectivePrice(
+        collection.edges,
+        priceLower,
+        priceUpper,
+      );
+
+      return paginateEdges(
+        filtered,
+        queryVariables.first,
+        queryVariables.after,
+      );
     },
     { tags: [CACHE_TAGS.products] },
   );

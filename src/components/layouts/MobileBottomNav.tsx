@@ -9,6 +9,7 @@ import { useCartCount } from "@/features/carts/hooks/useCartCount";
 import useWishlistStore from "@/features/wishlists/useWishlistStore";
 import { useMobileSearch } from "@/components/layouts/MobileSearchContext";
 import { useRobustNavigate } from "@/hooks/useRobustNavigate";
+import { useAuth } from "@/providers/AuthProvider";
 
 function NavBadge({ count }: { count: number }) {
   return (
@@ -39,6 +40,8 @@ export function MobileBottomNav() {
   const wishCount = Object.keys(wishlist).length;
   const { onNavigateClick } = useRobustNavigate();
   const { isOpen: isSearchOpen, openSearch } = useMobileSearch();
+  const { user } = useAuth();
+  const accountHref = user ? "/orders" : "/sign-in";
 
   const itemClass = (active: boolean) =>
     cn(
@@ -66,9 +69,11 @@ export function MobileBottomNav() {
       onClick: openSearch,
     },
     {
-      href: "/sign-in",
+      href: accountHref,
       label: "Account",
-      active: pathname.startsWith("/sign") || pathname.startsWith("/setting"),
+      active: user
+        ? pathname.startsWith("/orders") || pathname.startsWith("/setting")
+        : pathname.startsWith("/sign"),
       icon: <User className="h-5 w-5 shrink-0" strokeWidth={1.75} />,
     },
     {

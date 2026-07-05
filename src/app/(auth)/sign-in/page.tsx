@@ -6,11 +6,7 @@ import { Suspense } from "react";
 import { AuthOrDivider } from "@/features/auth/components/AuthOrDivider";
 import OAuthLoginButtons from "@/features/auth/components/OAuthLoginButtons";
 import { SigninForm } from "@/features/auth";
-import { isAdminUser } from "@/lib/auth/admin";
-import {
-  ADMIN_POST_LOGIN_PATH,
-  getRedirectFromSearchParams,
-} from "@/lib/auth/redirect";
+import { getRedirectFromSearchParams } from "@/lib/auth/redirect";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 
@@ -39,10 +35,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
     if (requested) {
       redirect(requested);
     }
-    if (await isAdminUser(user)) {
-      redirect(ADMIN_POST_LOGIN_PATH);
-    }
-    redirect("/");
+    redirect("/orders");
   }
 
   return (
