@@ -436,7 +436,10 @@ export async function releaseStockReservation(
     }
 
     const meta = readPaymentMeta(row.payment_meta);
-    if (meta.inventoryFulfilled === true || meta.stockReservationConsumed === true) {
+    if (
+      meta.inventoryFulfilled === true ||
+      meta.stockReservationConsumed === true
+    ) {
       skippedReason = "reservation_consumed";
       return;
     }
