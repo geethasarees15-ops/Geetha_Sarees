@@ -51,8 +51,15 @@ export function RecentSales({
               {formatDate(order.createdAt)} · {order.payment_status}
             </p>
           </div>
-          <div className="ml-auto font-medium text-sm shrink-0">
-            {formatInr(order.amount)}
+          <div className="ml-auto shrink-0 text-right">
+            <div className="text-sm font-medium tabular-nums">
+              {formatInr(order.amount)}
+            </div>
+            {order.itemsSubtotal !== order.amount ? (
+              <div className="text-[10px] text-muted-foreground tabular-nums">
+                Items {formatInr(order.itemsSubtotal)}
+              </div>
+            ) : null}
           </div>
         </Link>
       ))}

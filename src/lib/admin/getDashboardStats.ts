@@ -7,7 +7,7 @@ import {
 import { cache } from "react";
 
 const ORDER_SUMMARY_SELECT =
-  "id, amount, currency, email, name, payment_status, order_status, created_at";
+  "id, amount, currency, email, name, payment_status, order_status, created_at, payment_meta";
 
 const ORDER_LINES_SELECT =
   "orderId, product_id, quantity, price, product:products!order_lines_to_product ( name )";
@@ -40,6 +40,7 @@ export type RecentOrderRow = {
   name: string | null;
   email: string | null;
   amount: number;
+  itemsSubtotal: number;
   currency: string;
   payment_status: string;
   order_status: string | null;
@@ -64,6 +65,7 @@ export type TopProductRow = {
 
 export type DashboardStats = {
   totalRevenue: number;
+  productSalesRevenue: number;
   revenueThisMonth: number;
   revenueLastMonth: number;
   revenueChangePct: number | null;
@@ -97,6 +99,7 @@ type OrderRow = {
   payment_status: string;
   order_status: string | null;
   created_at: string;
+  payment_meta?: unknown;
 };
 
 type ProductRow = {
@@ -113,13 +116,13 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-async function fetchPaidOrderLines(
+async function fetchOrderLinesByOrderIds(
   supabase: ReturnType<typeof createServiceRoleClient>,
-  paidOrderIds: string[],
+  orderIds: string[],
 ): Promise<OrderLineRow[]> {
-  if (paidOrderIds.length === 0) return [];
+  if (orderIds.length === 0) return [];
 
-  const batches = chunkArray(paidOrderIds, SUPABASE_IN_BATCH_SIZE);
+  const batches = chunkArray(orderIds, SUPABASE_IN_BATCH_SIZE);
   const results = await Promise.all(
     batches.map((ids) =>
       supabase
@@ -135,6 +138,13 @@ async function fetchPaidOrderLines(
   }
 
   return results.flatMap((result) => (result.data ?? []) as OrderLineRow[]);
+}
+
+async function fetchPaidOrderLines(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  paidOrderIds: string[],
+): Promise<OrderLineRow[]> {
+  return fetchOrderLinesByOrderIds(supabase, paidOrderIds);
 }
 
 type OrderLineRow = {
@@ -200,6 +210,7 @@ export function getEmptyDashboardStats(): DashboardStats {
   }
   return {
     totalRevenue: 0,
+    productSalesRevenue: 0,
     revenueThisMonth: 0,
     revenueLastMonth: 0,
     revenueChangePct: null,
@@ -229,16 +240,50 @@ function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
-function toRecentOrderRow(o: OrderRow): RecentOrderRow {
+function buildOrderLineTotals(lines: OrderLineRow[]) {
+  const totals = new Map<string, number>();
+  for (const row of lines) {
+    if (!row.orderId) continue;
+    totals.set(
+      row.orderId,
+      (totals.get(row.orderId) ?? 0) + Number(row.price) * row.quantity,
+    );
+  }
+  return totals;
+}
+
+function itemsSubtotalForOrder(
+  order: OrderRow,
+  lineTotals: Map<string, number>,
+): number {
+  const meta = (order.payment_meta as Record<string, unknown> | null) ?? {};
+  const metaSubtotal = Number(meta.discountedSubtotal ?? meta.subtotalAmount);
+  if (Number.isFinite(metaSubtotal) && metaSubtotal >= 0) {
+    return metaSubtotal;
+  }
+
+  const lineTotal = lineTotals.get(order.id);
+  if (typeof lineTotal === "number" && lineTotal >= 0) {
+    return lineTotal;
+  }
+
+  return Number(order.amount);
+}
+
+function toRecentOrderRow(
+  order: OrderRow,
+  lineTotals: Map<string, number>,
+): RecentOrderRow {
   return {
-    id: o.id,
-    name: o.name,
-    email: o.email,
-    amount: Number(o.amount),
-    currency: o.currency,
-    payment_status: o.payment_status,
-    order_status: o.order_status,
-    createdAt: toDate(o.created_at),
+    id: order.id,
+    name: order.name,
+    email: order.email,
+    amount: Number(order.amount),
+    itemsSubtotal: itemsSubtotalForOrder(order, lineTotals),
+    currency: order.currency,
+    payment_status: order.payment_status,
+    order_status: order.order_status,
+    createdAt: toDate(order.created_at),
   };
 }
 
@@ -305,7 +350,11 @@ export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
   const paidOrderIds = allOrders
     .filter((order) => isPaidPaymentStatus(order.payment_status))
     .map((order) => order.id);
-  const topProductRows = await fetchPaidOrderLines(supabase, paidOrderIds);
+  const recentOrderIds = allOrders.slice(0, 6).map((order) => order.id);
+  const [topProductRows, recentOrderLines] = await Promise.all([
+    fetchPaidOrderLines(supabase, paidOrderIds),
+    fetchOrderLinesByOrderIds(supabase, recentOrderIds),
+  ]);
 
   return computeStats({
     allOrders,
@@ -318,6 +367,7 @@ export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
     collectionCount: collectionsRes.count ?? 0,
     customerCount: profilesRes.count ?? 0,
     topProductRows,
+    recentOrderLines,
   });
 });
 
@@ -332,6 +382,7 @@ function computeStats({
   collectionCount,
   customerCount,
   topProductRows,
+  recentOrderLines,
 }: {
   allOrders: OrderRow[];
   totalProducts: number;
@@ -343,6 +394,7 @@ function computeStats({
   collectionCount: number;
   customerCount: number;
   topProductRows: OrderLineRow[];
+  recentOrderLines: OrderLineRow[];
 }): DashboardStats {
   const now = new Date();
   const thisMonthStart = monthStart(now);
@@ -360,8 +412,19 @@ function computeStats({
   const paidInRange = paidOrders.filter(
     (o) => toDate(o.created_at) >= twelveMonthsAgo,
   );
+  const lineTotals = buildOrderLineTotals([
+    ...topProductRows,
+    ...recentOrderLines,
+  ]);
 
   const totalRevenue = paidOrders.reduce((s, o) => s + Number(o.amount), 0);
+  const paidOrderLines = topProductRows.filter(
+    (row) => row.orderId && paidOrderIds.has(row.orderId),
+  );
+  const productSalesRevenue = paidOrderLines.reduce(
+    (sum, row) => sum + Number(row.price) * row.quantity,
+    0,
+  );
 
   const ordersThisMonth = paidOrders.filter(
     (o) => toDate(o.created_at) >= thisMonthStart,
@@ -444,9 +507,6 @@ function computeStats({
     string,
     { productId: string; name: string; quantity: number; revenue: number }
   >();
-  const paidOrderLines = topProductRows.filter(
-    (row) => row.orderId && paidOrderIds.has(row.orderId),
-  );
   for (const row of paidOrderLines) {
     const name = productNameFromLine(row);
     const qty = row.quantity;
@@ -470,6 +530,7 @@ function computeStats({
 
   return {
     totalRevenue,
+    productSalesRevenue,
     revenueThisMonth,
     revenueLastMonth,
     revenueChangePct: pctChange(revenueThisMonth, revenueLastMonth),
@@ -486,9 +547,15 @@ function computeStats({
     paidOrdersCount: paidOrders.length,
     pendingOrdersCount: pending.length,
     monthlyRevenue: buildMonthlyRevenue(paidInRange),
-    recentOrders: allOrders.slice(0, 6).map(toRecentOrderRow),
-    recentPaidOrders: paidOrders.slice(0, 6).map(toRecentOrderRow),
-    recentPendingOrders: pending.slice(0, 6).map(toRecentOrderRow),
+    recentOrders: allOrders
+      .slice(0, 6)
+      .map((order) => toRecentOrderRow(order, lineTotals)),
+    recentPaidOrders: paidOrders
+      .slice(0, 6)
+      .map((order) => toRecentOrderRow(order, lineTotals)),
+    recentPendingOrders: pending
+      .slice(0, 6)
+      .map((order) => toRecentOrderRow(order, lineTotals)),
     notifications: notifications.slice(0, 12),
     topProducts,
     ordersByPayment: Object.entries(paymentGroups).map(([status, n]) => ({

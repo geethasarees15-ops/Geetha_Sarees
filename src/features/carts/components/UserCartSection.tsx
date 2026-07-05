@@ -38,6 +38,11 @@ import BulkOrderGuardDialog from "./BulkOrderGuardDialog";
 import EmptyCart from "@/features/carts/components/EmptyCart";
 import { RemoveCartsMutation, updateCartsMutation } from "../query";
 import useCartStore, { CartItems } from "../useCartStore";
+import {
+  calcLiveCartSubtotal,
+  useCartLivePricing,
+} from "../hooks/useCartLivePricing";
+import { withLiveProductPricing } from "../lib/live-pricing";
 import { getSaleProductPrice } from "@/lib/products/discount";
 import { isBulkOrderQuantity } from "../constants/bulkOrder";
 
@@ -79,6 +84,7 @@ function UserCartSection({
     variables: {
       userId: user.id,
     },
+    requestPolicy: "network-only",
   });
 
   const cartData = data ?? initialCart ?? null;
@@ -103,7 +109,27 @@ function UserCartSection({
 
   const cart: CartEdge[] =
     cartData?.cartsCollection?.edges?.filter((edge) => edge.node.product) ?? [];
-  const subtotal = useMemo(() => calcSubtotal(cart), [cart]);
+  const cartProductIds = useMemo(
+    () =>
+      cart
+        .map((edge) => edge.node.product_id)
+        .filter((productId): productId is string => Boolean(productId)),
+    [cart],
+  );
+  const { pricing: livePricing } = useCartLivePricing(cartProductIds);
+  const subtotal = useMemo(() => {
+    const quantities = Object.fromEntries(
+      cart.map((edge) => [
+        edge.node.product_id,
+        { quantity: edge.node.quantity },
+      ]),
+    );
+    const liveTotal = calcLiveCartSubtotal(quantities, livePricing);
+    if (Object.keys(livePricing).length > 0) {
+      return liveTotal;
+    }
+    return calcSubtotal(cart);
+  }, [cart, livePricing]);
   const productCount = useMemo(() => calcProductCount(cart), [cart]);
   const courierBreakdown = useMemo(() => {
     if (!courierConfig.enabled || !deliveryState) return null;
@@ -424,7 +450,10 @@ function UserCartSection({
                   <CartItemCard
                     key={node.product_id}
                     id={node.product_id}
-                    product={node.product!}
+                    product={withLiveProductPricing(
+                      node.product!,
+                      livePricing[node.product_id],
+                    )}
                     quantity={node.quantity}
                     selectedSize={localCart[node.product_id]?.size}
                     sizeRequired={hasLabeledOptions}

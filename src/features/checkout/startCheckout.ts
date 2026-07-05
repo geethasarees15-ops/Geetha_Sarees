@@ -1,5 +1,11 @@
 import type { CartItems } from "@/features/carts";
 import type { SavedShippingAddress } from "@/features/addresses/validations/addressFormSchema";
+import type { CheckoutProgressUpdate } from "@/features/checkout/checkout-progress";
+import {
+  creatingOrderProgress,
+  openingPaymentProgress,
+  preparingPaymentProgress,
+} from "@/features/checkout/checkout-progress";
 import { getStripe } from "@/lib/stripe/stripeClient";
 
 type StartCheckoutParams = {
@@ -7,6 +13,7 @@ type StartCheckoutParams = {
   guest: boolean;
   shipping: SavedShippingAddress;
   promoCode?: string | null;
+  onProgress?: (update: CheckoutProgressUpdate) => void;
 };
 
 export async function startCheckout({
@@ -14,7 +21,10 @@ export async function startCheckout({
   guest,
   shipping,
   promoCode,
+  onProgress,
 }: StartCheckoutParams) {
+  onProgress?.(creatingOrderProgress());
+
   const res = await fetch("/api/create-checkout-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -50,7 +60,9 @@ export async function startCheckout({
     | { provider: "stripe"; sessionId: string };
 
   if (payload.provider === "cashfree") {
+    onProgress?.(preparingPaymentProgress());
     const sdk = await loadCashfreeSdk();
+    onProgress?.(openingPaymentProgress("cashfree"));
     const cashfree = sdk({
       mode: payload.environment === "production" ? "production" : "sandbox",
     });
@@ -62,11 +74,14 @@ export async function startCheckout({
   }
 
   if (payload.provider === "phonepe") {
+    onProgress?.(openingPaymentProgress("phonepe"));
     window.location.assign(payload.redirectUrl);
     return;
   }
 
+  onProgress?.(preparingPaymentProgress());
   const { sessionId } = payload;
+  onProgress?.(openingPaymentProgress("stripe"));
   const stripe = await getStripe();
   const result = await stripe?.redirectToCheckout({ sessionId });
 

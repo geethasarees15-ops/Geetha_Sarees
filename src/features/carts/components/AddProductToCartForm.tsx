@@ -60,6 +60,11 @@ function AddProductToCartForm({
   const selectedOption = selectableSizeOptions.find(
     (option) => option.key === selectedOptionKey,
   );
+  const isOutOfStock =
+    stockControl.enabled &&
+    typeof stock === "number" &&
+    stock <= 0 &&
+    !hasSizeOptions;
 
   const getSizeLabel = (option: { size: string; qty: number }) => {
     if (!option.size) {
@@ -203,10 +208,17 @@ function AddProductToCartForm({
         />
         <Button
           type="submit"
-          disabled={hasSizeOptions && selectableSizeOptions.length === 0}
+          disabled={
+            isOutOfStock || (hasSizeOptions && selectableSizeOptions.length === 0)
+          }
         >
-          Add to Cart
+          {isOutOfStock ? "Out of stock" : "Add to Cart"}
         </Button>
+        {isOutOfStock ? (
+          <p className="text-sm text-destructive">
+            This product is currently out of stock.
+          </p>
+        ) : null}
       </form>
       <BulkOrderGuardDialog
         open={bulkGuardOpen}

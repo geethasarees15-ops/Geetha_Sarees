@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { CheckoutAddressDialog } from "@/features/addresses";
 import type { SavedShippingAddress } from "@/features/addresses";
 import { clearCheckoutAddressDraft } from "@/features/addresses/lib/checkoutAddressDraft";
 import { startCheckout } from "@/features/checkout/startCheckout";
+import { useCheckoutProgress } from "@/features/checkout/useCheckoutProgress";
 import { useAuth } from "@/providers/AuthProvider";
 import { useStockControlConfig } from "@/providers/StockControlProvider";
 
@@ -25,6 +27,13 @@ function BuyNowButton({ productId, quantity = 1, stock }: BuyNowButtonProps) {
 
   const [open, setOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const {
+    progress,
+    isLocked,
+    beginProgress,
+    clearProgress,
+    overlay,
+  } = useCheckoutProgress();
 
   const accountDefaults = useMemo(
     () =>
@@ -45,9 +54,11 @@ function BuyNowButton({ productId, quantity = 1, stock }: BuyNowButtonProps) {
         order: { [productId]: { quantity } },
         guest: !user,
         shipping,
+        onProgress: beginProgress,
       });
       clearCheckoutAddressDraft();
     } catch (err) {
+      clearProgress();
       toast({
         title: "Could not complete purchase",
         description: err instanceof Error ? err.message : "Please try again.",
@@ -59,29 +70,48 @@ function BuyNowButton({ productId, quantity = 1, stock }: BuyNowButtonProps) {
     }
   };
 
+  const busy = isProcessing || isLocked;
+
   return (
     <>
+      {overlay}
+
       <Button
         type="button"
-        disabled={isProcessing || isOutOfStock}
-        onClick={() => setOpen(true)}
+        disabled={busy || isOutOfStock}
+        onClick={() => {
+          if (isLocked) return;
+          setOpen(true);
+        }}
       >
-        {isOutOfStock
-          ? "Out of Stock"
-          : isProcessing
-            ? "Processing…"
-            : "Buy Now"}
+        {isOutOfStock ? (
+          "Out of Stock"
+        ) : busy ? (
+          <>
+            Processing…
+            <Spinner className="ml-2 h-4 w-4 animate-spin" aria-hidden="true" />
+          </>
+        ) : (
+          "Buy Now"
+        )}
       </Button>
 
       <CheckoutAddressDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          if (isLocked && !next) return;
+          setOpen(next);
+        }}
         onComplete={handleCheckoutComplete}
         guest={!user}
         userId={user?.id}
         accountDefaults={accountDefaults}
         submitLabel="Continue to payment"
         checkoutQuantity={quantity}
+        checkoutLocked={isLocked}
+        onProgress={beginProgress}
+        progressMessage={progress?.message ?? null}
+        onCheckoutError={clearProgress}
       />
     </>
   );

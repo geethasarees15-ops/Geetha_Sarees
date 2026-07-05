@@ -15,7 +15,7 @@ export function normalizeDiscountPercent(raw: unknown): number | null {
 export function isProductDiscountActive(
   product: ProductDiscountFields,
 ): boolean {
-  if (!product.discountEnabled) return false;
+  if (product.discountEnabled !== true) return false;
   return normalizeDiscountPercent(product.discountPercent) !== null;
 }
 

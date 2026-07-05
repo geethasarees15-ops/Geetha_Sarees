@@ -1,6 +1,10 @@
 import { getProductsByIds } from "@/_actions/products";
 import { publicErrorMessage } from "@/lib/api/public-error";
-import { getEffectiveProductPrice } from "@/lib/products/discount";
+import {
+  resolveProductPricing,
+  resolveProductUnitPrice,
+} from "@/lib/products/pricing";
+import { resolveCheckoutPaymentEnvironment } from "@/lib/orders/checkout-environment";
 import type { CartItems } from "@/features/carts";
 import { createPhonePePayment } from "@/lib/payments/phonepe";
 import { createCashfreePayment } from "@/lib/payments/cashfree";
@@ -239,6 +243,26 @@ export async function POST(request: Request) {
       config: courierConfig,
     });
     const amount = discountedSubtotal + courierCharge + gstAmount;
+    const paymentEnvironment = resolveCheckoutPaymentEnvironment({
+      preferCashfree,
+      preferPhonePe,
+      cashfreeConfig,
+      phonePeConfig,
+    });
+    const linePricing = Object.fromEntries(
+      productsQuantity.map((product) => {
+        const pricing = resolveProductPricing(product);
+        return [
+          product.id,
+          {
+            listPrice: pricing.listPrice,
+            unitPrice: pricing.unitPrice,
+            discountActive: pricing.discountActive,
+            discountPercent: pricing.discountPercent,
+          },
+        ];
+      }),
+    );
 
     const insertedOrder = await db.transaction(async (tx) => {
       const created = await tx
@@ -276,6 +300,8 @@ export async function POST(request: Request) {
             courierState: checkout.shipping.state,
             courierRule: courierBreakdown.ruleApplied,
             totalQuantity,
+            paymentEnvironment,
+            linePricing,
             sizes: Object.fromEntries(
               Object.entries(checkout.orderProducts).map(([id, value]) => [
                 id,
@@ -454,7 +480,7 @@ const calcSubtotal = (
   productsQuantity: (SelectProducts & { quantity: number })[],
 ) =>
   productsQuantity.reduce((acc, cur) => {
-    return acc + cur.quantity * getEffectiveProductPrice(cur);
+    return acc + cur.quantity * resolveProductUnitPrice(cur);
   }, 0);
 
 const mergeProductDetailsWithQuantities = async (
@@ -465,9 +491,10 @@ const mergeProductDetailsWithQuantities = async (
 
   const orderDetails = products.map((product) => {
     const quantity = orderProducts[product.id].quantity;
+    const unitPrice = resolveProductUnitPrice(product);
     return {
       ...product,
-      price: String(getEffectiveProductPrice(product)),
+      price: String(unitPrice),
       quantity,
     };
   });

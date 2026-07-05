@@ -1,5 +1,6 @@
 import { env } from "@/env.mjs";
 import { notifyOrderWhatsAppTargets } from "@/lib/integrations/whatsapp";
+import { fulfillPaidOrderInventory } from "@/lib/orders/inventory-fulfillment";
 import { stripe } from "@/lib/stripe";
 import db from "@/lib/supabase/db";
 import { carts, PaymentStatus, orders } from "@/lib/supabase/schema";
@@ -109,6 +110,8 @@ export async function POST(request: NextRequest) {
               if (order.user_id) {
                 await db.delete(carts).where(eq(carts.userId, order.user_id));
               }
+
+              await fulfillPaidOrderInventory(order.id);
             }
           } else {
             const insertedOrder = await db

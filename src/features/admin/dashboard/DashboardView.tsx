@@ -255,7 +255,7 @@ export function DashboardView({ stats, statsError }: Props) {
               label="Total revenue"
               value={formatInr(stats.totalRevenue)}
               change={<ChangeLabel pct={stats.revenueChangePct} />}
-              detail={`This month: ${formatInr(stats.revenueThisMonth)}`}
+              detail={`Paid order totals incl. shipping & GST · This month ${formatInr(stats.revenueThisMonth)}`}
             />
             <MetricCard
               label="Paid orders"
@@ -359,7 +359,7 @@ export function DashboardView({ stats, statsError }: Props) {
             </SectionCard>
             <SectionCard
               title="Top products (paid orders)"
-              description="Units sold and revenue from completed payments only"
+              description={`Product line sales at checkout price · ${formatInr(stats.productSalesRevenue)} total (excl. shipping & GST)`}
             >
               <div className="space-y-2.5">
                 {stats.topProducts.length === 0 ? (

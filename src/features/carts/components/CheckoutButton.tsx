@@ -10,6 +10,7 @@ import { CheckoutAddressDialog } from "@/features/addresses";
 import type { SavedShippingAddress } from "@/features/addresses";
 import { clearCheckoutAddressDraft } from "@/features/addresses/lib/checkoutAddressDraft";
 import { startCheckout } from "@/features/checkout/startCheckout";
+import { useCheckoutProgress } from "@/features/checkout/useCheckoutProgress";
 import BulkOrderGuardDialog from "@/features/carts/components/BulkOrderGuardDialog";
 import { isBulkOrderQuantity } from "@/features/carts/constants/bulkOrder";
 import { useAuth } from "@/providers/AuthProvider";
@@ -40,6 +41,13 @@ function CheckoutButton({
   const [open, setOpen] = useState(false);
   const [bulkGuardOpen, setBulkGuardOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const {
+    progress,
+    isLocked,
+    beginProgress,
+    clearProgress,
+    overlay,
+  } = useCheckoutProgress();
   const hasBulkLineItem = useMemo(
     () =>
       bulkOrder.enabled &&
@@ -73,9 +81,11 @@ function CheckoutButton({
         guest,
         shipping,
         promoCode: promoCode ?? null,
+        onProgress: beginProgress,
       });
       clearCheckoutAddressDraft();
     } catch (err) {
+      clearProgress();
       toast({
         title: "Checkout failed",
         description: err instanceof Error ? err.message : "Please try again.",
@@ -89,10 +99,13 @@ function CheckoutButton({
 
   return (
     <>
+      {overlay}
+
       <Button
         {...props}
         className={cn("w-full", props.className)}
         onClick={async () => {
+          if (isLocked) return;
           if (requireDeliveryStateSelection && !hasDeliveryStateSelected) {
             toast({
               title: "Select delivery state",
@@ -151,23 +164,30 @@ function CheckoutButton({
           }
           setOpen(true);
         }}
-        disabled={isLoading || props.disabled}
+        disabled={isLoading || isLocked || props.disabled}
       >
-        {isLoading ? "Loading…" : "Check out"}
-        {isLoading && (
+        {isLoading || isLocked ? "Processing…" : "Check out"}
+        {(isLoading || isLocked) && (
           <Spinner className="ml-3 h-4 w-4 animate-spin" aria-hidden="true" />
         )}
       </Button>
 
       <CheckoutAddressDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(next) => {
+          if (isLocked && !next) return;
+          setOpen(next);
+        }}
         onComplete={handleCheckoutComplete}
         guest={guest}
         userId={user?.id}
         accountDefaults={accountDefaults}
         submitLabel="Continue to payment"
         checkoutQuantity={checkoutQuantity}
+        checkoutLocked={isLocked}
+        onProgress={beginProgress}
+        progressMessage={progress?.message ?? null}
+        onCheckoutError={clearProgress}
       />
 
       <BulkOrderGuardDialog

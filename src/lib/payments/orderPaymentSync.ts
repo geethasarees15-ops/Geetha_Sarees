@@ -3,6 +3,7 @@ import { carts, orders } from "@/lib/supabase/schema";
 import { notifyOrderWhatsAppTargets } from "@/lib/integrations/whatsapp";
 import { fetchPhonePePaymentStatus } from "@/lib/payments/phonepe";
 import { fetchCashfreeOrderStatus } from "@/lib/payments/cashfree";
+import { fulfillPaidOrderInventory } from "@/lib/orders/inventory-fulfillment";
 import { eq } from "drizzle-orm";
 
 type SyncInput =
@@ -82,6 +83,8 @@ export async function syncPhonePeOrderPayment(input: SyncInput) {
     if (updated.user_id) {
       await db.delete(carts).where(eq(carts.userId, updated.user_id));
     }
+
+    await fulfillPaidOrderInventory(updated.id);
   }
 
   return {
@@ -150,6 +153,8 @@ export async function syncCashfreeOrderPayment(orderId: string) {
     if (updated.user_id) {
       await db.delete(carts).where(eq(carts.userId, updated.user_id));
     }
+
+    await fulfillPaidOrderInventory(updated.id);
   }
 
   return {

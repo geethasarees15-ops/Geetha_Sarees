@@ -31,12 +31,14 @@ type Props = {
   onSubmit: (values: AddressFormValues) => Promise<void>;
   onCancel: () => void;
   submitLabel?: string;
+  submittingMessage?: string;
   defaultValues?: Partial<AddressFormValues>;
   /** Remember fields in localStorage until checkout completes (survives refresh). */
   persistDraft?: boolean;
   /** When the parent dialog opens, reload any saved draft. */
   dialogOpen?: boolean;
   checkoutQuantity?: number;
+  disabled?: boolean;
 };
 
 function RequiredLabel({ children }: { children: React.ReactNode }) {
@@ -55,10 +57,12 @@ export function AddAddressForm({
   onSubmit,
   onCancel,
   submitLabel = "Add Address",
+  submittingMessage = "Processing your details…",
   defaultValues,
   persistDraft = false,
   dialogOpen = true,
   checkoutQuantity = 1,
+  disabled = false,
 }: Props) {
   const courierConfig = useCourierChargesConfig();
   const initialValues = useMemo(
@@ -84,7 +88,7 @@ export function AddAddressForm({
     defaultValues: initialValues,
   });
 
-  const isSubmitting = form.formState.isSubmitting;
+  const isSubmitting = form.formState.isSubmitting || disabled;
 
   const wasDialogOpen = useRef(false);
   useEffect(() => {
@@ -335,7 +339,7 @@ export function AddAddressForm({
           >
             {isSubmitting ? (
               <>
-                Saving…
+                {submittingMessage}
                 <Spinner className="ml-2 h-4 w-4" aria-hidden="true" />
               </>
             ) : (
