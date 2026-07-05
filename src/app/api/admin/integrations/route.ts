@@ -517,7 +517,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const runtimeError = validateCashfreeRuntimeConfig(validated.data);
+    const runtimeError = validateCashfreeRuntimeConfig({
+      clientId: validated.data.clientId,
+      clientSecret: validated.data.clientSecret,
+      baseUrl: validated.data.baseUrl,
+      apiVersion: validated.data.apiVersion,
+      environment: validated.data.environment,
+    });
     if (runtimeError) {
       return NextResponse.json({ message: runtimeError }, { status: 400 });
     }
