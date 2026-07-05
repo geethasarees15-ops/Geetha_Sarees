@@ -1,14 +1,13 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { DataTable } from "@/features/cms";
-import { OrdersColumns } from "@/features/orders";
+import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
+import { getAdminOrdersList } from "@/lib/admin/getAdminOrdersList";
 import { publicErrorMessage } from "@/lib/api/public-error";
 import {
   isPaidPaymentStatus,
   needsPaymentAttention,
 } from "@/lib/orders/paymentStatus";
-import { createServiceRoleClient } from "@/lib/supabase/service";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
@@ -16,22 +15,6 @@ export const dynamic = "force-dynamic";
 type AdminOrdersPageProps = {
   searchParams: {
     [key: string]: string | string[] | undefined;
-  };
-};
-
-type AdminOrderEdge = {
-  node: {
-    id: string;
-    payment_status: string | null;
-    order_status: string | null;
-    order_linesCollection: {
-      edges: Array<{
-        node: {
-          id: string;
-          product_id: string | null;
-        };
-      }>;
-    };
   };
 };
 
@@ -47,44 +30,27 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
   void searchParams;
 
   let fetchError: string | null = null;
-  let orders: AdminOrderEdge[] = [];
+  let orders: Awaited<ReturnType<typeof getAdminOrdersList>> = [];
 
   try {
-    const supabase = createServiceRoleClient();
-    const ordersRes = await supabase
-      .from("orders")
-      .select("id, payment_status, order_status, created_at")
-      .order("created_at", { ascending: false });
-
-    if (ordersRes.error) {
-      fetchError = ordersRes.error.message;
-    } else {
-      orders = (ordersRes.data ?? []).map((row) => ({
-        node: {
-          id: row.id,
-          payment_status: row.payment_status,
-          order_status: row.order_status,
-          order_linesCollection: { edges: [] },
-        },
-      }));
-    }
+    orders = await getAdminOrdersList();
   } catch (error) {
     console.error("[admin/orders] page load failed:", error);
     fetchError = publicErrorMessage(error, "Failed to load orders.");
   }
 
-  const paidOrders = orders.filter((entry) =>
-    isPaidPaymentStatus(entry.node.payment_status),
+  const paidOrders = orders.filter((order) =>
+    isPaidPaymentStatus(order.paymentStatus),
   );
-  const pendingOrders = orders.filter((entry) =>
-    needsPaymentAttention(entry.node),
+  const pendingOrders = orders.filter((order) =>
+    needsPaymentAttention({
+      payment_status: order.paymentStatus,
+      order_status: order.orderStatus,
+    }),
   );
 
   return (
-    <AdminShell
-      heading="Orders"
-      description="Paid orders count toward sales. Pending or unpaid orders are for customer follow-up."
-    >
+    <AdminShell heading="Orders">
       <div className="space-y-6">
         {fetchError ? (
           <Alert variant="destructive">
@@ -118,20 +84,27 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
           </div>
         </div>
 
-        <section className="space-y-2">
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold">Paid orders</h2>
+          <p className="text-sm text-muted-foreground">
+            Tap an order to open packing details. Copy address from the list or
+            order page.
+          </p>
+          <AdminOrdersList
+            orders={paidOrders}
+            emptyMessage="No paid orders yet."
+          />
+        </section>
+
+        <section className="space-y-3">
           <h2 className="text-lg font-semibold">Pending / unpaid orders</h2>
           <p className="text-sm text-muted-foreground">
             Contact these customers — not included in sales analytics.
           </p>
-          <DataTable columns={OrdersColumns} data={pendingOrders} />
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Paid orders</h2>
-          <p className="text-sm text-muted-foreground">
-            Completed payments — used for revenue and top product reports.
-          </p>
-          <DataTable columns={OrdersColumns} data={paidOrders} />
+          <AdminOrdersList
+            orders={pendingOrders}
+            emptyMessage="No pending or unpaid orders."
+          />
         </section>
       </div>
     </AdminShell>

@@ -1,5 +1,6 @@
 import AdminShell from "@/components/admin/AdminShell";
 import AdminOrderDetailView from "@/features/orders/components/admin/AdminOrderDetailView";
+import { buildShippingAddressCopyText } from "@/lib/orders/shipping-address-text";
 import { keytoUrl } from "@/lib/utils";
 import db from "@/lib/supabase/db";
 import {
@@ -20,62 +21,19 @@ type AdminOrderDetailPageProps = {
   };
 };
 
-function buildAddressText(payload: {
-  orderCreatedAt: string;
-  customerName: string | null;
-  customerMobile: string | null;
-  shippingAddress: {
-    line1: string | null;
-    line2: string | null;
-    city: string | null;
-    state: string | null;
-    postalCode: string | null;
-    country: string | null;
-  } | null;
-}) {
-  const shipping = payload.shippingAddress;
-  const pincode = shipping?.postalCode?.trim() || "-";
-  const cityState = [shipping?.city, shipping?.state]
-    .filter(Boolean)
-    .join(", ");
-  const addressLines = [
-    shipping?.line1?.trim(),
-    shipping?.line2?.trim(),
-    cityState || undefined,
-    shipping?.country?.trim() || "India",
-  ].filter(Boolean) as string[];
-
-  const lines: string[] = [];
-  lines.push(`Name: ${payload.customerName || "Customer"}`);
-  lines.push(`Mobile: ${payload.customerMobile || "-"}`);
-  lines.push(`Pincode: ${pincode}`);
-  lines.push(
-    `Date: ${new Date(payload.orderCreatedAt).toLocaleDateString("en-IN")}`,
-  );
-  lines.push("");
-  lines.push("Address:");
-
-  if (shipping) {
-    lines.push(...addressLines);
-  } else {
-    lines.push("Address not available.");
-  }
-
-  return lines.join("\n").trim();
-}
-
 function buildCourierCopyText(payload: {
   orderId: string;
   createdAt: string;
   customerName: string | null;
   customerMobile: string | null;
   amount: number;
-  items: { productName: string; quantity: number }[];
+  items: { productName: string; productCode: string | null; quantity: number }[];
   addressText: string;
 }) {
-  const itemLines = payload.items.map(
-    (item, idx) => `${idx + 1}. ${item.productName} x ${item.quantity}`,
-  );
+  const itemLines = payload.items.map((item, idx) => {
+    const code = item.productCode ? ` [${item.productCode}]` : "";
+    return `${idx + 1}. ${item.productName}${code} x ${item.quantity}`;
+  });
 
   return [
     `ORDER DISPATCH NOTE`,
@@ -133,6 +91,7 @@ async function OrderDetailPage({ params }: AdminOrderDetailPageProps) {
       unitPrice: orderLines.price,
       productName: products.name,
       productSlug: products.slug,
+      productCode: products.productCode,
       imageKey: medias.key,
       imageAlt: medias.alt,
     })
@@ -148,6 +107,7 @@ async function OrderDetailPage({ params }: AdminOrderDetailPageProps) {
       productId: row.productId,
       productName: row.productName || "Product",
       productSlug: row.productSlug ?? null,
+      productCode: row.productCode ?? null,
       imageUrl: keytoUrl(row.imageKey ?? undefined),
       imageAlt: row.imageAlt || row.productName || "Product image",
       quantity: row.quantity,
@@ -183,8 +143,7 @@ async function OrderDetailPage({ params }: AdminOrderDetailPageProps) {
     shippingAddress,
   };
 
-  const addressText = buildAddressText({
-    orderCreatedAt: orderView.createdAt,
+  const addressText = buildShippingAddressCopyText({
     customerName: orderView.customerName,
     customerMobile: orderView.customerMobile,
     shippingAddress: orderView.shippingAddress,
@@ -197,6 +156,7 @@ async function OrderDetailPage({ params }: AdminOrderDetailPageProps) {
     amount: orderView.amount,
     items: itemViews.map((item) => ({
       productName: item.productName,
+      productCode: item.productCode,
       quantity: item.quantity,
     })),
     addressText,

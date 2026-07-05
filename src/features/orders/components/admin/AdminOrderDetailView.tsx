@@ -16,6 +16,7 @@ type OrderItemView = {
   productId: string;
   productName: string;
   productSlug: string | null;
+  productCode: string | null;
   imageUrl: string;
   imageAlt: string;
   quantity: number;
@@ -193,7 +194,8 @@ export function AdminOrderDetailView({
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Qty: {item.quantity} • Unit: {formatPrice(item.unitPrice)}
+                      Code: {item.productCode ?? "—"} • Qty: {item.quantity} •
+                      Unit: {formatPrice(item.unitPrice)}
                     </p>
                   </div>
                   <div className="text-sm font-semibold">
@@ -249,50 +251,36 @@ export function AdminOrderDetailView({
             <CardHeader>
               <CardTitle className="text-base">Customer & Address</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="grid grid-cols-[82px_1fr] gap-x-2 gap-y-1 text-sm">
-                <p className="text-muted-foreground">Name</p>
+            <CardContent className="space-y-3 text-sm">
+              <div className="rounded-md border bg-muted/20 p-3 leading-6">
                 <p className="font-medium">
                   {order.customerName ?? "Guest customer"}
                 </p>
-                <p className="text-muted-foreground">Mobile</p>
-                <p className="font-medium">{order.customerMobile ?? "-"}</p>
-                <p className="text-muted-foreground">Pincode</p>
-                <p className="font-medium">
-                  {order.shippingAddress?.postalCode ?? "-"}
-                </p>
-                <p className="text-muted-foreground">Date</p>
-                <p className="font-medium">{formatDate(order.createdAt)}</p>
-                {order.customerEmail ? (
-                  <>
-                    <p className="text-muted-foreground">Email</p>
-                    <p className="font-medium break-all">
-                      {order.customerEmail}
-                    </p>
-                  </>
-                ) : null}
-              </div>
-              <div className="rounded-md border bg-muted/20 p-3 text-sm leading-6">
                 {order.shippingAddress ? (
                   <>
-                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Address
-                    </p>
-                    <p>{order.shippingAddress.line1 ?? "-"}</p>
-                    {order.shippingAddress.line2 ? (
-                      <p>{order.shippingAddress.line2}</p>
-                    ) : null}
-                    <p>
-                      {order.shippingAddress.city ?? "-"},{" "}
-                      {order.shippingAddress.state ?? "-"}{" "}
-                      {order.shippingAddress.postalCode ?? ""}
-                    </p>
-                    <p>{order.shippingAddress.country ?? "India"}</p>
+                    {[
+                      order.shippingAddress.line1,
+                      order.shippingAddress.line2,
+                      [order.shippingAddress.city, order.shippingAddress.state]
+                        .filter(Boolean)
+                        .join(", "),
+                    ]
+                      .filter(Boolean)
+                      .map((line) => (
+                        <p key={String(line)}>{line}</p>
+                      ))}
+                    <p>{order.shippingAddress.postalCode ?? "-"}</p>
                   </>
                 ) : (
                   <p>Address not available for this order.</p>
                 )}
+                <p className="font-medium">{order.customerMobile ?? "-"}</p>
               </div>
+              {order.customerEmail ? (
+                <p className="break-all text-xs text-muted-foreground">
+                  {order.customerEmail}
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </div>
