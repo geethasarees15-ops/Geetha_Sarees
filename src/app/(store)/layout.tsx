@@ -1,6 +1,8 @@
 import { CartSheet } from "@/features/carts";
 import MainFooter from "@/components/layouts/MainFooter";
 import { MobileMenuProvider } from "@/components/layouts/MobileMenuContext";
+import { MobileSearchProvider } from "@/components/layouts/MobileSearchContext";
+import { MobileSearchOverlay } from "@/components/layouts/MobileSearchOverlay";
 import Navbar from "@/components/layouts/MainNavbar";
 import { StoreHeaderMetrics } from "@/components/layouts/StoreHeaderMetrics";
 import { StoreFloatingActions } from "@/components/layouts/StoreFloatingActions";
@@ -54,17 +56,20 @@ async function StoreLayout({ children }: Props) {
               <CourierChargesProvider config={courierCharges}>
                 <OfferCodesProvider config={offerCodes}>
                   <MobileMenuProvider>
-                    <StoreHeaderMetrics />
-                    <Navbar />
-                    <main className="w-full max-w-[100vw] overflow-x-hidden pt-[var(--store-header-offset-mobile)] md:pt-[var(--store-header-offset-desktop)] pb-[var(--mobile-nav-height)] md:pb-0">
-                      {children}
-                    </main>
-                    <CartSheet />
-                    <StoreFloatingActions />
-                    <MobileBottomNav />
-                    <div className="md:contents pb-[var(--mobile-nav-height)] md:pb-0">
-                      <MainFooter />
-                    </div>
+                    <MobileSearchProvider>
+                      <StoreHeaderMetrics />
+                      <Navbar />
+                      <MobileSearchOverlay />
+                      <main className="w-full max-w-[100vw] overflow-x-hidden pt-[var(--store-header-offset-mobile)] md:pt-[var(--store-header-offset-desktop)] pb-[var(--mobile-nav-height)] md:pb-0">
+                        {children}
+                      </main>
+                      <CartSheet />
+                      <StoreFloatingActions />
+                      <MobileBottomNav />
+                      <div className="md:contents pb-[var(--mobile-nav-height)] md:pb-0">
+                        <MainFooter />
+                      </div>
+                    </MobileSearchProvider>
                   </MobileMenuProvider>
                 </OfferCodesProvider>
               </CourierChargesProvider>

@@ -22,10 +22,23 @@ const filterSelectionSchema = z.object({
   search: z.string(),
 });
 
-function SearchInput() {
+type SearchInputProps = {
+  autoFocus?: boolean;
+  variant?: "default" | "compact";
+  onSearchSubmit?: () => void;
+  className?: string;
+};
+
+function SearchInput({
+  autoFocus = false,
+  variant = "default",
+  onSearchSubmit,
+  className,
+}: SearchInputProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isFocused, setIsFocused] = useState(false);
+  const isCompact = variant === "compact";
 
   const form = useForm<z.infer<typeof filterSelectionSchema>>({
     resolver: zodResolver(filterSelectionSchema),
@@ -33,36 +46,52 @@ function SearchInput() {
   });
 
   function onSubmit({ search }: z.infer<typeof filterSelectionSchema>) {
-    !search || search.length === 0
-      ? router.push(`/shop`)
-      : router.push(`/shop/?search=${search}`);
+    onSearchSubmit?.();
+    const trimmed = search.trim();
+    router.push(
+      !trimmed ? "/shop" : `/shop?search=${encodeURIComponent(trimmed)}`,
+    );
   }
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="relative bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-full flex-1"
+        className={cn(
+          "relative flex-1",
+          isCompact
+            ? "flex w-full items-center"
+            : "rounded-full bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+          className,
+        )}
       >
-        <Icons.search
-          className={cn(
-            isFocused ? "scale-0" : "scale-100",
-            "absolute left-8 top-6 h-6 w-4 text-muted-foreground transition-all duration-500",
-          )}
-        />
+        {!isCompact ? (
+          <Icons.search
+            className={cn(
+              isFocused ? "scale-0" : "scale-100",
+              "absolute left-8 top-6 h-6 w-4 text-muted-foreground transition-all duration-500",
+            )}
+          />
+        ) : null}
 
         <FormField
           control={form.control}
           name="search"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className={isCompact ? "w-full space-y-0" : undefined}>
               <FormControl>
                 <Input
                   {...field}
+                  autoFocus={autoFocus}
+                  enterKeyHint="search"
                   placeholder={siteConfig.searchPlaceholder}
                   className={cn(
-                    isFocused ? "pl-6" : "pl-10",
-                    "rounded-full transition-all duration-500",
+                    isCompact
+                      ? "h-11 rounded-full pl-10 pr-12"
+                      : cn(
+                          isFocused ? "pl-6" : "pl-10",
+                          "rounded-full transition-all duration-500",
+                        ),
                   )}
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
@@ -72,14 +101,29 @@ function SearchInput() {
             </FormItem>
           )}
         />
-        <Button className="absolute right-4 top-4" type="submit" variant="link">
+        <Button
+          className={cn(
+            isCompact
+              ? "absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2"
+              : "absolute right-4 top-4",
+          )}
+          type="submit"
+          variant={isCompact ? "ghost" : "link"}
+          size={isCompact ? "icon" : "default"}
+          aria-label="Submit search"
+        >
           <Icons.search
             className={cn(
               "h-4 w-4 text-muted-foreground transition-all duration-200",
-              isFocused ? "opacity-1 scale-1" : "opacity-0 scale-0",
+              isCompact || isFocused
+                ? "opacity-100 scale-100"
+                : "opacity-0 scale-0",
             )}
           />
         </Button>
+        {isCompact ? (
+          <Icons.search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        ) : null}
       </form>
     </Form>
   );

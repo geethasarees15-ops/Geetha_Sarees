@@ -7,6 +7,7 @@ import { Home, Heart, Search, ShoppingCart, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartCount } from "@/features/carts/hooks/useCartCount";
 import useWishlistStore from "@/features/wishlists/useWishlistStore";
+import { useMobileSearch } from "@/components/layouts/MobileSearchContext";
 import { useRobustNavigate } from "@/hooks/useRobustNavigate";
 
 function NavBadge({ count }: { count: number }) {
@@ -24,10 +25,11 @@ function NavBadge({ count }: { count: number }) {
 }
 
 type NavItem = {
-  href: string;
+  href?: string;
   label: string;
   active: boolean;
   icon: ReactNode;
+  onClick?: () => void;
 };
 
 export function MobileBottomNav() {
@@ -36,6 +38,7 @@ export function MobileBottomNav() {
   const wishlist = useWishlistStore((s) => s.wishlist);
   const wishCount = Object.keys(wishlist).length;
   const { onNavigateClick } = useRobustNavigate();
+  const { isOpen: isSearchOpen, openSearch } = useMobileSearch();
 
   const itemClass = (active: boolean) =>
     cn(
@@ -56,10 +59,11 @@ export function MobileBottomNav() {
       ),
     },
     {
-      href: "/shop",
       label: "Search",
-      active: pathname === "/shop" || pathname.startsWith("/shop/"),
+      active:
+        isSearchOpen || pathname === "/shop" || pathname.startsWith("/shop/"),
       icon: <Search className="h-5 w-5 shrink-0" strokeWidth={1.75} />,
+      onClick: openSearch,
     },
     {
       href: "/sign-in",
@@ -98,19 +102,39 @@ export function MobileBottomNav() {
       aria-label="Mobile navigation"
     >
       <div className="mx-auto flex h-14 max-w-lg items-stretch justify-around">
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            prefetch
-            onClick={onNavigateClick(item.href)}
-            className={itemClass(item.active)}
-            aria-current={item.active ? "page" : undefined}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {items.map((item) => {
+          const key = item.href ?? item.label;
+
+          if (item.onClick) {
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={item.onClick}
+                className={itemClass(item.active)}
+                aria-current={item.active ? "page" : undefined}
+                aria-label={item.label}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            );
+          }
+
+          return (
+            <Link
+              key={key}
+              href={item.href!}
+              prefetch
+              onClick={onNavigateClick(item.href!)}
+              className={itemClass(item.active)}
+              aria-current={item.active ? "page" : undefined}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

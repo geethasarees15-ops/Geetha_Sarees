@@ -4,6 +4,7 @@ import {
   AdminMobileNav,
 } from "@/components/admin/AdminMobileNav";
 import Branding from "./Branding";
+import { MobileSearchTrigger } from "./MobileSearchOverlay";
 import { SideMenu } from "./SideMenu";
 import Link from "next/link";
 import { Icons } from "./icons";
@@ -40,19 +41,22 @@ function MobileNavbar({ adminLayout }: Props) {
       </div>
 
       <div
-        className="absolute inset-y-0 right-0 z-[2] flex items-center"
+        className="absolute inset-y-0 right-0 z-[2] flex items-center gap-0.5"
         style={{ paddingRight: edgeInsetRight }}
       >
         {!adminLayout ? (
-          <Link
-            href="/cart"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-muted touch-manipulation"
-            aria-label="Cart"
-          >
-            <Suspense fallback={null}>
-              <Icons.cart className="h-5 w-5" />
-            </Suspense>
-          </Link>
+          <>
+            <MobileSearchTrigger className="h-11 w-11 shrink-0 touch-manipulation" />
+            <Link
+              href="/cart"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-muted touch-manipulation"
+              aria-label="Cart"
+            >
+              <Suspense fallback={null}>
+                <Icons.cart className="h-5 w-5" />
+              </Suspense>
+            </Link>
+          </>
         ) : (
           <span className="inline-flex h-11 w-11 shrink-0" aria-hidden />
         )}
