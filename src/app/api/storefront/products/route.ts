@@ -3,7 +3,11 @@ import {
   fetchProductSearchCached,
 } from "@/lib/storefront/product-queries";
 import { filterDraftProductsFromCollection } from "@/lib/storefront/filter-draft-products";
-import { parseProductListRequest } from "@/lib/storefront/search-params";
+import {
+  buildShopSearchVariables,
+  parseProductListRequest,
+  type StorefrontProductSearchVariables,
+} from "@/lib/storefront/search-params";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import type { SearchQueryVariables } from "@/gql/graphql";
 import { NextRequest, NextResponse } from "next/server";
@@ -35,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchResult = await fetchProductSearchCached(
-      variables as SearchQueryVariables,
+      variables as StorefrontProductSearchVariables,
     );
 
     return NextResponse.json(

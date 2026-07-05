@@ -1,6 +1,7 @@
 import {
   buildShopSearchVariables,
   featuredVariablesToQueryString,
+  formatShopPriceRangeHeading,
   pageSearchParamsToUrlSearchParams,
   searchVariablesToQueryString,
 } from "./search-params";
@@ -34,6 +35,19 @@ describe("buildShopSearchVariables", () => {
     expect(rebuilt.search).toBe(variables.search);
     expect(rebuilt.orderBy).toEqual(variables.orderBy);
     expect(searchVariablesToQueryString(variables)).toContain("search=silk");
+  });
+
+  it("maps shop by price URLs to inclusive GraphQL bounds", () => {
+    const variables = buildShopSearchVariables({
+      price_range: "300-499",
+      sort: "PRICE_LOW_TO_HIGH",
+    });
+
+    expect(variables.lower).toBe("300");
+    expect(variables.upper).toBe("499");
+    expect(formatShopPriceRangeHeading({ price_range: "300-499" })).toContain(
+      "300",
+    );
   });
 });
 

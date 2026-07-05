@@ -121,9 +121,7 @@ export function openCashfreeCheckout(params: {
     throw new Error("Cashfree return URL missing from checkout session.");
   }
 
-  if (
-    hasCashfreeCheckoutStarted(session.orderId, session.paymentSessionId)
-  ) {
+  if (hasCashfreeCheckoutStarted(session.orderId, session.paymentSessionId)) {
     return;
   }
 

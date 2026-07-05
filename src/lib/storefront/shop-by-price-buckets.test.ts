@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   buildShopByPriceBuckets,
   formatPriceRangeLabel,
@@ -9,6 +8,12 @@ describe("buildShopByPriceBuckets", () => {
   it("groups products into catalog buckets and skips empty tiers", () => {
     const buckets = buildShopByPriceBuckets(
       [
+        {
+          id: "0",
+          price: "20",
+          mediaKey: "budget.jpg",
+          mediaAlt: "Sample saree",
+        },
         {
           id: "1",
           price: "350",
@@ -38,17 +43,23 @@ describe("buildShopByPriceBuckets", () => {
       SHOP_BY_PRICE_BREAKPOINTS,
     );
 
-    expect(buckets).toHaveLength(4);
+    expect(buckets).toHaveLength(5);
     expect(buckets[0]).toMatchObject({
+      min: 1,
+      max: 299,
+      productCount: 1,
+      href: "/shop?price_range=1-299&sort=PRICE_LOW_TO_HIGH",
+    });
+    expect(buckets[1]).toMatchObject({
       min: 300,
       max: 499,
       productCount: 1,
       href: "/shop?price_range=300-499&sort=PRICE_LOW_TO_HIGH",
     });
-    expect(buckets[1]).toMatchObject({ min: 500, max: 799, productCount: 1 });
-    expect(buckets[2]).toMatchObject({ min: 1000, max: 1499, productCount: 1 });
-    expect(buckets[3]).toMatchObject({ min: 5000, max: 7000, productCount: 1 });
-    expect(buckets[2]?.imageKey).toBe("c.jpg");
+    expect(buckets[2]).toMatchObject({ min: 500, max: 799, productCount: 1 });
+    expect(buckets[3]).toMatchObject({ min: 1000, max: 1499, productCount: 1 });
+    expect(buckets[4]).toMatchObject({ min: 5000, max: 7000, productCount: 1 });
+    expect(buckets[3]?.imageKey).toBe("c.jpg");
   });
 
   it("uses discounted effective price for bucket placement", () => {

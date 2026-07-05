@@ -2846,6 +2846,159 @@ export type AllCollectionsQueryQuery = {
 
 export type SearchQueryVariables = Exact<{
   search?: InputMaybe<Scalars["String"]>;
+  matchedCollectionIds?: InputMaybe<
+    Array<Scalars["String"]> | Scalars["String"]
+  >;
+  first: Scalars["Int"];
+  after?: InputMaybe<Scalars["Cursor"]>;
+  orderBy?: InputMaybe<Array<ProductsOrderBy> | ProductsOrderBy>;
+}>;
+
+export type SearchQuery = {
+  __typename?: "Query";
+  productsCollection?: {
+    __typename?: "productsConnection";
+    edges: Array<{
+      __typename?: "productsEdge";
+      node: {
+        __typename?: "products";
+        id: string;
+        name: string;
+        description?: string | null;
+        rating: any;
+        slug: string;
+        badge?: string | null;
+        price: any;
+        stock?: number | null;
+        discountEnabled?: boolean | null;
+        discountPercent?: number | null;
+        featuredImage?: {
+          __typename?: "medias";
+          id: string;
+          key: string;
+          alt: string;
+        } | null;
+        collections?: {
+          __typename?: "collections";
+          id: string;
+          label: string;
+          slug: string;
+        } | null;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      endCursor?: string | null;
+    };
+  } | null;
+};
+
+export type SearchWithPriceQueryVariables = Exact<{
+  search?: InputMaybe<Scalars["String"]>;
+  lower?: InputMaybe<Scalars["BigFloat"]>;
+  upper?: InputMaybe<Scalars["BigFloat"]>;
+  matchedCollectionIds?: InputMaybe<
+    Array<Scalars["String"]> | Scalars["String"]
+  >;
+  first: Scalars["Int"];
+  after?: InputMaybe<Scalars["Cursor"]>;
+  orderBy?: InputMaybe<Array<ProductsOrderBy> | ProductsOrderBy>;
+}>;
+
+export type SearchWithPriceQuery = {
+  __typename?: "Query";
+  productsCollection?: {
+    __typename?: "productsConnection";
+    edges: Array<{
+      __typename?: "productsEdge";
+      node: {
+        __typename?: "products";
+        id: string;
+        name: string;
+        description?: string | null;
+        rating: any;
+        slug: string;
+        badge?: string | null;
+        price: any;
+        stock?: number | null;
+        discountEnabled?: boolean | null;
+        discountPercent?: number | null;
+        featuredImage?: {
+          __typename?: "medias";
+          id: string;
+          key: string;
+          alt: string;
+        } | null;
+        collections?: {
+          __typename?: "collections";
+          id: string;
+          label: string;
+          slug: string;
+        } | null;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      endCursor?: string | null;
+    };
+  } | null;
+};
+
+export type SearchInCollectionQueryVariables = Exact<{
+  search?: InputMaybe<Scalars["String"]>;
+  collections?: InputMaybe<Array<Scalars["String"]> | Scalars["String"]>;
+  matchedCollectionIds?: InputMaybe<
+    Array<Scalars["String"]> | Scalars["String"]
+  >;
+  first: Scalars["Int"];
+  after?: InputMaybe<Scalars["Cursor"]>;
+  orderBy?: InputMaybe<Array<ProductsOrderBy> | ProductsOrderBy>;
+}>;
+
+export type SearchInCollectionQuery = {
+  __typename?: "Query";
+  productsCollection?: {
+    __typename?: "productsConnection";
+    edges: Array<{
+      __typename?: "productsEdge";
+      node: {
+        __typename?: "products";
+        id: string;
+        name: string;
+        description?: string | null;
+        rating: any;
+        slug: string;
+        badge?: string | null;
+        price: any;
+        stock?: number | null;
+        discountEnabled?: boolean | null;
+        discountPercent?: number | null;
+        featuredImage?: {
+          __typename?: "medias";
+          id: string;
+          key: string;
+          alt: string;
+        } | null;
+        collections?: {
+          __typename?: "collections";
+          id: string;
+          label: string;
+          slug: string;
+        } | null;
+      };
+    }>;
+    pageInfo: {
+      __typename?: "PageInfo";
+      hasNextPage: boolean;
+      endCursor?: string | null;
+    };
+  } | null;
+};
+
+export type SearchInCollectionWithPriceQueryVariables = Exact<{
+  search?: InputMaybe<Scalars["String"]>;
   lower?: InputMaybe<Scalars["BigFloat"]>;
   upper?: InputMaybe<Scalars["BigFloat"]>;
   collections?: InputMaybe<Array<Scalars["String"]> | Scalars["String"]>;
@@ -2857,7 +3010,7 @@ export type SearchQueryVariables = Exact<{
   orderBy?: InputMaybe<Array<ProductsOrderBy> | ProductsOrderBy>;
 }>;
 
-export type SearchQuery = {
+export type SearchInCollectionWithPriceQuery = {
   __typename?: "Query";
   productsCollection?: {
     __typename?: "productsConnection";
@@ -6918,6 +7071,1204 @@ export const SearchDocument = {
           kind: "VariableDefinition",
           variable: {
             kind: "Variable",
+            name: { kind: "Name", value: "matchedCollectionIds" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "String" },
+              },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Cursor" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "productsOrderBy" },
+              },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "productsCollection" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "and" },
+                      value: {
+                        kind: "ListValue",
+                        values: [
+                          {
+                            kind: "ObjectValue",
+                            fields: [
+                              {
+                                kind: "ObjectField",
+                                name: { kind: "Name", value: "or" },
+                                value: {
+                                  kind: "ListValue",
+                                  values: [
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: { kind: "Name", value: "name" },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: { kind: "Name", value: "slug" },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: {
+                                            kind: "Name",
+                                            value: "description",
+                                          },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: {
+                                            kind: "Name",
+                                            value: "collection_id",
+                                          },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "in",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value:
+                                                      "matchedCollectionIds",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "FragmentSpread",
+                              name: {
+                                kind: "Name",
+                                value: "ProductCardFragment",
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ProductCardFragment" },
+      typeCondition: {
+        kind: "NamedType",
+        name: { kind: "Name", value: "products" },
+      },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "id" } },
+          { kind: "Field", name: { kind: "Name", value: "name" } },
+          { kind: "Field", name: { kind: "Name", value: "description" } },
+          { kind: "Field", name: { kind: "Name", value: "rating" } },
+          { kind: "Field", name: { kind: "Name", value: "slug" } },
+          { kind: "Field", name: { kind: "Name", value: "badge" } },
+          { kind: "Field", name: { kind: "Name", value: "price" } },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "discountEnabled" },
+            name: { kind: "Name", value: "discount_enabled" },
+          },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "discountPercent" },
+            name: { kind: "Name", value: "discount_percent" },
+          },
+          { kind: "Field", name: { kind: "Name", value: "stock" } },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "featuredImage" },
+            name: { kind: "Name", value: "medias" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "key" } },
+                { kind: "Field", name: { kind: "Name", value: "alt" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "collections" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "label" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<SearchQuery, SearchQueryVariables>;
+export const SearchWithPriceDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SearchWithPrice" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "search" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "lower" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "BigFloat" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "upper" },
+          },
+          type: {
+            kind: "NamedType",
+            name: { kind: "Name", value: "BigFloat" },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "matchedCollectionIds" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "String" },
+              },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Cursor" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "productsOrderBy" },
+              },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "productsCollection" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "and" },
+                      value: {
+                        kind: "ListValue",
+                        values: [
+                          {
+                            kind: "ObjectValue",
+                            fields: [
+                              {
+                                kind: "ObjectField",
+                                name: { kind: "Name", value: "or" },
+                                value: {
+                                  kind: "ListValue",
+                                  values: [
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: { kind: "Name", value: "name" },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: { kind: "Name", value: "slug" },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: {
+                                            kind: "Name",
+                                            value: "description",
+                                          },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: {
+                                            kind: "Name",
+                                            value: "collection_id",
+                                          },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "in",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value:
+                                                      "matchedCollectionIds",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                          {
+                            kind: "ObjectValue",
+                            fields: [
+                              {
+                                kind: "ObjectField",
+                                name: { kind: "Name", value: "price" },
+                                value: {
+                                  kind: "ObjectValue",
+                                  fields: [
+                                    {
+                                      kind: "ObjectField",
+                                      name: { kind: "Name", value: "gte" },
+                                      value: {
+                                        kind: "Variable",
+                                        name: { kind: "Name", value: "lower" },
+                                      },
+                                    },
+                                    {
+                                      kind: "ObjectField",
+                                      name: { kind: "Name", value: "lte" },
+                                      value: {
+                                        kind: "Variable",
+                                        name: { kind: "Name", value: "upper" },
+                                      },
+                                    },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "FragmentSpread",
+                              name: {
+                                kind: "Name",
+                                value: "ProductCardFragment",
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ProductCardFragment" },
+      typeCondition: {
+        kind: "NamedType",
+        name: { kind: "Name", value: "products" },
+      },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "id" } },
+          { kind: "Field", name: { kind: "Name", value: "name" } },
+          { kind: "Field", name: { kind: "Name", value: "description" } },
+          { kind: "Field", name: { kind: "Name", value: "rating" } },
+          { kind: "Field", name: { kind: "Name", value: "slug" } },
+          { kind: "Field", name: { kind: "Name", value: "badge" } },
+          { kind: "Field", name: { kind: "Name", value: "price" } },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "discountEnabled" },
+            name: { kind: "Name", value: "discount_enabled" },
+          },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "discountPercent" },
+            name: { kind: "Name", value: "discount_percent" },
+          },
+          { kind: "Field", name: { kind: "Name", value: "stock" } },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "featuredImage" },
+            name: { kind: "Name", value: "medias" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "key" } },
+                { kind: "Field", name: { kind: "Name", value: "alt" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "collections" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "label" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SearchWithPriceQuery,
+  SearchWithPriceQueryVariables
+>;
+export const SearchInCollectionDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SearchInCollection" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "search" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "collections" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "String" },
+              },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "matchedCollectionIds" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "String" },
+              },
+            },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "first" },
+          },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "after" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "Cursor" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "orderBy" },
+          },
+          type: {
+            kind: "ListType",
+            type: {
+              kind: "NonNullType",
+              type: {
+                kind: "NamedType",
+                name: { kind: "Name", value: "productsOrderBy" },
+              },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "productsCollection" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "filter" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "and" },
+                      value: {
+                        kind: "ListValue",
+                        values: [
+                          {
+                            kind: "ObjectValue",
+                            fields: [
+                              {
+                                kind: "ObjectField",
+                                name: { kind: "Name", value: "or" },
+                                value: {
+                                  kind: "ListValue",
+                                  values: [
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: { kind: "Name", value: "name" },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: { kind: "Name", value: "slug" },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: {
+                                            kind: "Name",
+                                            value: "description",
+                                          },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "ilike",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value: "search",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                    {
+                                      kind: "ObjectValue",
+                                      fields: [
+                                        {
+                                          kind: "ObjectField",
+                                          name: {
+                                            kind: "Name",
+                                            value: "collection_id",
+                                          },
+                                          value: {
+                                            kind: "ObjectValue",
+                                            fields: [
+                                              {
+                                                kind: "ObjectField",
+                                                name: {
+                                                  kind: "Name",
+                                                  value: "in",
+                                                },
+                                                value: {
+                                                  kind: "Variable",
+                                                  name: {
+                                                    kind: "Name",
+                                                    value:
+                                                      "matchedCollectionIds",
+                                                  },
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                          {
+                            kind: "ObjectValue",
+                            fields: [
+                              {
+                                kind: "ObjectField",
+                                name: { kind: "Name", value: "collection_id" },
+                                value: {
+                                  kind: "ObjectValue",
+                                  fields: [
+                                    {
+                                      kind: "ObjectField",
+                                      name: { kind: "Name", value: "in" },
+                                      value: {
+                                        kind: "Variable",
+                                        name: {
+                                          kind: "Name",
+                                          value: "collections",
+                                        },
+                                      },
+                                    },
+                                  ],
+                                },
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "first" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "after" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "after" },
+                },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "orderBy" },
+                value: {
+                  kind: "Variable",
+                  name: { kind: "Name", value: "orderBy" },
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "edges" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "node" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "id" },
+                            },
+                            {
+                              kind: "FragmentSpread",
+                              name: {
+                                kind: "Name",
+                                value: "ProductCardFragment",
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pageInfo" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "hasNextPage" },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "endCursor" },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ProductCardFragment" },
+      typeCondition: {
+        kind: "NamedType",
+        name: { kind: "Name", value: "products" },
+      },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "id" } },
+          { kind: "Field", name: { kind: "Name", value: "name" } },
+          { kind: "Field", name: { kind: "Name", value: "description" } },
+          { kind: "Field", name: { kind: "Name", value: "rating" } },
+          { kind: "Field", name: { kind: "Name", value: "slug" } },
+          { kind: "Field", name: { kind: "Name", value: "badge" } },
+          { kind: "Field", name: { kind: "Name", value: "price" } },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "discountEnabled" },
+            name: { kind: "Name", value: "discount_enabled" },
+          },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "discountPercent" },
+            name: { kind: "Name", value: "discount_percent" },
+          },
+          { kind: "Field", name: { kind: "Name", value: "stock" } },
+          {
+            kind: "Field",
+            alias: { kind: "Name", value: "featuredImage" },
+            name: { kind: "Name", value: "medias" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "key" } },
+                { kind: "Field", name: { kind: "Name", value: "alt" } },
+              ],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "collections" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "id" } },
+                { kind: "Field", name: { kind: "Name", value: "label" } },
+                { kind: "Field", name: { kind: "Name", value: "slug" } },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<
+  SearchInCollectionQuery,
+  SearchInCollectionQueryVariables
+>;
+export const SearchInCollectionWithPriceDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "SearchInCollectionWithPrice" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
+            name: { kind: "Name", value: "search" },
+          },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: {
+            kind: "Variable",
             name: { kind: "Name", value: "lower" },
           },
           type: {
@@ -7170,7 +8521,7 @@ export const SearchDocument = {
                                   fields: [
                                     {
                                       kind: "ObjectField",
-                                      name: { kind: "Name", value: "gt" },
+                                      name: { kind: "Name", value: "gte" },
                                       value: {
                                         kind: "Variable",
                                         name: { kind: "Name", value: "lower" },
@@ -7178,7 +8529,7 @@ export const SearchDocument = {
                                     },
                                     {
                                       kind: "ObjectField",
-                                      name: { kind: "Name", value: "lt" },
+                                      name: { kind: "Name", value: "lte" },
                                       value: {
                                         kind: "Variable",
                                         name: { kind: "Name", value: "upper" },
@@ -7357,7 +8708,10 @@ export const SearchDocument = {
       },
     },
   ],
-} as unknown as DocumentNode<SearchQuery, SearchQueryVariables>;
+} as unknown as DocumentNode<
+  SearchInCollectionWithPriceQuery,
+  SearchInCollectionWithPriceQueryVariables
+>;
 export const FeaturedProductsQueryDocument = {
   kind: "Document",
   definitions: [

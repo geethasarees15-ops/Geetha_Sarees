@@ -1,6 +1,14 @@
 import { OrderByDirection, type SearchQueryVariables } from "@/gql/graphql";
+import { formatPriceRangeLabel } from "@/lib/storefront/shop-by-price-buckets";
 
 export type ProductListMode = "search" | "featured";
+
+/** Variables passed to storefront product search (may include price/collection filters). */
+export type StorefrontProductSearchVariables = SearchQueryVariables & {
+  lower?: string;
+  upper?: string;
+  collections?: string[];
+};
 
 export function pageSearchParamsToUrlSearchParams(
   searchParams: Record<string, string | string[] | undefined>,
@@ -19,10 +27,38 @@ export function pageSearchParamsToUrlSearchParams(
   return params;
 }
 
+export function parsePriceRangeFromSearchParams(
+  searchParams: URLSearchParams | Record<string, string | string[] | undefined>,
+): { min: number; max: number } | null {
+  const params =
+    searchParams instanceof URLSearchParams
+      ? searchParams
+      : pageSearchParamsToUrlSearchParams(searchParams);
+  const raw = params.get("price_range")?.trim();
+  if (!raw) return null;
+
+  const [minRaw, maxRaw] = raw.split("-");
+  const min = Number.parseInt(minRaw ?? "", 10);
+  const max = Number.parseInt(maxRaw ?? "", 10);
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return null;
+  }
+
+  return { min, max };
+}
+
+export function formatShopPriceRangeHeading(
+  searchParams: URLSearchParams | Record<string, string | string[] | undefined>,
+): string | null {
+  const range = parsePriceRangeFromSearchParams(searchParams);
+  if (!range) return null;
+  return formatPriceRangeLabel(range.min, range.max);
+}
+
 export function buildShopSearchVariables(
   searchParams: URLSearchParams | Record<string, string | string[] | undefined>,
   collectionId?: string,
-): SearchQueryVariables {
+): StorefrontProductSearchVariables {
   const params =
     searchParams instanceof URLSearchParams
       ? new URLSearchParams(searchParams)
@@ -37,12 +73,14 @@ export function buildShopSearchVariables(
     throw new Error("Expected search mode");
   }
 
-  return variables as SearchQueryVariables;
+  return variables as StorefrontProductSearchVariables;
 }
 
 export function parseProductListRequest(searchParams: URLSearchParams): {
   mode: ProductListMode;
-  variables: SearchQueryVariables | { first: number; after?: string | null };
+  variables:
+    | StorefrontProductSearchVariables
+    | { first: number; after?: string | null };
 } {
   const mode = searchParams.get("mode") === "featured" ? "featured" : "search";
 
@@ -103,7 +141,7 @@ export function parseProductListRequest(searchParams: URLSearchParams): {
       orderBy = undefined;
   }
 
-  const variables: SearchQueryVariables = {
+  const variables: StorefrontProductSearchVariables = {
     search: search ? `%${search.trim()}%` : "%%",
     lower: range?.[0] ? `${range[0]}` : undefined,
     upper: range?.[1] ? `${range[1]}` : undefined,
@@ -117,7 +155,7 @@ export function parseProductListRequest(searchParams: URLSearchParams): {
 }
 
 export function searchVariablesToQueryString(
-  variables: SearchQueryVariables,
+  variables: StorefrontProductSearchVariables,
   collectionId?: string,
 ): string {
   const params = new URLSearchParams();

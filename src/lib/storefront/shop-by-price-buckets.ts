@@ -1,9 +1,9 @@
 import { getEffectiveProductPrice } from "@/lib/products/discount";
 import { formatPrice } from "@/lib/utils";
 
-/** Saree catalog spans roughly ₹300–₹7,000; buckets use clean retail breakpoints. */
+/** Retail breakpoints; first tier covers budget items below ₹300. */
 export const SHOP_BY_PRICE_BREAKPOINTS = [
-  300, 500, 800, 1000, 1500, 2000, 3000, 5000, 7000,
+  1, 300, 500, 800, 1000, 1500, 2000, 3000, 5000, 7000,
 ] as const;
 
 export type ShopByPriceProductInput = {

@@ -17,7 +17,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SelectCollection } from "@/lib/supabase/schema";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Icons } from "@/components/layouts/icons";
@@ -31,7 +30,7 @@ import FilterBadges from "./FilterBadges";
 import SortSelection from "./SortSelection";
 
 type Props = {
-  collectionsSection?: SelectCollection[];
+  collectionsSection?: { id: string; label: string }[];
   shopLayout?: boolean;
 };
 

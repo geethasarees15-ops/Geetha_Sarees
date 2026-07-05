@@ -10,6 +10,8 @@ import {
   type StorefrontProductsInitialData,
 } from "@/hooks/useStorefrontProducts";
 import { normalizeStorefrontSearchTerm } from "@/lib/storefront/search-utils";
+import { formatPriceRangeLabel } from "@/lib/storefront/shop-by-price-buckets";
+import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { SearchMatchingCollections } from "./SearchMatchingCollections";
 import SearchProductsGridSkeleton from "./SearchProductsGridSkeleton";
@@ -33,11 +35,23 @@ const SearchResultPage = ({
   initialData?: StorefrontProductsInitialData;
   initialDraftIds?: string[];
 }) => {
+  const searchParams = useSearchParams();
   const { productsCollection, matchingCollections, fetching, error } =
     useStorefrontProductSearch(variables, collectionId, { initialData });
   const { draftIds, draftLoaded } = useDraftProductIds(initialDraftIds);
 
   const searchTerm = normalizeStorefrontSearchTerm(variables.search);
+  const priceRangeLabel = useMemo(() => {
+    const raw = searchParams.get("price_range")?.trim();
+    if (!raw) return null;
+    const [minRaw, maxRaw] = raw.split("-");
+    const min = Number.parseInt(minRaw ?? "", 10);
+    const max = Number.parseInt(maxRaw ?? "", 10);
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+      return null;
+    }
+    return formatPriceRangeLabel(min, max);
+  }, [searchParams]);
 
   const visibleEdges = useMemo(
     () =>
@@ -71,6 +85,16 @@ const SearchResultPage = ({
             <p>
               No products or collections match{" "}
               <span className="font-bold">{searchTerm}</span>.
+            </p>
+          ) : null}
+
+          {!hasAnyMatches && !searchTerm && priceRangeLabel ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No sarees found in{" "}
+              <span className="font-semibold text-foreground">
+                {priceRangeLabel}
+              </span>
+              . Try another price range or browse all sarees.
             </p>
           ) : null}
 
