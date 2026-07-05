@@ -54,7 +54,9 @@ export function isReservationExpired(
   return expiresMs <= now;
 }
 
-export function hasActiveStockReservation(meta: Record<string, unknown>): boolean {
+export function hasActiveStockReservation(
+  meta: Record<string, unknown>,
+): boolean {
   return (
     meta.stockReserved === true &&
     meta.stockReleased !== true &&

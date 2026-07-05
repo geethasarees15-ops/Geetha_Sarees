@@ -143,7 +143,11 @@ export async function syncCashfreeOrderPayment(orderId: string) {
   const [updated] = await db
     .update(orders)
     .set({
-      order_status: isPaid ? "PREPARING" : isTerminalFailure ? "canceled" : "pending",
+      order_status: isPaid
+        ? "PREPARING"
+        : isTerminalFailure
+          ? "canceled"
+          : "pending",
       payment_status: isPaid ? "paid" : "unpaid",
       payment_method: "cashfree",
       payment_provider: "cashfree",

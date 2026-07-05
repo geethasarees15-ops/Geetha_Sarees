@@ -239,10 +239,7 @@ export async function reserveStockInTransaction(
 
   for (const line of sortedLines) {
     const productName = input.productNames.get(line.productId);
-    const selectedSize =
-      line.size ??
-      input.selectedSizes[line.productId] ??
-      "";
+    const selectedSize = line.size ?? input.selectedSizes[line.productId] ?? "";
 
     const productReserved = await lockAndDecrementProductStock(
       tx,
@@ -441,14 +438,14 @@ export async function loadOrderReservationLines(
     .where(eq(orderLines.orderId, order.id));
 
   const selectedSizes = Object.fromEntries(
-    Object.entries(meta.sizes as Record<string, unknown> | undefined ?? {}).map(
-      ([productId, size]) => [
-        productId,
-        String(size ?? "")
-          .trim()
-          .toUpperCase(),
-      ],
-    ),
+    Object.entries(
+      (meta.sizes as Record<string, unknown> | undefined) ?? {},
+    ).map(([productId, size]) => [
+      productId,
+      String(size ?? "")
+        .trim()
+        .toUpperCase(),
+    ]),
   );
 
   return lines.map((line) => ({

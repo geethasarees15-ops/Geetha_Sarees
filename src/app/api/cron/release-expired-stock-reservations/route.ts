@@ -13,7 +13,10 @@ function isAuthorized(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
-    return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, message: "Unauthorized" },
+      { status: 401 },
+    );
   }
 
   try {

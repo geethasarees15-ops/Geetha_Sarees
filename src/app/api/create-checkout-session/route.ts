@@ -65,7 +65,9 @@ const orderProductsSchema = z.object({
 type OrderProducts = CartItems;
 
 export async function POST(request: Request) {
-  const checkoutLimit = await checkCheckoutRateLimit(getRequestIp(request.headers));
+  const checkoutLimit = await checkCheckoutRateLimit(
+    getRequestIp(request.headers),
+  );
   if (checkoutLimit.limited) {
     return NextResponse.json(
       {
