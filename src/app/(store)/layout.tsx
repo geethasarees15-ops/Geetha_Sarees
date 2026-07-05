@@ -2,6 +2,7 @@ import { CartSheet } from "@/features/carts";
 import MainFooter from "@/components/layouts/MainFooter";
 import { MobileMenuProvider } from "@/components/layouts/MobileMenuContext";
 import Navbar from "@/components/layouts/MainNavbar";
+import { StoreHeaderMetrics } from "@/components/layouts/StoreHeaderMetrics";
 import { StoreFloatingActions } from "@/components/layouts/StoreFloatingActions";
 import { MobileBottomNav } from "@/components/layouts/MobileBottomNav";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -53,6 +54,7 @@ async function StoreLayout({ children }: Props) {
               <CourierChargesProvider config={courierCharges}>
                 <OfferCodesProvider config={offerCodes}>
                   <MobileMenuProvider>
+                    <StoreHeaderMetrics />
                     <Navbar />
                     <main className="w-full max-w-[100vw] overflow-x-hidden pt-[var(--store-header-offset-mobile)] md:pt-[var(--store-header-offset-desktop)] pb-[var(--mobile-nav-height)] md:pb-0">
                       {children}

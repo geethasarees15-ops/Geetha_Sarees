@@ -15,7 +15,7 @@ const edgeInsetRight = "max(0.75rem, env(safe-area-inset-right, 0px))" as const;
 
 function MobileNavbar({ adminLayout }: Props) {
   return (
-    <div className="relative h-16 min-h-16 w-full md:hidden">
+    <div className="relative h-[var(--store-nav-height-mobile)] min-h-[var(--store-nav-height-mobile)] w-full md:hidden">
       <div
         className="absolute inset-y-0 left-0 z-[2] flex items-center"
         style={{ paddingLeft: edgeInset }}

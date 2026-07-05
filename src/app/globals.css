@@ -37,16 +37,20 @@
     --mobile-nav-height: calc(
       3.5rem + max(0.5rem, env(safe-area-inset-bottom, 0px))
     );
+    /* Fallbacks — StoreHeaderMetrics overrides from shop-board.ts at runtime */
     --announcement-bar-height: 2.25rem;
+    --store-nav-content-height-mobile: 3.5rem;
+    --store-nav-content-height-desktop: 4.25rem;
     --store-nav-height-mobile: 4rem;
-    --store-nav-height-desktop: 3.125rem;
-    /* Peacock emblem inset inside header (2px top + bottom); does not change nav bar height */
-    --store-emblem-clearance: 0.125rem;
+    --store-nav-height-desktop: 5.25rem;
+    --store-emblem-clearance: 0.25rem;
     --store-header-offset-mobile: calc(
-      var(--announcement-bar-height) + var(--store-nav-height-mobile)
+      var(--announcement-bar-height) + var(--store-nav-height-mobile) +
+        var(--store-emblem-clearance)
     );
     --store-header-offset-desktop: calc(
-      var(--announcement-bar-height) + var(--store-nav-height-desktop)
+      var(--announcement-bar-height) + var(--store-nav-height-desktop) +
+        var(--store-emblem-clearance)
     );
     --admin-header-height-mobile: 3.75rem;
     --admin-header-height-desktop: 4.5rem;
@@ -165,6 +169,16 @@ html,
 body {
   overflow-x: hidden;
   max-width: 100%;
+}
+
+html {
+  scroll-padding-top: var(--store-header-offset-mobile);
+}
+
+@media (min-width: 768px) {
+  html {
+    scroll-padding-top: var(--store-header-offset-desktop);
+  }
 }
 
 @keyframes whatsapp-glow {
