@@ -1,26 +1,17 @@
 import { Shell } from "@/components/layouts/Shell";
 import { BuyAgainCard, OrdersList } from "@/features/orders/components";
+import { BuyAgainCardFragment } from "@/features/orders/components/BuyAgainCard";
 import { gql } from "@/gql";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth/admin";
+import { getUserOrdersList } from "@/lib/orders/getUserOrdersList";
 import { getClient } from "@/lib/urql";
-import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
-import React from "react";
+import { redirect } from "next/navigation";
 
-const OrderPageQuery = gql(/* GraphQL */ `
-  query OrderPageQuery($first: Int!, $userId: UUID) {
-    ordersCollection(
-      first: $first
-      orderBy: [{ created_at: DescNullsLast }]
-      filter: { user_id: { eq: $userId } }
-    ) {
-      __typename
-      edges {
-        ...OrdersListFragment
-      }
-    }
+void BuyAgainCardFragment;
 
-    productsCollection(first: 8) {
+const BuyAgainProductsQuery = gql(/* GraphQL */ `
+  query BuyAgainProductsQuery($first: Int!) {
+    productsCollection(first: $first) {
       edges {
         ...BuyAgainCardFragment
       }
@@ -29,35 +20,29 @@ const OrderPageQuery = gql(/* GraphQL */ `
 `);
 
 async function OrderPage() {
-  const cookieStore = cookies();
-  const supabase = createClient({ cookieStore });
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
+  const user = await getSessionUser();
+  if (!user) {
     redirect("/sign-in");
   }
 
-  const { data, error } = await getClient().query(OrderPageQuery, {
-    first: 4,
-    userId: user.id,
-  });
+  const [orders, buyAgainResult] = await Promise.all([
+    getUserOrdersList(user.id),
+    getClient().query(BuyAgainProductsQuery, { first: 8 }),
+  ]);
 
-  if (!data) return notFound();
+  const buyAgainProducts = buyAgainResult.data?.productsCollection?.edges ?? [];
 
   return (
     <Shell layout="narrow">
-      <h1 className="pb-8 text-3xl font-semibold border-b">Orders</h1>
+      <h1 className="border-b pb-8 text-3xl font-semibold">Orders</h1>
 
       <div className="grid grid-cols-12 gap-x-5">
         <section className="col-span-9">
-          <OrdersList orders={data.ordersCollection.edges} />
+          <OrdersList orders={orders} />
         </section>
 
         <section className="col-span-3">
-          <BuyAgainCard products={data.productsCollection.edges} />
+          <BuyAgainCard products={buyAgainProducts} />
         </section>
       </div>
     </Shell>

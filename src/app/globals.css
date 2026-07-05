@@ -473,3 +473,16 @@ html {
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
+
+@keyframes checkout-progress-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.checkout-progress-shimmer {
+  animation: checkout-progress-shimmer 1.35s ease-in-out infinite;
+}

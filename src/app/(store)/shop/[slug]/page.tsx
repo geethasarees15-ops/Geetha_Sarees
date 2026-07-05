@@ -25,6 +25,8 @@ import {
   ProductPriceDisplay,
 } from "@/features/products/components/ProductPriceDisplay";
 import { getEffectiveProductPrice } from "@/lib/products/discount";
+import { toProductDiscountFields } from "@/lib/products/pricing";
+import { getCartProductPricingByIds } from "@/lib/storefront/cart-pricing";
 import { keytoUrl } from "@/lib/utils";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { Metadata } from "next";
@@ -80,6 +82,11 @@ async function ProductDetailPage({ params }: Props) {
   } = productEdge.node;
   const productSlug = params.slug;
   const sizeConfig = await getProductSizeConfig(id);
+  const livePricing = await getCartProductPricingByIds([id]);
+  const resolvedPricing = livePricing[id];
+  const pricingProduct = resolvedPricing
+    ? toProductDiscountFields(resolvedPricing)
+    : productEdge.node;
   const hasConfiguredSizes =
     sizeConfig.enabled &&
     sizeConfig.options.some((option) => Number(option.qty ?? 0) > 0);
@@ -108,7 +115,7 @@ async function ProductDetailPage({ params }: Props) {
             name,
             slug: productSlug,
             description,
-            price: getEffectiveProductPrice(productEdge.node),
+            price: getEffectiveProductPrice(pricingProduct),
             imageUrl: featuredImage?.key ? keytoUrl(featuredImage.key) : null,
             inStock: Number(stock ?? 0) > 0,
           }),
@@ -118,7 +125,7 @@ async function ProductDetailPage({ params }: Props) {
         <div className="space-y-8 relative col-span-12 md:col-span-7">
           <div className="relative">
             <ProductDiscountBadge
-              product={productEdge.node}
+              product={pricingProduct}
               className="absolute top-3 left-3 z-10"
             />
             <ProductImageShowcase data={productEdge.node} />
@@ -132,7 +139,7 @@ async function ProductDetailPage({ params }: Props) {
                 {name}
               </h1>
               <ProductPriceDisplay
-                product={productEdge.node}
+                product={pricingProduct}
                 className="mb-3"
                 saleClassName="text-2xl"
                 originalClassName="text-base"

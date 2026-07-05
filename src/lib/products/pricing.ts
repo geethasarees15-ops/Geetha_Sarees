@@ -12,6 +12,17 @@ export type ResolvedProductPricing = {
   discountPercent: number | null;
 };
 
+/** Build display/checkout fields from a resolved pricing snapshot. */
+export function toProductDiscountFields(
+  resolved: ResolvedProductPricing,
+): ProductDiscountFields {
+  return {
+    price: resolved.listPrice,
+    discountEnabled: resolved.discountActive,
+    discountPercent: resolved.discountPercent,
+  };
+}
+
 /** Normalize pricing fields from Drizzle, GraphQL, or API payloads. */
 export function normalizeProductPricingFields(
   raw: Record<string, unknown>,

@@ -1,10 +1,11 @@
-import { getProductsByIds } from "@/_actions/products";
 import { publicErrorMessage } from "@/lib/api/public-error";
 import { checkCheckoutRateLimit, getRequestIp } from "@/lib/auth/rate-limit";
 import {
-  resolveProductPricing,
-  resolveProductUnitPrice,
-} from "@/lib/products/pricing";
+  buildCheckoutLineItems,
+  buildCheckoutLinePricingRecord,
+  calcCheckoutSubtotal,
+} from "@/lib/checkout/build-checkout-lines";
+import { resolveOrderUserId } from "@/lib/orders/resolve-order-user-id";
 import { resolveCheckoutPaymentEnvironment } from "@/lib/orders/checkout-environment";
 import { mergePaymentMeta } from "@/lib/orders/payment-meta";
 import {
@@ -21,7 +22,7 @@ import { resolveCheckoutPaymentProvider } from "@/lib/payments/resolve-checkout-
 import { stripe } from "@/lib/stripe";
 import { getProductSizeConfigsByProductIds } from "@/lib/products/sizeConfig";
 import db from "@/lib/supabase/db";
-import { SelectProducts, address, orders } from "@/lib/supabase/schema";
+import { address, orders } from "@/lib/supabase/schema";
 import {
   calculateCourierCharge,
   calculateGstAmount,
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
     const preferCashfree = checkoutProvider === "cashfree";
     const preferPhonePe = checkoutProvider === "phonepe";
 
-    const productsQuantity = await mergeProductDetailsWithQuantities(
+    const productsQuantity = await buildCheckoutLineItems(
       checkout.orderProducts as OrderProducts,
     );
     if (stockControlSetting?.isEnabled) {
@@ -231,7 +232,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const subtotalAmount = calcSubtotal(productsQuantity);
+    const subtotalAmount = calcCheckoutSubtotal(productsQuantity);
     const normalizedPromoCode = String(checkout.promoCode ?? "")
       .trim()
       .toUpperCase()
@@ -276,20 +277,7 @@ export async function POST(request: Request) {
     const reserveStock =
       Boolean(stockControlSetting?.isEnabled) &&
       shouldReserveStockAtCheckout(paymentEnvironment);
-    const linePricing = Object.fromEntries(
-      productsQuantity.map((product) => {
-        const pricing = resolveProductPricing(product);
-        return [
-          product.id,
-          {
-            listPrice: pricing.listPrice,
-            unitPrice: pricing.unitPrice,
-            discountActive: pricing.discountActive,
-            discountPercent: pricing.discountPercent,
-          },
-        ];
-      }),
-    );
+    const linePricing = buildCheckoutLinePricingRecord(productsQuantity);
 
     const selectedSizes = Object.fromEntries(
       Object.entries(checkout.orderProducts).map(([id, value]) => [
@@ -325,7 +313,7 @@ export async function POST(request: Request) {
       const created = await tx
         .insert(orders)
         .values({
-          user_id: !checkout.guest ? user?.id ?? null : null,
+          user_id: resolveOrderUserId(user?.id),
           name: checkout.shipping.fullName,
           email: checkout.shipping.email,
           addressId: checkout.shipping.addressId,
@@ -349,10 +337,10 @@ export async function POST(request: Request) {
         .returning();
 
       await tx.insert(orderLines).values(
-        productsQuantity.map(({ id, quantity, price }) => ({
+        productsQuantity.map(({ id, quantity, pricing }) => ({
           productId: id,
           quantity,
-          price: `${price}`,
+          price: `${pricing.unitPrice}`,
           orderId: created[0].id,
         })),
       );
@@ -547,29 +535,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-const calcSubtotal = (
-  productsQuantity: (SelectProducts & { quantity: number })[],
-) =>
-  productsQuantity.reduce((acc, cur) => {
-    return acc + cur.quantity * resolveProductUnitPrice(cur);
-  }, 0);
-
-const mergeProductDetailsWithQuantities = async (
-  orderProducts: OrderProducts,
-): Promise<(SelectProducts & { quantity: number })[]> => {
-  const productIds = Object.keys(orderProducts);
-  const products = await getProductsByIds(productIds);
-
-  const orderDetails = products.map((product) => {
-    const quantity = orderProducts[product.id].quantity;
-    const unitPrice = resolveProductUnitPrice(product);
-    return {
-      ...product,
-      price: String(unitPrice),
-      quantity,
-    };
-  });
-
-  return orderDetails;
-};
