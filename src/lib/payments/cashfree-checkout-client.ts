@@ -146,7 +146,8 @@ async function openCashfreeCheckoutViaSdk(params: {
 }): Promise<void> {
   const sdk = await loadCashfreeSdk();
   const cashfree = sdk({
-    mode: params.session.environment === "production" ? "production" : "sandbox",
+    mode:
+      params.session.environment === "production" ? "production" : "sandbox",
   });
 
   const result = await withCheckoutTimeout(
@@ -195,7 +196,10 @@ export async function openCashfreeCheckout(params: {
     });
     return;
   } catch (error) {
-    console.warn("[cashfree] SDK checkout failed, using hosted form fallback:", error);
+    console.warn(
+      "[cashfree] SDK checkout failed, using hosted form fallback:",
+      error,
+    );
   }
 
   submitCashfreeHostedCheckoutForm({
