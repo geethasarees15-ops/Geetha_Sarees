@@ -6,8 +6,8 @@ const ANNOUNCEMENT_BAR_PX = 36;
 /** Matches `MobileNavbar` row height (`h-16`) */
 const NAV_MOBILE_ROW_PX = 64;
 
-/** Matches desktop nav container `py-2` (8px × 2) */
-const NAV_DESKTOP_PADDING_Y_PX = 16;
+/** Matches desktop nav container `py-1` (4px × 2) */
+const NAV_DESKTOP_PADDING_Y_PX = 8;
 
 /** Matches `.brand-board-lockup--nav` in globals.css */
 const NAV_MOBILE_LOCKUP_SCALE = 0.94;

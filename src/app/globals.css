@@ -42,7 +42,7 @@
     --store-nav-content-height-mobile: 3.5rem;
     --store-nav-content-height-desktop: 4.25rem;
     --store-nav-height-mobile: 4rem;
-    --store-nav-height-desktop: 5.25rem;
+    --store-nav-height-desktop: 4.625rem;
     --store-emblem-clearance: 0.25rem;
     --store-header-offset-mobile: calc(
       var(--announcement-bar-height) + var(--store-nav-height-mobile) +
