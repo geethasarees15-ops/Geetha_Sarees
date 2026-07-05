@@ -1,10 +1,18 @@
 import { getProductsByIds } from "@/_actions/products";
 import { publicErrorMessage } from "@/lib/api/public-error";
+import { checkCheckoutRateLimit, getRequestIp } from "@/lib/auth/rate-limit";
 import {
   resolveProductPricing,
   resolveProductUnitPrice,
 } from "@/lib/products/pricing";
 import { resolveCheckoutPaymentEnvironment } from "@/lib/orders/checkout-environment";
+import { mergePaymentMeta } from "@/lib/orders/payment-meta";
+import {
+  releaseStockReservation,
+  reserveStockInTransaction,
+  shouldReserveStockAtCheckout,
+  StockReservationError,
+} from "@/lib/orders/stock-reservation";
 import type { CartItems } from "@/features/carts";
 import { createPhonePePayment } from "@/lib/payments/phonepe";
 import { createCashfreePayment } from "@/lib/payments/cashfree";
@@ -57,6 +65,17 @@ const orderProductsSchema = z.object({
 type OrderProducts = CartItems;
 
 export async function POST(request: Request) {
+  const checkoutLimit = await checkCheckoutRateLimit(getRequestIp(request.headers));
+  if (checkoutLimit.limited) {
+    return NextResponse.json(
+      {
+        message:
+          "Too many checkout attempts. Please wait a minute and try again.",
+      },
+      { status: 429 },
+    );
+  }
+
   const payload = await request.json().catch(() => null);
 
   const validation = orderProductsSchema.safeParse(payload ?? {});
@@ -100,6 +119,8 @@ export async function POST(request: Request) {
       );
     }
   }
+
+  let createdOrderId: string | null = null;
 
   try {
     const [
@@ -249,6 +270,9 @@ export async function POST(request: Request) {
       cashfreeConfig,
       phonePeConfig,
     });
+    const reserveStock =
+      Boolean(stockControlSetting?.isEnabled) &&
+      shouldReserveStockAtCheckout(paymentEnvironment);
     const linePricing = Object.fromEntries(
       productsQuantity.map((product) => {
         const pricing = resolveProductPricing(product);
@@ -264,7 +288,37 @@ export async function POST(request: Request) {
       }),
     );
 
+    const selectedSizes = Object.fromEntries(
+      Object.entries(checkout.orderProducts).map(([id, value]) => [
+        id,
+        String(value.size ?? "")
+          .trim()
+          .toUpperCase(),
+      ]),
+    );
+    const productNames = new Map(
+      productsQuantity.map((product) => [product.id, product.name]),
+    );
+
     const insertedOrder = await db.transaction(async (tx) => {
+      const basePaymentMeta = {
+        subtotalAmount,
+        discountAmount,
+        discountPercentage,
+        promoCode: matchedOffer?.code ?? null,
+        discountedSubtotal,
+        courierCharge,
+        gstAmount,
+        gstEnabled: courierConfig.gstEnabled,
+        gstPercentage: courierConfig.gstPercentage,
+        courierState: checkout.shipping.state,
+        courierRule: courierBreakdown.ruleApplied,
+        totalQuantity,
+        paymentEnvironment,
+        linePricing,
+        sizes: selectedSizes,
+      };
+
       const created = await tx
         .insert(orders)
         .values({
@@ -287,30 +341,7 @@ export async function POST(request: Request) {
               ? "phonepe"
               : "stripe",
           customer_mobile: checkout.shipping.mobile,
-          payment_meta: {
-            subtotalAmount,
-            discountAmount,
-            discountPercentage,
-            promoCode: matchedOffer?.code ?? null,
-            discountedSubtotal,
-            courierCharge,
-            gstAmount,
-            gstEnabled: courierConfig.gstEnabled,
-            gstPercentage: courierConfig.gstPercentage,
-            courierState: checkout.shipping.state,
-            courierRule: courierBreakdown.ruleApplied,
-            totalQuantity,
-            paymentEnvironment,
-            linePricing,
-            sizes: Object.fromEntries(
-              Object.entries(checkout.orderProducts).map(([id, value]) => [
-                id,
-                String(value.size ?? "")
-                  .trim()
-                  .toUpperCase(),
-              ]),
-            ),
-          },
+          payment_meta: basePaymentMeta,
         })
         .returning();
 
@@ -323,10 +354,31 @@ export async function POST(request: Request) {
         })),
       );
 
+      if (reserveStock) {
+        const reservationMeta = await reserveStockInTransaction(tx, {
+          lines: productsQuantity.map((product) => ({
+            productId: product.id,
+            quantity: product.quantity,
+            size: selectedSizes[product.id] || undefined,
+          })),
+          selectedSizes,
+          sizeConfigs,
+          productNames,
+        });
+
+        await tx
+          .update(orders)
+          .set({
+            payment_meta: mergePaymentMeta(basePaymentMeta, reservationMeta),
+          })
+          .where(eq(orders.id, created[0].id));
+      }
+
       return created;
     });
 
     const order = insertedOrder[0];
+    createdOrderId = order.id;
     const accessToken = createOrderAccessToken(order.id, order.createdAt);
 
     if (preferCashfree) {
@@ -351,11 +403,10 @@ export async function POST(request: Request) {
         .set({
           payment_reference:
             payment.cashfreeCfOrderId ?? payment.cashfreeOrderId,
-          payment_meta: {
-            ...existingMeta,
+          payment_meta: mergePaymentMeta(existingMeta, {
             cashfreeOrderId: payment.cashfreeOrderId,
             cashfreeCfOrderId: payment.cashfreeCfOrderId,
-          },
+          }),
         })
         .where(eq(orders.id, order.id));
 
@@ -463,6 +514,18 @@ export async function POST(request: Request) {
       sessionId: session.id,
     });
   } catch (err) {
+    if (createdOrderId) {
+      await releaseStockReservation(createdOrderId, "checkout_failed").catch(
+        (releaseErr) => {
+          console.error("[checkout] stock release failed:", releaseErr);
+        },
+      );
+    }
+
+    if (err instanceof StockReservationError) {
+      return NextResponse.json({ message: err.message }, { status: 409 });
+    }
+
     console.error("[checkout] create-checkout-session failed:", err);
     return NextResponse.json(
       {

@@ -3,7 +3,13 @@ import {
   getIntegrationSetting,
   INTEGRATION_KEYS,
 } from "@/lib/integrations/settings";
+import { mergePaymentMeta, readPaymentMeta } from "@/lib/orders/payment-meta";
 import { shouldDeductStockForPaidOrder } from "@/lib/orders/payment-fulfillment";
+import {
+  confirmStockReservation,
+  hasActiveStockReservation,
+  releaseStockReservation,
+} from "@/lib/orders/stock-reservation";
 import {
   getProductSizeConfigKey,
   normalizeProductSizeConfig,
@@ -23,10 +29,6 @@ type FulfillmentResult = {
   fulfilled: boolean;
   skippedReason?: string;
 };
-
-function readPaymentMeta(order: SelectOrders): Record<string, unknown> {
-  return (order.payment_meta as Record<string, unknown> | null) ?? {};
-}
 
 function readSelectedSizes(meta: Record<string, unknown>) {
   const raw = meta.sizes;
@@ -75,7 +77,7 @@ export async function fulfillPaidOrderInventory(
     return { fulfilled: false, skippedReason: "not_paid" };
   }
 
-  const meta = readPaymentMeta(order);
+  const meta = readPaymentMeta(order.payment_meta);
   if (meta.inventoryFulfilled === true) {
     return { fulfilled: true, skippedReason: "already_fulfilled" };
   }
@@ -86,14 +88,17 @@ export async function fulfillPaidOrderInventory(
   });
 
   if (!shouldDeduct) {
+    if (hasActiveStockReservation(meta)) {
+      await releaseStockReservation(orderId, "non_production_payment");
+    }
+
     await db
       .update(orders)
       .set({
-        payment_meta: {
-          ...meta,
+        payment_meta: mergePaymentMeta(meta, {
           inventoryFulfilled: false,
           inventorySkippedReason: "test_or_non_production_payment",
-        },
+        }),
       })
       .where(eq(orders.id, order.id));
 
@@ -108,6 +113,14 @@ export async function fulfillPaidOrderInventory(
   );
   if (!stockControlSetting?.isEnabled) {
     return { fulfilled: false, skippedReason: "stock_control_disabled" };
+  }
+
+  if (hasActiveStockReservation(meta)) {
+    const confirmed = await confirmStockReservation(orderId);
+    return {
+      fulfilled: confirmed.confirmed,
+      skippedReason: confirmed.skippedReason,
+    };
   }
 
   const lines = await db
@@ -184,11 +197,10 @@ export async function fulfillPaidOrderInventory(
     await tx
       .update(orders)
       .set({
-        payment_meta: {
-          ...meta,
+        payment_meta: mergePaymentMeta(meta, {
           inventoryFulfilled: true,
           inventoryFulfilledAt: new Date().toISOString(),
-        },
+        }),
       })
       .where(eq(orders.id, order.id));
   });

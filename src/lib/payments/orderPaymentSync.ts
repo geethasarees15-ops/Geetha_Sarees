@@ -4,11 +4,34 @@ import { notifyOrderWhatsAppTargets } from "@/lib/integrations/whatsapp";
 import { fetchPhonePePaymentStatus } from "@/lib/payments/phonepe";
 import { fetchCashfreeOrderStatus } from "@/lib/payments/cashfree";
 import { fulfillPaidOrderInventory } from "@/lib/orders/inventory-fulfillment";
+import { mergePaymentMeta, readPaymentMeta } from "@/lib/orders/payment-meta";
+import {
+  isReservationExpired,
+  releaseStockReservation,
+} from "@/lib/orders/stock-reservation";
 import { eq } from "drizzle-orm";
 
 type SyncInput =
   | { orderId: string; merchantTransactionId?: string | null }
   | { orderId?: string | null; merchantTransactionId: string };
+
+async function maybeReleaseUnpaidReservation(orderId: string, reason: string) {
+  await releaseStockReservation(orderId, reason).catch((error) => {
+    console.warn("[payments] stock release skipped:", error);
+  });
+}
+
+async function maybeReleaseExpiredReservation(orderId: string) {
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+  });
+  if (!order || order.payment_status === "paid") return;
+
+  const meta = readPaymentMeta(order.payment_meta);
+  if (isReservationExpired(meta)) {
+    await maybeReleaseUnpaidReservation(orderId, "reservation_expired");
+  }
+}
 
 export async function syncPhonePeOrderPayment(input: SyncInput) {
   const currentOrder = input.orderId
@@ -38,22 +61,24 @@ export async function syncPhonePeOrderPayment(input: SyncInput) {
   const status = await fetchPhonePePaymentStatus(merchantTransactionId);
   const state = status?.state ?? "PENDING";
   const isPaid = state === "COMPLETED";
+  const isFailed = state === "FAILED";
+  const existingMeta = readPaymentMeta(currentOrder.payment_meta);
 
   const [updated] = await db
     .update(orders)
     .set({
-      order_status: isPaid ? "PREPARING" : "pending",
+      order_status: isPaid ? "PREPARING" : isFailed ? "canceled" : "pending",
       payment_status: isPaid ? "paid" : "unpaid",
       payment_method: "phonepe",
       payment_provider: "phonepe",
       payment_reference: status?.transactionId ?? merchantTransactionId,
       phonepe_transaction_id: status?.transactionId ?? null,
       phonepe_merchant_transaction_id: merchantTransactionId,
-      payment_meta: {
+      payment_meta: mergePaymentMeta(existingMeta, {
         phonepeState: state,
         responseCode: status?.responseCode ?? null,
         paymentInstrument: status?.paymentInstrument ?? null,
-      },
+      }),
     })
     .where(eq(orders.id, currentOrder.id))
     .returning();
@@ -85,6 +110,10 @@ export async function syncPhonePeOrderPayment(input: SyncInput) {
     }
 
     await fulfillPaidOrderInventory(updated.id);
+  } else if (isFailed) {
+    await maybeReleaseUnpaidReservation(updated.id, "payment_failed");
+  } else {
+    await maybeReleaseExpiredReservation(updated.id);
   }
 
   return {
@@ -106,24 +135,28 @@ export async function syncCashfreeOrderPayment(orderId: string) {
   const status = await fetchCashfreeOrderStatus(orderId);
   const state = String(status.order_status ?? "ACTIVE").toUpperCase();
   const isPaid = state === "PAID";
+  const isTerminalFailure = ["EXPIRED", "TERMINATED", "CANCELLED"].includes(
+    state,
+  );
+  const existingMeta = readPaymentMeta(currentOrder.payment_meta);
 
   const [updated] = await db
     .update(orders)
     .set({
-      order_status: isPaid ? "PREPARING" : "pending",
+      order_status: isPaid ? "PREPARING" : isTerminalFailure ? "canceled" : "pending",
       payment_status: isPaid ? "paid" : "unpaid",
       payment_method: "cashfree",
       payment_provider: "cashfree",
       payment_reference: status.cf_order_id
         ? String(status.cf_order_id)
         : orderId,
-      payment_meta: {
+      payment_meta: mergePaymentMeta(existingMeta, {
         cashfreeOrderId: status.order_id ?? orderId,
         cashfreeCfOrderId: status.cf_order_id
           ? String(status.cf_order_id)
           : null,
         cashfreeOrderStatus: state,
-      },
+      }),
     })
     .where(eq(orders.id, currentOrder.id))
     .returning();
@@ -155,6 +188,10 @@ export async function syncCashfreeOrderPayment(orderId: string) {
     }
 
     await fulfillPaidOrderInventory(updated.id);
+  } else if (isTerminalFailure) {
+    await maybeReleaseUnpaidReservation(updated.id, "payment_failed");
+  } else {
+    await maybeReleaseExpiredReservation(updated.id);
   }
 
   return {

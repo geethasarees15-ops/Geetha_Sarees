@@ -75,13 +75,34 @@ export async function checkAuthRateLimit(
   const windowSec = options?.windowSec ?? DEFAULT_WINDOW_SEC;
   const key = `auth:rl:${ip}`;
 
-  const count = await upstashIncrement(key, windowSec);
+  return checkRateLimit(key, { limit, windowSec });
+}
+
+const CHECKOUT_DEFAULT_LIMIT = 10;
+const CHECKOUT_DEFAULT_WINDOW_SEC = 60;
+
+export async function checkCheckoutRateLimit(
+  ip: string,
+  options?: { limit?: number; windowSec?: number },
+): Promise<RateLimitResult> {
+  const limit = options?.limit ?? CHECKOUT_DEFAULT_LIMIT;
+  const windowSec = options?.windowSec ?? CHECKOUT_DEFAULT_WINDOW_SEC;
+  const key = `checkout:rl:${ip}`;
+
+  return checkRateLimit(key, { limit, windowSec });
+}
+
+async function checkRateLimit(
+  key: string,
+  options: { limit: number; windowSec: number },
+): Promise<RateLimitResult> {
+  const count = await upstashIncrement(key, options.windowSec);
   if (count !== null) {
     return {
-      limited: count > limit,
-      remaining: Math.max(0, limit - count),
+      limited: count > options.limit,
+      remaining: Math.max(0, options.limit - count),
     };
   }
 
-  return { limited: false, remaining: limit };
+  return { limited: false, remaining: options.limit };
 }

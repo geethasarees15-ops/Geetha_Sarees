@@ -1,6 +1,8 @@
 import { env } from "@/env.mjs";
 import { notifyOrderWhatsAppTargets } from "@/lib/integrations/whatsapp";
 import { fulfillPaidOrderInventory } from "@/lib/orders/inventory-fulfillment";
+import { mergePaymentMeta, readPaymentMeta } from "@/lib/orders/payment-meta";
+import { releaseStockReservation } from "@/lib/orders/stock-reservation";
 import { stripe } from "@/lib/stripe";
 import db from "@/lib/supabase/db";
 import { carts, PaymentStatus, orders } from "@/lib/supabase/schema";
@@ -62,6 +64,10 @@ export async function POST(request: NextRequest) {
 
           if (checkoutSession.status === "complete") {
             const customer_details = checkoutSession.customer_details;
+            const existingOrder = await db.query.orders.findFirst({
+              where: eq(orders.id, checkoutSession.client_reference_id ?? ""),
+            });
+            const existingMeta = readPaymentMeta(existingOrder?.payment_meta);
 
             const updatedOrder = await db
               .update(orders)
@@ -77,9 +83,9 @@ export async function POST(request: NextRequest) {
                 payment_reference: paymentIntentId,
                 customer_mobile: customerMobile || null,
                 addressId: shippingAddressId || null,
-                payment_meta: {
+                payment_meta: mergePaymentMeta(existingMeta, {
                   stripeSessionId: checkoutSession.id,
-                },
+                }),
               })
               .where(eq(orders.id, checkoutSession.client_reference_id))
               .returning();
@@ -114,7 +120,7 @@ export async function POST(request: NextRequest) {
               await fulfillPaidOrderInventory(order.id);
             }
           } else {
-            const insertedOrder = await db
+            await db
               .update(orders)
               .set({
                 order_status: "canceled",
@@ -122,8 +128,16 @@ export async function POST(request: NextRequest) {
                 payment_status: checkoutSession.payment_status as PaymentStatus,
                 payment_provider: "stripe",
               })
-              .where(eq(orders.id, checkoutSession.client_reference_id))
-              .returning();
+              .where(eq(orders.id, checkoutSession.client_reference_id));
+
+            if (checkoutSession.client_reference_id) {
+              await releaseStockReservation(
+                checkoutSession.client_reference_id,
+                "payment_canceled",
+              ).catch((error) => {
+                console.warn("[stripe/webhook] stock release skipped:", error);
+              });
+            }
           }
           break;
         default:
