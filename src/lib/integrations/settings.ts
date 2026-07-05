@@ -393,7 +393,8 @@ export async function getCashfreeConfig(): Promise<CashfreeConfig | null> {
     environmentRaw === "production" ? "production" : "sandbox";
   const resolvedBaseUrl = resolveCashfreeBaseUrl({ environment, baseUrl });
 
-  if (!clientId || !clientSecret || !resolvedBaseUrl || !apiVersion) return null;
+  if (!clientId || !clientSecret || !resolvedBaseUrl || !apiVersion)
+    return null;
 
   return {
     clientId,

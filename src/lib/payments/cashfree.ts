@@ -1,5 +1,12 @@
 import crypto from "crypto";
 import { getCashfreeConfig } from "@/lib/integrations/settings";
+import {
+  buildCashfreeNotifyUrl,
+  buildCashfreeReturnUrl,
+  validateCashfreeOrderAmount,
+  validateCashfreeOrderId,
+  validateCashfreeRuntimeConfig,
+} from "@/lib/payments/cashfree-standards";
 import { getURL } from "@/lib/utils";
 import { normalizeIndianMobile } from "@/lib/payments/phonepe";
 
@@ -55,13 +62,29 @@ export async function createCashfreePayment(
   const config = await getCashfreeConfig();
   if (!config) return null;
 
+  const configError = validateCashfreeRuntimeConfig(config);
+  if (configError) {
+    throw new Error(configError);
+  }
+
+  const orderIdError = validateCashfreeOrderId(params.orderId);
+  if (orderIdError) {
+    throw new Error(orderIdError);
+  }
+
+  const amountError = validateCashfreeOrderAmount(params.amountInRupees);
+  if (amountError) {
+    throw new Error(amountError);
+  }
+
   const phone = normalizeIndianMobile(params.customerMobile).replace(/^91/, "");
   const customerEmail = String(params.customerEmail ?? "").trim() || undefined;
   const customerName = String(params.customerName ?? "").trim() || undefined;
   const customerId =
     String(params.customerId ?? "").trim() || `guest_${params.orderId}`;
-  const returnUrl = `${getURL()}api/cashfree/redirect?order_id={order_id}`;
-  const notifyUrl = `${getURL()}api/cashfree/webhook`;
+  const siteBaseUrl = getURL();
+  const returnUrl = buildCashfreeReturnUrl(siteBaseUrl);
+  const notifyUrl = buildCashfreeNotifyUrl(siteBaseUrl);
 
   const res = await fetch(`${normalizeBaseUrl(config.baseUrl)}/orders`, {
     method: "POST",

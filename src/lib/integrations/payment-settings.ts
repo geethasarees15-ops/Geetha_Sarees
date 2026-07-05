@@ -28,13 +28,34 @@ export function resolveCashfreeBaseUrl(params: {
   return normalized;
 }
 
-export const cashfreePayloadSchema = z.object({
-  clientId: z.string().trim().min(1),
-  clientSecret: z.string().trim().min(1),
-  baseUrl: z.string().trim().url(),
-  apiVersion: z.string().trim().min(1),
-  environment: z.enum(["sandbox", "production"]),
-});
+export const cashfreePayloadSchema = z
+  .object({
+    clientId: z.string().trim().min(1),
+    clientSecret: z.string().trim().min(1),
+    baseUrl: z.string().trim().url(),
+    apiVersion: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD API version format"),
+    environment: z.enum(["sandbox", "production"]),
+  })
+  .superRefine((value, ctx) => {
+    const resolvedBaseUrl = resolveCashfreeBaseUrl({
+      environment: value.environment,
+      baseUrl: value.baseUrl,
+    });
+
+    if (
+      value.environment === "production" &&
+      resolvedBaseUrl !== CASHFREE_PRODUCTION_BASE_URL
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Production Cashfree must use https://api.cashfree.com/pg",
+        path: ["baseUrl"],
+      });
+    }
+  });
 
 export const phonepePayloadSchema = z.object({
   merchantId: z.string().trim().min(1),

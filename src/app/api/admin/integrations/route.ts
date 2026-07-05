@@ -11,6 +11,7 @@ import {
   parseIncomingPhonePeForEnable,
   parseIncomingWhatsAppForEnable,
 } from "@/lib/integrations/payment-settings";
+import { validateCashfreeRuntimeConfig } from "@/lib/payments/cashfree-standards";
 import {
   INTEGRATION_KEYS,
   upsertIntegrationSetting,
@@ -514,6 +515,11 @@ export async function POST(request: NextRequest) {
         ),
         { status: 400 },
       );
+    }
+
+    const runtimeError = validateCashfreeRuntimeConfig(validated.data);
+    if (runtimeError) {
+      return NextResponse.json({ message: runtimeError }, { status: 400 });
     }
   }
 

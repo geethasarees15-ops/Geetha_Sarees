@@ -1,24 +1,36 @@
-import { readCashfreeCheckoutError } from "@/lib/payments/cashfree-checkout-client";
+import {
+  buildClientCashfreeReturnUrl,
+  parseCashfreeCheckoutSessionPayload,
+} from "@/lib/payments/cashfree-checkout-client";
 
-describe("readCashfreeCheckoutError", () => {
-  it("returns null when Cashfree checkout succeeds", () => {
-    expect(readCashfreeCheckoutError({ redirect: true })).toBeNull();
-  });
-
-  it("returns the Cashfree error message", () => {
+describe("cashfree-checkout-client", () => {
+  it("builds client return URLs from the current origin", () => {
     expect(
-      readCashfreeCheckoutError({
-        error: { message: "Invalid payment session" },
-      }),
-    ).toBe("Invalid payment session");
+      buildClientCashfreeReturnUrl("https://www.sairaghavendratex.com"),
+    ).toBe(
+      "https://www.sairaghavendratex.com/api/cashfree/redirect?order_id={order_id}",
+    );
   });
 
-  it("adds whitelisting guidance for domain errors", () => {
-    const message = readCashfreeCheckoutError({
-      error: { message: "Domain is not whitelisted" },
+  it("parses valid checkout session payloads", () => {
+    const parsed = parseCashfreeCheckoutSessionPayload({
+      provider: "cashfree",
+      orderId: "order_123",
+      paymentSessionId: "session_abc123",
+      environment: "production",
     });
 
-    expect(message).toContain("Domain is not whitelisted");
-    expect(message).toContain("Whitelisting");
+    expect(parsed.paymentSessionId).toBe("session_abc123");
+  });
+
+  it("rejects malformed checkout session payloads", () => {
+    expect(() =>
+      parseCashfreeCheckoutSessionPayload({
+        provider: "cashfree",
+        orderId: "order_123",
+        paymentSessionId: "bad",
+        environment: "production",
+      }),
+    ).toThrow("Invalid Cashfree checkout response");
   });
 });

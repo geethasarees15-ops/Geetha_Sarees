@@ -392,8 +392,8 @@ export function ApiIntegrationsForm() {
             />
             <p className="text-xs text-muted-foreground">
               Sandbox: {CASHFREE_SANDBOX_BASE_URL}. Production:{" "}
-              {CASHFREE_PRODUCTION_BASE_URL}. This updates automatically when you
-              change Environment.
+              {CASHFREE_PRODUCTION_BASE_URL}. This updates automatically when
+              you change Environment.
             </p>
           </div>
           <div className="grid gap-2">

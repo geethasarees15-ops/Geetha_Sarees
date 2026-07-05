@@ -19,6 +19,7 @@ import { sweepExpiredStockReservationsIfEnabled } from "@/lib/orders/lazy-stock-
 import type { CartItems } from "@/features/carts";
 import { createPhonePePayment } from "@/lib/payments/phonepe";
 import { createCashfreePayment } from "@/lib/payments/cashfree";
+import { validatePaymentSessionId } from "@/lib/payments/cashfree-standards";
 import { resolveCheckoutPaymentProvider } from "@/lib/payments/resolve-checkout-provider";
 import { stripe } from "@/lib/stripe";
 import { getProductSizeConfigsByProductIds } from "@/lib/products/sizeConfig";
@@ -392,6 +393,10 @@ export async function POST(request: Request) {
 
       if (!payment?.paymentSessionId) {
         throw new Error("Cashfree payment session could not be created");
+      }
+
+      if (!validatePaymentSessionId(payment.paymentSessionId)) {
+        throw new Error("Cashfree returned an invalid payment session");
       }
 
       const existingMeta =
