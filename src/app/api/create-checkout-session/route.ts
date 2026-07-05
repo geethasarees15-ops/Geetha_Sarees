@@ -15,6 +15,7 @@ import {
   shouldReserveStockAtCheckout,
   StockReservationError,
 } from "@/lib/orders/stock-reservation";
+import { sweepExpiredStockReservationsIfEnabled } from "@/lib/orders/lazy-stock-reservation-sweep";
 import type { CartItems } from "@/features/carts";
 import { createPhonePePayment } from "@/lib/payments/phonepe";
 import { createCashfreePayment } from "@/lib/payments/cashfree";
@@ -145,6 +146,13 @@ export async function POST(request: Request) {
     const stockControlSetting = await getIntegrationSetting(
       INTEGRATION_KEYS.stockControl,
     );
+
+    if (stockControlSetting?.isEnabled) {
+      await sweepExpiredStockReservationsIfEnabled({
+        force: true,
+        stockControlEnabled: true,
+      });
+    }
 
     if (cashfreeSetting?.isEnabled && !cashfreeConfig) {
       return NextResponse.json(

@@ -1,4 +1,5 @@
 import { getCartProductPricingByIds } from "@/lib/storefront/cart-pricing";
+import { sweepExpiredStockReservationsIfEnabled } from "@/lib/orders/lazy-stock-reservation-sweep";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    await sweepExpiredStockReservationsIfEnabled();
     const pricing = await getCartProductPricingByIds(productIds);
     return NextResponse.json(
       { pricing },

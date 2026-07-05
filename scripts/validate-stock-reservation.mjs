@@ -13,6 +13,7 @@ const checks = [
       "test",
       "--",
       "src/lib/orders/stock-reservation.test.ts",
+      "src/lib/orders/lazy-stock-reservation-sweep.test.ts",
       "src/lib/orders/payment-meta.test.ts",
       "src/lib/orders/payment-fulfillment.test.ts",
     ],
@@ -36,11 +37,11 @@ for (const check of checks) {
 }
 
 process.stdout.write("\nProduction checklist (manual):\n");
-process.stdout.write("- [ ] CRON_SECRET set in Vercel Production\n");
 process.stdout.write("- [ ] UPSTASH_REDIS_REST_URL + TOKEN set (checkout rate limit)\n");
 process.stdout.write("- [ ] Stock Control enabled in Admin settings\n");
 process.stdout.write("- [ ] Cashfree production credentials (not sandbox)\n");
+process.stdout.write("- [ ] Lazy stock sweep runs at checkout (no external cron required on Hobby)\n");
 process.stdout.write("- [ ] Test one live checkout with qty=1 on a low-stock product\n");
-process.stdout.write("- [ ] Confirm unpaid order releases stock after 30 minutes\n");
+process.stdout.write("- [ ] Abandon checkout, wait 30+ min, next checkout releases hold\n");
 
 process.exit(failed > 0 ? 1 : 0);
