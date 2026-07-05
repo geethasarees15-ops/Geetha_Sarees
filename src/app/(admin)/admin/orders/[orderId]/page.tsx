@@ -27,7 +27,11 @@ function buildCourierCopyText(payload: {
   customerName: string | null;
   customerMobile: string | null;
   amount: number;
-  items: { productName: string; productCode: string | null; quantity: number }[];
+  items: {
+    productName: string;
+    productCode: string | null;
+    quantity: number;
+  }[];
   addressText: string;
 }) {
   const itemLines = payload.items.map((item, idx) => {

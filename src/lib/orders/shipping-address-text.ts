@@ -19,7 +19,10 @@ export function buildShippingAddressLines(
   if (line1) lines.push(line1);
   if (line2) lines.push(line2);
 
-  const cityState = [shippingAddress.city?.trim(), shippingAddress.state?.trim()]
+  const cityState = [
+    shippingAddress.city?.trim(),
+    shippingAddress.state?.trim(),
+  ]
     .filter(Boolean)
     .join(", ");
 
