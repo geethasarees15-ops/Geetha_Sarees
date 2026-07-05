@@ -22,7 +22,7 @@ type StartCheckoutParams = {
 };
 
 const CHECKOUT_SESSION_TIMEOUT_MS = 45_000;
-const CASHFREE_OPEN_TIMEOUT_MS = 30_000;
+const CASHFREE_OPEN_TIMEOUT_MS = 8_000;
 
 export async function startCheckout({
   order,
@@ -67,7 +67,6 @@ export async function startCheckout({
     onProgress?.(openingPaymentProgress("cashfree"));
     await openCashfreeCheckout({
       payload: session,
-      origin: window.location.origin,
       timeoutMs: CASHFREE_OPEN_TIMEOUT_MS,
     });
     return;

@@ -7,6 +7,10 @@ import {
 
 export const CASHFREE_DEFAULT_API_VERSION = "2025-01-01";
 export const CASHFREE_SDK_URL = "https://sdk.cashfree.com/js/v3/cashfree.js";
+export const CASHFREE_SANDBOX_HOSTED_CHECKOUT_URL =
+  "https://sandbox.cashfree.com/pg/view/sessions/checkout";
+export const CASHFREE_PRODUCTION_HOSTED_CHECKOUT_URL =
+  "https://api.cashfree.com/pg/view/sessions/checkout";
 export const PAYMENT_SESSION_ID_PATTERN = /^session_[A-Za-z0-9_-]+$/;
 export const CASHFREE_API_VERSION_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -28,6 +32,9 @@ export const cashfreeCheckoutSessionSchema = z.object({
     .trim()
     .regex(PAYMENT_SESSION_ID_PATTERN, "Invalid Cashfree payment session"),
   environment: z.enum(["sandbox", "production"]),
+  returnUrl: z.string().url(),
+  checkoutOrigin: z.string().url(),
+  hostedCheckoutUrl: z.string().url().optional(),
   accessToken: z.string().trim().min(1).optional(),
 });
 
@@ -47,6 +54,14 @@ export function buildCashfreeReturnUrl(siteBaseUrl: string): string {
 
 export function buildCashfreeNotifyUrl(siteBaseUrl: string): string {
   return `${normalizeHttpsBaseUrl(siteBaseUrl)}api/cashfree/webhook`;
+}
+
+export function getCashfreeHostedCheckoutUrl(
+  environment: CashfreeEnvironment,
+): string {
+  return environment === "production"
+    ? CASHFREE_PRODUCTION_HOSTED_CHECKOUT_URL
+    : CASHFREE_SANDBOX_HOSTED_CHECKOUT_URL;
 }
 
 export function validatePaymentSessionId(

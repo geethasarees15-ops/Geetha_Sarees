@@ -1,6 +1,7 @@
 import {
   CASHFREE_SDK_URL,
   cashfreeCheckoutSessionSchema,
+  getCashfreeHostedCheckoutUrl,
   readCashfreeCheckoutError,
   validatePaymentSessionId,
   type CashfreeCheckoutSessionPayload,
@@ -100,9 +101,78 @@ async function loadCashfreeSdk(): Promise<CashfreeInit> {
   return cashfreeLoaderPromise;
 }
 
+/** Mirrors Cashfree SDK redirect checkout: POST form to hosted checkout URL. */
+export function submitCashfreeHostedCheckoutForm(params: {
+  paymentSessionId: string;
+  returnUrl: string;
+  environment: CashfreeEnvironment;
+  hostedCheckoutUrl?: string;
+  redirectTarget?: "_self" | "_blank" | "_top";
+}): void {
+  if (typeof document === "undefined") {
+    throw new Error("Cashfree hosted checkout is only available in browser");
+  }
+
+  const action =
+    params.hostedCheckoutUrl?.trim() ||
+    getCashfreeHostedCheckoutUrl(params.environment);
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = action;
+  form.target = params.redirectTarget ?? "_self";
+  form.style.display = "none";
+
+  const fields: Record<string, string> = {
+    payment_session_id: params.paymentSessionId,
+    return_url: params.returnUrl,
+  };
+
+  for (const [name, value] of Object.entries(fields)) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
+async function openCashfreeCheckoutViaSdk(params: {
+  session: CashfreeCheckoutSessionPayload;
+  returnUrl: string;
+  timeoutMs: number;
+}): Promise<void> {
+  const sdk = await loadCashfreeSdk();
+  const cashfree = sdk({
+    mode: params.session.environment === "production" ? "production" : "sandbox",
+  });
+
+  const result = await withCheckoutTimeout(
+    cashfree.checkout({
+      paymentSessionId: params.session.paymentSessionId,
+      redirectTarget: "_self",
+      returnUrl: params.returnUrl,
+    }),
+    params.timeoutMs,
+    "Cashfree SDK checkout timed out",
+  );
+
+  if (result?.redirect) {
+    return;
+  }
+
+  const cashfreeError = readCashfreeCheckoutError(result, {
+    whitelistOrigin: params.session.checkoutOrigin,
+  });
+  if (cashfreeError) {
+    throw new Error(cashfreeError);
+  }
+}
+
 export async function openCashfreeCheckout(params: {
   payload: CashfreeCheckoutSessionPayload;
-  origin: string;
   timeoutMs?: number;
 }): Promise<void> {
   const session = parseCashfreeCheckoutSessionPayload(params.payload);
@@ -110,29 +180,31 @@ export async function openCashfreeCheckout(params: {
     throw new Error("Invalid Cashfree payment session.");
   }
 
-  const sdk = await loadCashfreeSdk();
-  const cashfree = sdk({
-    mode: session.environment === "production" ? "production" : "sandbox",
-  });
-
-  const returnUrl = buildClientCashfreeReturnUrl(params.origin);
-  const timeoutMs = params.timeoutMs ?? 30_000;
-  const result = await withCheckoutTimeout(
-    cashfree.checkout({
-      paymentSessionId: session.paymentSessionId,
-      redirectTarget: "_top",
-      returnUrl,
-    }),
-    timeoutMs,
-    `Cashfree checkout timed out. Whitelist ${params.origin} in Cashfree Dashboard → Developers → Whitelisting.`,
-  );
-
-  const cashfreeError = readCashfreeCheckoutError(result, {
-    whitelistOrigin: params.origin,
-  });
-  if (cashfreeError) {
-    throw new Error(cashfreeError);
+  const returnUrl = session.returnUrl.trim();
+  if (!returnUrl) {
+    throw new Error("Cashfree return URL missing from checkout session.");
   }
+
+  const timeoutMs = params.timeoutMs ?? 8_000;
+
+  try {
+    await openCashfreeCheckoutViaSdk({
+      session,
+      returnUrl,
+      timeoutMs,
+    });
+    return;
+  } catch (error) {
+    console.warn("[cashfree] SDK checkout failed, using hosted form fallback:", error);
+  }
+
+  submitCashfreeHostedCheckoutForm({
+    paymentSessionId: session.paymentSessionId,
+    returnUrl,
+    environment: session.environment,
+    hostedCheckoutUrl: session.hostedCheckoutUrl,
+    redirectTarget: "_self",
+  });
 }
 
 declare global {

@@ -45,7 +45,7 @@ export const siteConfig = {
   location: "ELAMPILLAI",
   description: "Sarees wholesale & retail merchant — silk and cotton sarees",
   searchPlaceholder: "Search silk & cotton sarees, collections…",
-  url: "https://sairaghavendratex.com",
+  url: "https://www.sairaghavendratex.com",
   addressLines: ADDRESS_LINES,
   /** Single-line address for compact UI */
   address: ADDRESS_LINES.join(", "),

@@ -9,10 +9,22 @@ function normalizeOrigin(value: string): string {
 /** Primary site origin from env (production custom domain). */
 export function getCanonicalSiteOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (fromEnv && !fromEnv.includes("localhost")) {
+  if (fromEnv) {
     return normalizeOrigin(fromEnv);
   }
+
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL?.trim();
+  if (vercelUrl) {
+    return normalizeOrigin(vercelUrl);
+  }
+
   return DEFAULT_PRODUCTION_ORIGIN;
+}
+
+/** Site base URL with trailing slash (for return/notify URL builders). */
+export function getCanonicalSiteBaseUrl(): string {
+  const origin = getCanonicalSiteOrigin();
+  return origin.endsWith("/") ? origin : `${origin}/`;
 }
 
 /** All origins allowed to receive /auth/callback after OAuth (must match Supabase dashboard). */

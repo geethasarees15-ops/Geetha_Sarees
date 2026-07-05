@@ -16,6 +16,7 @@ import {
   CASHFREE_SANDBOX_BASE_URL,
   resolveCashfreeBaseUrl,
 } from "@/lib/integrations/payment-settings";
+import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
 
 function parseIntegrationSaveError(raw: string): string {
   const trimmed = raw.trim();
@@ -421,6 +422,11 @@ export function ApiIntegrationsForm() {
               <option value="sandbox">Sandbox</option>
               <option value="production">Production</option>
             </select>
+            <p className="text-xs text-muted-foreground">
+              Whitelist <strong>{getCanonicalSiteOrigin()}</strong> in Cashfree
+              Dashboard → Developers → Whitelisting. Set webhook URL to{" "}
+              {getCanonicalSiteOrigin()}/api/cashfree/webhook
+            </p>
           </div>
         </CardContent>
       </Card>

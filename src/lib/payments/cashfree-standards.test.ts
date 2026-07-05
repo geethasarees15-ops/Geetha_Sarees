@@ -2,6 +2,7 @@ import {
   buildCashfreeNotifyUrl,
   buildCashfreeReturnUrl,
   cashfreeCheckoutSessionSchema,
+  getCashfreeHostedCheckoutUrl,
   readCashfreeCheckoutError,
   validateCashfreeCredentialEnvironment,
   validateCashfreeOrderAmount,
@@ -16,6 +17,15 @@ describe("cashfree-standards", () => {
     );
     expect(buildCashfreeNotifyUrl("https://www.sairaghavendratex.com")).toBe(
       "https://www.sairaghavendratex.com/api/cashfree/webhook",
+    );
+  });
+
+  it("builds hosted checkout URLs per environment", () => {
+    expect(getCashfreeHostedCheckoutUrl("sandbox")).toBe(
+      "https://sandbox.cashfree.com/pg/view/sessions/checkout",
+    );
+    expect(getCashfreeHostedCheckoutUrl("production")).toBe(
+      "https://api.cashfree.com/pg/view/sessions/checkout",
     );
   });
 
@@ -68,6 +78,9 @@ describe("cashfree-standards", () => {
       orderId: "order_123",
       paymentSessionId: "session_abc123",
       environment: "production",
+      returnUrl:
+        "https://www.sairaghavendratex.com/api/cashfree/redirect?order_id={order_id}",
+      checkoutOrigin: "https://www.sairaghavendratex.com",
     });
 
     expect(parsed.environment).toBe("production");

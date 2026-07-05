@@ -3,10 +3,12 @@ import { getCashfreeConfig } from "@/lib/integrations/settings";
 import {
   buildCashfreeNotifyUrl,
   buildCashfreeReturnUrl,
+  getCashfreeHostedCheckoutUrl,
   validateCashfreeOrderAmount,
   validateCashfreeOrderId,
   validateCashfreeRuntimeConfig,
 } from "@/lib/payments/cashfree-standards";
+import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
 import { getURL } from "@/lib/utils";
 import { normalizeIndianMobile } from "@/lib/payments/phonepe";
 
@@ -128,6 +130,9 @@ export async function createCashfreePayment(
     cashfreeOrderId: String(data.order_id ?? params.orderId).trim(),
     cashfreeCfOrderId: data.cf_order_id ? String(data.cf_order_id) : null,
     environment: config.environment,
+    returnUrl,
+    checkoutOrigin: getCanonicalSiteOrigin(),
+    hostedCheckoutUrl: getCashfreeHostedCheckoutUrl(config.environment),
   };
 }
 

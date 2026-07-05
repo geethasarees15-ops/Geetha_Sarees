@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
 import {
   checkAuthRateLimit,
   getRequestIp,
@@ -31,8 +32,44 @@ function redirectStrayOAuthToCallback(
   return NextResponse.redirect(callback);
 }
 
+/** Keep storefront on the canonical custom domain (www) for Cashfree whitelisting. */
+function redirectToCanonicalHost(request: NextRequest): NextResponse | null {
+  const hostHeader = request.headers.get("host") ?? "";
+  const host = hostHeader.split(":")[0]?.toLowerCase() ?? "";
+  if (
+    !host ||
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.endsWith(".vercel.app")
+  ) {
+    return null;
+  }
+
+  let canonical: URL;
+  try {
+    canonical = new URL(getCanonicalSiteOrigin());
+  } catch {
+    return null;
+  }
+
+  const canonicalHost = canonical.host.toLowerCase();
+  if (host === canonicalHost) {
+    return null;
+  }
+
+  const redirect = new URL(request.url);
+  redirect.protocol = canonical.protocol;
+  redirect.host = canonicalHost;
+  return NextResponse.redirect(redirect, 308);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const canonicalRedirect = redirectToCanonicalHost(request);
+  if (canonicalRedirect) {
+    return canonicalRedirect;
+  }
 
   if (isAuthRateLimitPath(pathname)) {
     const ip = getRequestIp(request.headers);

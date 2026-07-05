@@ -422,6 +422,9 @@ export async function POST(request: Request) {
         accessToken,
         paymentSessionId: payment.paymentSessionId,
         environment: payment.environment,
+        returnUrl: payment.returnUrl,
+        checkoutOrigin: payment.checkoutOrigin,
+        hostedCheckoutUrl: payment.hostedCheckoutUrl,
       });
     }
 
