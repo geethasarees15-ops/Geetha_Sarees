@@ -11,6 +11,11 @@ import {
   LoadingButtonLabel,
 } from "@/components/admin/AdminLoadingState";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
+import {
+  CASHFREE_PRODUCTION_BASE_URL,
+  CASHFREE_SANDBOX_BASE_URL,
+  resolveCashfreeBaseUrl,
+} from "@/lib/integrations/payment-settings";
 
 function parseIntegrationSaveError(raw: string): string {
   const trimmed = raw.trim();
@@ -130,9 +135,16 @@ export function ApiIntegrationsForm() {
             enabled: bothEnabled ? true : cashfreeEnabled,
             clientId: String(cashfreeValue.clientId ?? ""),
             clientSecret: String(cashfreeValue.clientSecret ?? ""),
-            baseUrl: String(
-              cashfreeValue.baseUrl ?? "https://sandbox.cashfree.com/pg",
-            ),
+            baseUrl: resolveCashfreeBaseUrl({
+              environment:
+                String(cashfreeValue.environment ?? "sandbox").toLowerCase() ===
+                "production"
+                  ? "production"
+                  : "sandbox",
+              baseUrl: String(
+                cashfreeValue.baseUrl ?? CASHFREE_SANDBOX_BASE_URL,
+              ),
+            }),
             apiVersion: String(cashfreeValue.apiVersion ?? "2025-01-01"),
             environment:
               String(cashfreeValue.environment ?? "sandbox").toLowerCase() ===
@@ -189,10 +201,19 @@ export function ApiIntegrationsForm() {
     key: K,
     value: FormState["cashfree"][K],
   ) => {
-    setForm((prev) => ({
-      ...prev,
-      cashfree: { ...prev.cashfree, [key]: value },
-    }));
+    setForm((prev) => {
+      const nextCashfree = { ...prev.cashfree, [key]: value };
+      if (key === "environment") {
+        nextCashfree.baseUrl = resolveCashfreeBaseUrl({
+          environment: value as FormState["cashfree"]["environment"],
+          baseUrl: prev.cashfree.baseUrl,
+        });
+      }
+      return {
+        ...prev,
+        cashfree: nextCashfree,
+      };
+    });
   };
 
   const updatePhonePe = <K extends keyof FormState["phonepe"]>(
@@ -367,8 +388,13 @@ export function ApiIntegrationsForm() {
               id="cashfree-base-url"
               value={form.cashfree.baseUrl}
               onChange={(e) => updateCashfree("baseUrl", e.target.value)}
-              placeholder="https://sandbox.cashfree.com/pg"
+              placeholder={CASHFREE_SANDBOX_BASE_URL}
             />
+            <p className="text-xs text-muted-foreground">
+              Sandbox: {CASHFREE_SANDBOX_BASE_URL}. Production:{" "}
+              {CASHFREE_PRODUCTION_BASE_URL}. This updates automatically when you
+              change Environment.
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="cashfree-api-version">API Version</Label>

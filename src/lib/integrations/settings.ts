@@ -17,6 +17,7 @@ import {
   type ResolvedShopContact,
   type ShopContactPayload,
 } from "@/lib/admin/shop-contact";
+import { resolveCashfreeBaseUrl } from "@/lib/integrations/payment-settings";
 import { siteConfig } from "@/config/site";
 import db from "@/lib/supabase/db";
 import { apiSettings, medias } from "@/lib/supabase/schema";
@@ -390,13 +391,14 @@ export async function getCashfreeConfig(): Promise<CashfreeConfig | null> {
     .toLowerCase();
   const environment =
     environmentRaw === "production" ? "production" : "sandbox";
+  const resolvedBaseUrl = resolveCashfreeBaseUrl({ environment, baseUrl });
 
-  if (!clientId || !clientSecret || !baseUrl || !apiVersion) return null;
+  if (!clientId || !clientSecret || !resolvedBaseUrl || !apiVersion) return null;
 
   return {
     clientId,
     clientSecret,
-    baseUrl,
+    baseUrl: resolvedBaseUrl,
     apiVersion,
     environment,
     enabled: true,

@@ -1,5 +1,33 @@
 import { z } from "zod";
 
+export const CASHFREE_SANDBOX_BASE_URL = "https://sandbox.cashfree.com/pg";
+export const CASHFREE_PRODUCTION_BASE_URL = "https://api.cashfree.com/pg";
+
+export function resolveCashfreeBaseUrl(params: {
+  environment: "sandbox" | "production";
+  baseUrl?: string | null;
+}): string {
+  const raw = String(params.baseUrl ?? "").trim();
+  const normalized = raw.replace(/\/$/, "");
+  const pointsToSandbox = normalized.includes("sandbox.cashfree.com");
+  const pointsToProduction =
+    normalized.includes("api.cashfree.com") ||
+    normalized.includes("payments.cashfree.com");
+
+  if (params.environment === "production") {
+    if (!normalized || pointsToSandbox) {
+      return CASHFREE_PRODUCTION_BASE_URL;
+    }
+    return normalized;
+  }
+
+  if (!normalized || pointsToProduction) {
+    return CASHFREE_SANDBOX_BASE_URL;
+  }
+
+  return normalized;
+}
+
 export const cashfreePayloadSchema = z.object({
   clientId: z.string().trim().min(1),
   clientSecret: z.string().trim().min(1),
@@ -26,19 +54,22 @@ export const whatsappPayloadSchema = z.object({
 });
 
 export function normalizeCashfreeIncoming(incoming: Record<string, unknown>) {
+  const environment =
+    String(incoming.environment ?? "sandbox")
+      .trim()
+      .toLowerCase() === "production"
+      ? ("production" as const)
+      : ("sandbox" as const);
+
   return {
     clientId: String(incoming.clientId ?? "").trim(),
     clientSecret: String(incoming.clientSecret ?? "").trim(),
-    baseUrl:
-      String(incoming.baseUrl ?? "").trim() ||
-      "https://sandbox.cashfree.com/pg",
+    baseUrl: resolveCashfreeBaseUrl({
+      environment,
+      baseUrl: String(incoming.baseUrl ?? "").trim(),
+    }),
     apiVersion: String(incoming.apiVersion ?? "").trim() || "2025-01-01",
-    environment:
-      String(incoming.environment ?? "sandbox")
-        .trim()
-        .toLowerCase() === "production"
-        ? ("production" as const)
-        : ("sandbox" as const),
+    environment,
   };
 }
 
