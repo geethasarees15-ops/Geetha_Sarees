@@ -1,6 +1,17 @@
 import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import {
+  normalizeCashfreeIncoming,
+  normalizePhonePeIncoming,
+  normalizeWhatsAppIncoming,
+  parseEnabledCashfreeValue,
+  parseEnabledPhonePeValue,
+  parseEnabledWhatsAppValue,
+  parseIncomingCashfreeForEnable,
+  parseIncomingPhonePeForEnable,
+  parseIncomingWhatsAppForEnable,
+} from "@/lib/integrations/payment-settings";
+import {
   INTEGRATION_KEYS,
   upsertIntegrationSetting,
   getIntegrationSetting,
@@ -119,31 +130,6 @@ const shopContactPayloadSchema = z.object({
   gstin: z.string().trim().max(20),
   email: z.union([z.string().trim().email(), z.literal("")]),
   contacts: z.array(shopContactPersonSchema).min(1).max(8),
-});
-
-const cashfreePayloadSchema = z.object({
-  clientId: z.string().trim().min(1),
-  clientSecret: z.string().trim().min(1),
-  baseUrl: z.string().trim().url(),
-  apiVersion: z.string().trim().min(1),
-  environment: z.enum(["sandbox", "production"]),
-});
-
-const phonepePayloadSchema = z.object({
-  merchantId: z.string().trim().min(1),
-  saltKey: z.string().trim().min(1),
-  saltIndex: z.string().trim().min(1),
-  baseUrl: z.string().trim().url(),
-  merchantUserIdPrefix: z.string().trim().max(16).optional(),
-});
-
-const whatsappPayloadSchema = z.object({
-  accessToken: z.string().trim().min(1),
-  phoneNumberId: z.string().trim().min(1),
-  templateName: z.string().trim().optional(),
-  templateLanguage: z.string().trim().min(2).default("en"),
-  notifySeller: z.boolean().default(false),
-  sellerMobiles: z.string().trim().default(""),
 });
 
 async function ensureAdmin() {
@@ -268,93 +254,57 @@ export async function POST(request: NextRequest) {
   }
 
   if (key === INTEGRATION_KEYS.cashfree) {
-    const cashfreeParsed = cashfreePayloadSchema
-      .partial({ clientSecret: true })
-      .safeParse({
-        clientId: String(incomingValue.clientId ?? "").trim(),
-        clientSecret: String(incomingValue.clientSecret ?? "").trim(),
-        baseUrl:
-          String(incomingValue.baseUrl ?? "").trim() ||
-          "https://sandbox.cashfree.com/pg",
-        apiVersion:
-          String(incomingValue.apiVersion ?? "").trim() || "2025-01-01",
-        environment:
-          String(incomingValue.environment ?? "sandbox")
-            .trim()
-            .toLowerCase() === "production"
-            ? "production"
-            : "sandbox",
-      });
-    if (!cashfreeParsed.success) {
-      const cashfreeParseError = cashfreeParsed as z.SafeParseError<
-        z.infer<typeof cashfreePayloadSchema>
-      >;
-      return NextResponse.json(
-        publicValidationPayload(
-          "Invalid Cashfree payload",
-          cashfreeParseError.error,
-        ),
-        { status: 400 },
-      );
+    if (isEnabled) {
+      const cashfreeParsed = parseIncomingCashfreeForEnable(incomingValue);
+      if (cashfreeParsed.success === false) {
+        return NextResponse.json(
+          publicValidationPayload(
+            "Invalid Cashfree payload",
+            cashfreeParsed.error,
+          ),
+          { status: 400 },
+        );
+      }
+      Object.assign(normalizedValue, cashfreeParsed.data);
+    } else {
+      Object.assign(normalizedValue, normalizeCashfreeIncoming(incomingValue));
     }
-    Object.assign(normalizedValue, cashfreeParsed.data);
   }
 
   if (key === INTEGRATION_KEYS.phonepe) {
-    const phonepeParsed = phonepePayloadSchema
-      .partial({ saltKey: true })
-      .safeParse({
-        merchantId: String(incomingValue.merchantId ?? "").trim(),
-        saltKey: String(incomingValue.saltKey ?? "").trim(),
-        saltIndex: String(incomingValue.saltIndex ?? "").trim(),
-        baseUrl:
-          String(incomingValue.baseUrl ?? "").trim() ||
-          "https://api.phonepe.com/apis/hermes",
-        merchantUserIdPrefix:
-          String(incomingValue.merchantUserIdPrefix ?? "").trim() || "USR",
-      });
-    if (!phonepeParsed.success) {
-      const phonepeParseError = phonepeParsed as z.SafeParseError<
-        z.infer<typeof phonepePayloadSchema>
-      >;
-      return NextResponse.json(
-        publicValidationPayload(
-          "Invalid PhonePe payload",
-          phonepeParseError.error,
-        ),
-        { status: 400 },
-      );
+    if (isEnabled) {
+      const phonepeParsed = parseIncomingPhonePeForEnable(incomingValue);
+      if (phonepeParsed.success === false) {
+        return NextResponse.json(
+          publicValidationPayload(
+            "Invalid PhonePe payload",
+            phonepeParsed.error,
+          ),
+          { status: 400 },
+        );
+      }
+      Object.assign(normalizedValue, phonepeParsed.data);
+    } else {
+      Object.assign(normalizedValue, normalizePhonePeIncoming(incomingValue));
     }
-    Object.assign(normalizedValue, phonepeParsed.data);
   }
 
   if (key === INTEGRATION_KEYS.whatsapp) {
-    const whatsappParsed = whatsappPayloadSchema
-      .partial({ accessToken: true })
-      .safeParse({
-        accessToken: String(incomingValue.accessToken ?? "").trim(),
-        phoneNumberId: String(incomingValue.phoneNumberId ?? "").trim(),
-        templateName: String(incomingValue.templateName ?? "").trim(),
-        templateLanguage:
-          String(incomingValue.templateLanguage ?? "")
-            .trim()
-            .toLowerCase() || "en",
-        notifySeller: Boolean(incomingValue.notifySeller ?? false),
-        sellerMobiles: String(incomingValue.sellerMobiles ?? "").trim(),
-      });
-    if (!whatsappParsed.success) {
-      const whatsappParseError = whatsappParsed as z.SafeParseError<
-        z.infer<typeof whatsappPayloadSchema>
-      >;
-      return NextResponse.json(
-        publicValidationPayload(
-          "Invalid WhatsApp payload",
-          whatsappParseError.error,
-        ),
-        { status: 400 },
-      );
+    if (isEnabled) {
+      const whatsappParsed = parseIncomingWhatsAppForEnable(incomingValue);
+      if (whatsappParsed.success === false) {
+        return NextResponse.json(
+          publicValidationPayload(
+            "Invalid WhatsApp payload",
+            whatsappParsed.error,
+          ),
+          { status: 400 },
+        );
+      }
+      Object.assign(normalizedValue, whatsappParsed.data);
+    } else {
+      Object.assign(normalizedValue, normalizeWhatsAppIncoming(incomingValue));
     }
-    Object.assign(normalizedValue, whatsappParsed.data);
   }
 
   if (key === INTEGRATION_KEYS.announcementBar) {
@@ -542,15 +492,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (key === INTEGRATION_KEYS.phonepe && isEnabled) {
-    const validated = phonepePayloadSchema.safeParse(mergedValue);
-    if (!validated.success) {
-      const parseError = validated as z.SafeParseError<
-        z.infer<typeof phonepePayloadSchema>
-      >;
+    const validated = parseEnabledPhonePeValue(mergedValue);
+    if (validated.success === false) {
       return NextResponse.json(
         publicValidationPayload(
           "PhonePe settings are incomplete for enabled mode",
-          parseError.error,
+          validated.error,
         ),
         { status: 400 },
       );
@@ -558,15 +505,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (key === INTEGRATION_KEYS.cashfree && isEnabled) {
-    const validated = cashfreePayloadSchema.safeParse(mergedValue);
-    if (!validated.success) {
-      const parseError = validated as z.SafeParseError<
-        z.infer<typeof cashfreePayloadSchema>
-      >;
+    const validated = parseEnabledCashfreeValue(mergedValue);
+    if (validated.success === false) {
       return NextResponse.json(
         publicValidationPayload(
           "Cashfree settings are incomplete for enabled mode",
-          parseError.error,
+          validated.error,
         ),
         { status: 400 },
       );
@@ -574,15 +518,12 @@ export async function POST(request: NextRequest) {
   }
 
   if (key === INTEGRATION_KEYS.whatsapp && isEnabled) {
-    const validated = whatsappPayloadSchema.safeParse(mergedValue);
-    if (!validated.success) {
-      const parseError = validated as z.SafeParseError<
-        z.infer<typeof whatsappPayloadSchema>
-      >;
+    const validated = parseEnabledWhatsAppValue(mergedValue);
+    if (validated.success === false) {
       return NextResponse.json(
         publicValidationPayload(
           "WhatsApp settings are incomplete for enabled mode",
-          parseError.error,
+          validated.error,
         ),
         { status: 400 },
       );
@@ -590,6 +531,25 @@ export async function POST(request: NextRequest) {
   }
 
   await upsertIntegrationSetting(key, mergedValue, isEnabled, user.id);
+
+  if (
+    isEnabled &&
+    (key === INTEGRATION_KEYS.cashfree || key === INTEGRATION_KEYS.phonepe)
+  ) {
+    const otherKey =
+      key === INTEGRATION_KEYS.cashfree
+        ? INTEGRATION_KEYS.phonepe
+        : INTEGRATION_KEYS.cashfree;
+    const otherSetting = await getIntegrationSetting(otherKey);
+    if (otherSetting?.isEnabled) {
+      await upsertIntegrationSetting(
+        otherKey,
+        (otherSetting.value ?? {}) as Record<string, unknown>,
+        false,
+        user.id,
+      );
+    }
+  }
 
   if (key === INTEGRATION_KEYS.storefrontSocial) {
     revalidatePath("/", "layout");

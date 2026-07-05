@@ -4,6 +4,7 @@ import { getEffectiveProductPrice } from "@/lib/products/discount";
 import type { CartItems } from "@/features/carts";
 import { createPhonePePayment } from "@/lib/payments/phonepe";
 import { createCashfreePayment } from "@/lib/payments/cashfree";
+import { resolveCheckoutPaymentProvider } from "@/lib/payments/resolve-checkout-provider";
 import { stripe } from "@/lib/stripe";
 import { getProductSizeConfigsByProductIds } from "@/lib/products/sizeConfig";
 import db from "@/lib/supabase/db";
@@ -136,8 +137,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const preferCashfree = Boolean(cashfreeConfig);
-    const preferPhonePe = !preferCashfree && Boolean(phonePeConfig);
+    const checkoutProvider = resolveCheckoutPaymentProvider({
+      cashfreeConfig,
+      phonePeConfig,
+    });
+    const preferCashfree = checkoutProvider === "cashfree";
+    const preferPhonePe = checkoutProvider === "phonepe";
 
     const productsQuantity = await mergeProductDetailsWithQuantities(
       checkout.orderProducts as OrderProducts,

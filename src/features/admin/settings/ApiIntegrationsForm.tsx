@@ -12,6 +12,22 @@ import {
 } from "@/components/admin/AdminLoadingState";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 
+function parseIntegrationSaveError(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "Save failed";
+
+  try {
+    const payload = JSON.parse(trimmed) as { message?: unknown };
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message.trim();
+    }
+  } catch {
+    // Plain-text error from the API.
+  }
+
+  return trimmed;
+}
+
 type ApiSettingRecord = {
   key: string;
   isEnabled: boolean;
@@ -104,9 +120,14 @@ export function ApiIntegrationsForm() {
         const phonepeValue = payload.phonepe?.value ?? {};
         const whatsappValue = payload.whatsapp?.value ?? {};
 
+        const cashfreeEnabled = payload.cashfree?.isEnabled ?? false;
+        const phonepeEnabled = payload.phonepe?.isEnabled ?? false;
+        // Only one checkout gateway at a time — prefer Cashfree if both were on.
+        const bothEnabled = cashfreeEnabled && phonepeEnabled;
+
         setForm({
           cashfree: {
-            enabled: payload.cashfree?.isEnabled ?? false,
+            enabled: bothEnabled ? true : cashfreeEnabled,
             clientId: String(cashfreeValue.clientId ?? ""),
             clientSecret: String(cashfreeValue.clientSecret ?? ""),
             baseUrl: String(
@@ -120,7 +141,7 @@ export function ApiIntegrationsForm() {
                 : "sandbox",
           },
           phonepe: {
-            enabled: payload.phonepe?.isEnabled ?? false,
+            enabled: bothEnabled ? false : phonepeEnabled,
             merchantId: String(phonepeValue.merchantId ?? ""),
             saltKey: String(phonepeValue.saltKey ?? ""),
             saltIndex: String(phonepeValue.saltIndex ?? ""),
@@ -164,16 +185,6 @@ export function ApiIntegrationsForm() {
     [isSaving, isLoading],
   );
 
-  const updatePhonePe = <K extends keyof FormState["phonepe"]>(
-    key: K,
-    value: FormState["phonepe"][K],
-  ) => {
-    setForm((prev) => ({
-      ...prev,
-      phonepe: { ...prev.phonepe, [key]: value },
-    }));
-  };
-
   const updateCashfree = <K extends keyof FormState["cashfree"]>(
     key: K,
     value: FormState["cashfree"][K],
@@ -181,6 +192,16 @@ export function ApiIntegrationsForm() {
     setForm((prev) => ({
       ...prev,
       cashfree: { ...prev.cashfree, [key]: value },
+    }));
+  };
+
+  const updatePhonePe = <K extends keyof FormState["phonepe"]>(
+    key: K,
+    value: FormState["phonepe"][K],
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      phonepe: { ...prev.phonepe, [key]: value },
     }));
   };
 
@@ -194,6 +215,12 @@ export function ApiIntegrationsForm() {
     }));
   };
 
+  const activePaymentGateway = form.cashfree.enabled
+    ? "cashfree"
+    : form.phonepe.enabled
+      ? "phonepe"
+      : null;
+
   const saveKey = async (
     key: "cashfree" | "phonepe" | "whatsapp",
     body: Record<string, unknown>,
@@ -205,7 +232,7 @@ export function ApiIntegrationsForm() {
     }).then(async (res) => {
       if (!res.ok) {
         const text = await res.text().catch(() => "Save failed");
-        throw new Error(text || "Save failed");
+        throw new Error(parseIntegrationSaveError(text));
       }
     });
 
@@ -269,6 +296,22 @@ export function ApiIntegrationsForm() {
       {isLoading ? (
         <AdminLoadingState message="Loading API settings..." />
       ) : null}
+      <div className="rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">
+          One checkout gateway at a time
+        </p>
+        <p className="mt-1">
+          Enable either Cashfree or PhonePe — not both. Example: Cashfree off
+          and PhonePe on means checkout uses PhonePe only. Disabled gateways do
+          not need credentials to save other settings on this page.
+        </p>
+        {activePaymentGateway ? (
+          <p className="mt-2 text-xs font-medium text-foreground">
+            Active checkout gateway:{" "}
+            {activePaymentGateway === "cashfree" ? "Cashfree" : "PhonePe"}
+          </p>
+        ) : null}
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Cashfree Payment Gateway</CardTitle>
@@ -289,10 +332,16 @@ export function ApiIntegrationsForm() {
             <input
               type="checkbox"
               checked={form.cashfree.enabled}
+              disabled={form.phonepe.enabled}
               onChange={(e) => updateCashfree("enabled", e.target.checked)}
             />
             Enable Cashfree checkout
           </label>
+          <p className="text-xs text-muted-foreground">
+            {form.phonepe.enabled
+              ? "Turn off PhonePe below to switch to Cashfree."
+              : "Storefront checkout uses Cashfree when this is enabled."}
+          </p>
           <div className="grid gap-2">
             <Label htmlFor="cashfree-client-id">Client ID</Label>
             <Input
@@ -359,10 +408,16 @@ export function ApiIntegrationsForm() {
             <input
               type="checkbox"
               checked={form.phonepe.enabled}
+              disabled={form.cashfree.enabled}
               onChange={(e) => updatePhonePe("enabled", e.target.checked)}
             />
             Enable PhonePe checkout
           </label>
+          <p className="text-xs text-muted-foreground">
+            {form.cashfree.enabled
+              ? "Turn off Cashfree above to switch to PhonePe."
+              : "Storefront checkout uses PhonePe when this is enabled."}
+          </p>
 
           <div className="grid gap-2">
             <Label htmlFor="phonepe-merchant">Merchant ID</Label>
