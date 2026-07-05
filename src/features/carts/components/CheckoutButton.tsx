@@ -41,13 +41,8 @@ function CheckoutButton({
   const [open, setOpen] = useState(false);
   const [bulkGuardOpen, setBulkGuardOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const {
-    progress,
-    isLocked,
-    beginProgress,
-    clearProgress,
-    overlay,
-  } = useCheckoutProgress();
+  const { progress, isLocked, beginProgress, clearProgress, overlay } =
+    useCheckoutProgress();
   const hasBulkLineItem = useMemo(
     () =>
       bulkOrder.enabled &&

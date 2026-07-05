@@ -5,9 +5,7 @@ import type { CheckoutProgressUpdate } from "@/features/checkout/checkout-progre
 import CheckoutProgressOverlay from "@/features/checkout/components/CheckoutProgressOverlay";
 
 export function useCheckoutProgress() {
-  const [progress, setProgress] = useState<CheckoutProgressUpdate | null>(
-    null,
-  );
+  const [progress, setProgress] = useState<CheckoutProgressUpdate | null>(null);
 
   const beginProgress = useCallback((update: CheckoutProgressUpdate) => {
     setProgress(update);
@@ -25,8 +23,6 @@ export function useCheckoutProgress() {
     beginProgress,
     clearProgress,
     setProgress,
-    overlay: progress ? (
-      <CheckoutProgressOverlay open {...progress} />
-    ) : null,
+    overlay: progress ? <CheckoutProgressOverlay open {...progress} /> : null,
   };
 }

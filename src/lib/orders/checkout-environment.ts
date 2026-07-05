@@ -1,4 +1,7 @@
-import type { CashfreeConfig, PhonePeConfig } from "@/lib/integrations/settings";
+import type {
+  CashfreeConfig,
+  PhonePeConfig,
+} from "@/lib/integrations/settings";
 
 function isProductionStripeKey(secretKey: string | undefined) {
   return Boolean(secretKey?.startsWith("sk_live_"));

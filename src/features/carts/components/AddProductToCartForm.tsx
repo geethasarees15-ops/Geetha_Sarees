@@ -209,7 +209,8 @@ function AddProductToCartForm({
         <Button
           type="submit"
           disabled={
-            isOutOfStock || (hasSizeOptions && selectableSizeOptions.length === 0)
+            isOutOfStock ||
+            (hasSizeOptions && selectableSizeOptions.length === 0)
           }
         >
           {isOutOfStock ? "Out of stock" : "Add to Cart"}

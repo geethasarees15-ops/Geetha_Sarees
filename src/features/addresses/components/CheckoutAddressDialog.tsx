@@ -26,7 +26,10 @@ import {
 } from "../lib/userAddress";
 import type { UserAddressRecord } from "../lib/userAddress";
 import type { CheckoutProgressUpdate } from "@/features/checkout/checkout-progress";
-import { creatingOrderProgress, savingAddressProgress } from "@/features/checkout/checkout-progress";
+import {
+  creatingOrderProgress,
+  savingAddressProgress,
+} from "@/features/checkout/checkout-progress";
 
 type Props = {
   open: boolean;
@@ -272,7 +275,10 @@ export function CheckoutAddressDialog({
               {busy ? (
                 <>
                   {activeProgressMessage}
-                  <Spinner className="ml-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  <Spinner
+                    className="ml-2 h-4 w-4 animate-spin"
+                    aria-hidden="true"
+                  />
                 </>
               ) : (
                 submitLabel

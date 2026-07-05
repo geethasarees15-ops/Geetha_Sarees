@@ -34,7 +34,9 @@ export function preparingPaymentProgress(): CheckoutProgressUpdate {
   };
 }
 
-export function openingPaymentProgress(provider?: string): CheckoutProgressUpdate {
+export function openingPaymentProgress(
+  provider?: string,
+): CheckoutProgressUpdate {
   const label =
     provider === "cashfree"
       ? "Cashfree"

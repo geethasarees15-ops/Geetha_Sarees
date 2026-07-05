@@ -27,13 +27,8 @@ function BuyNowButton({ productId, quantity = 1, stock }: BuyNowButtonProps) {
 
   const [open, setOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const {
-    progress,
-    isLocked,
-    beginProgress,
-    clearProgress,
-    overlay,
-  } = useCheckoutProgress();
+  const { progress, isLocked, beginProgress, clearProgress, overlay } =
+    useCheckoutProgress();
 
   const accountDefaults = useMemo(
     () =>

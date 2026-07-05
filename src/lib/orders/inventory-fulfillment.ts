@@ -123,7 +123,9 @@ export async function fulfillPaidOrderInventory(
   }
 
   const selectedSizes = readSelectedSizes(meta);
-  const sizeConfigs = await loadSizeConfigs(lines.map((line) => line.productId));
+  const sizeConfigs = await loadSizeConfigs(
+    lines.map((line) => line.productId),
+  );
 
   await db.transaction(async (tx) => {
     for (const line of lines) {
@@ -136,7 +138,11 @@ export async function fulfillPaidOrderInventory(
 
       const selectedSize = selectedSizes[line.productId];
       const sizeConfig = sizeConfigs.get(line.productId);
-      if (!selectedSize || !sizeConfig?.enabled || sizeConfig.options.length === 0) {
+      if (
+        !selectedSize ||
+        !sizeConfig?.enabled ||
+        sizeConfig.options.length === 0
+      ) {
         continue;
       }
 
