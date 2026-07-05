@@ -87,14 +87,22 @@ function FilterSelections({ collectionsSection, shopLayout = true }: Props) {
   );
 
   const debouncedPrice = useDebounce(query.priceRange ?? [0, 10000], 500);
+  const [priceFilterTouched, setPriceFilterTouched] = useState(false);
+
+  const touchPriceFilter = useCallback(() => {
+    setPriceFilterTouched(true);
+  }, []);
 
   React.useEffect(() => {
-    if (query.priceRange === undefined) return;
+    setPriceFilterTouched(false);
+  }, [searchParams]);
+
+  React.useEffect(() => {
+    if (!priceFilterTouched || query.priceRange === undefined) return;
 
     const [min, max] = debouncedPrice;
     const [queryMin, queryMax] = query.priceRange;
 
-    // Wait until debounce catches up with URL/query state before syncing the URL.
     if (min !== queryMin || max !== queryMax) return;
     if (min === 0 && max === 10000) return;
 
@@ -108,6 +116,7 @@ function FilterSelections({ collectionsSection, shopLayout = true }: Props) {
     createQueryString,
     debouncedPrice,
     pathname,
+    priceFilterTouched,
     query.priceRange,
     router,
     searchParams,
@@ -166,22 +175,28 @@ function FilterSelections({ collectionsSection, shopLayout = true }: Props) {
                 label={"Price Range"}
                 defaultValue={query.priceRange}
                 value={query.priceRange}
-                onMinChange={(data) =>
+                onMinChange={(data) => {
+                  touchPriceFilter();
                   setQuery({
                     ...query,
-                    priceRange: [query.priceRange[0], data],
-                  })
-                }
-                onMaxChange={(data) =>
+                    priceRange: [query.priceRange?.[0] ?? 0, data],
+                  });
+                }}
+                onMaxChange={(data) => {
+                  touchPriceFilter();
                   setQuery({
                     ...query,
-                    priceRange: [data, query.priceRange[1]],
-                  })
-                }
-                onValueChange={(priceRange) =>
-                  setQuery({ ...query, priceRange })
-                }
-                onReset={() => setQuery({ ...query, priceRange: undefined })}
+                    priceRange: [data, query.priceRange?.[1] ?? 10000],
+                  });
+                }}
+                onValueChange={(priceRange) => {
+                  touchPriceFilter();
+                  setQuery({ ...query, priceRange });
+                }}
+                onReset={() => {
+                  touchPriceFilter();
+                  setQuery({ ...query, priceRange: undefined });
+                }}
               />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -236,22 +251,26 @@ function FilterSelections({ collectionsSection, shopLayout = true }: Props) {
                   label={"Price Range"}
                   defaultValue={query.priceRange}
                   value={query.priceRange}
-                  onMinChange={(data) =>
+                  onMinChange={(data) => {
+                    touchPriceFilter();
                     setQuery({
                       ...query,
-                      priceRange: [query.priceRange[0], data],
-                    })
-                  }
-                  onMaxChange={(data) =>
+                      priceRange: [query.priceRange?.[0] ?? 0, data],
+                    });
+                  }}
+                  onMaxChange={(data) => {
+                    touchPriceFilter();
                     setQuery({
                       ...query,
-                      priceRange: [data, query.priceRange[1]],
-                    })
-                  }
-                  onValueChange={(priceRange) =>
-                    setQuery({ ...query, priceRange })
-                  }
+                      priceRange: [data, query.priceRange?.[1] ?? 10000],
+                    });
+                  }}
+                  onValueChange={(priceRange) => {
+                    touchPriceFilter();
+                    setQuery({ ...query, priceRange });
+                  }}
                   onReset={() => {
+                    touchPriceFilter();
                     setQuery({ ...query, priceRange: undefined });
                     router.push(
                       pathname + "?" + removeQueryString("price_range"),
