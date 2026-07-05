@@ -1,5 +1,4 @@
 import {
-  CASHFREE_SDK_URL,
   cashfreeCheckoutSessionSchema,
   getCashfreeHostedCheckoutUrl,
   readCashfreeCheckoutError,
@@ -16,11 +15,37 @@ export {
   type CashfreeEnvironment,
 };
 
-export type CashfreeCheckoutResult = {
-  error?: { message?: string; type?: string };
-  redirect?: boolean;
-  paymentDetails?: { paymentMessage?: string };
-};
+export const CASHFREE_CHECKOUT_STARTED_KEY_PREFIX = "cf_checkout_started:";
+
+export function cashfreeCheckoutStartedKey(
+  orderId: string,
+  paymentSessionId: string,
+): string {
+  return `${CASHFREE_CHECKOUT_STARTED_KEY_PREFIX}${orderId}:${paymentSessionId}`;
+}
+
+export function hasCashfreeCheckoutStarted(
+  orderId: string,
+  paymentSessionId: string,
+): boolean {
+  if (typeof sessionStorage === "undefined") return false;
+  return Boolean(
+    sessionStorage.getItem(
+      cashfreeCheckoutStartedKey(orderId, paymentSessionId),
+    ),
+  );
+}
+
+export function markCashfreeCheckoutStarted(
+  orderId: string,
+  paymentSessionId: string,
+): void {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(
+    cashfreeCheckoutStartedKey(orderId, paymentSessionId),
+    String(Date.now()),
+  );
+}
 
 export function parseCashfreeCheckoutSessionPayload(
   payload: unknown,
@@ -40,68 +65,7 @@ export function buildClientCashfreeReturnUrl(origin: string): string {
   return `${normalized}/api/cashfree/redirect?order_id={order_id}`;
 }
 
-export async function withCheckoutTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  timeoutMessage: string,
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-type CashfreeCheckout = (params: {
-  paymentSessionId: string;
-  redirectTarget?: "_self" | "_blank" | "_top" | "_modal" | string;
-  returnUrl?: string;
-}) => Promise<CashfreeCheckoutResult>;
-
-type CashfreeInit = (params: { mode: CashfreeEnvironment }) => {
-  checkout: CashfreeCheckout;
-};
-
-let cashfreeLoaderPromise: Promise<CashfreeInit> | null = null;
-
-async function loadCashfreeSdk(): Promise<CashfreeInit> {
-  if (typeof window === "undefined") {
-    throw new Error("Cashfree checkout is only available in browser");
-  }
-
-  if (window.Cashfree) {
-    return window.Cashfree as CashfreeInit;
-  }
-
-  if (!cashfreeLoaderPromise) {
-    cashfreeLoaderPromise = new Promise<CashfreeInit>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = CASHFREE_SDK_URL;
-      script.async = true;
-      script.onload = () => {
-        if (window.Cashfree) {
-          resolve(window.Cashfree as CashfreeInit);
-        } else {
-          reject(new Error("Cashfree SDK loaded but was unavailable"));
-        }
-      };
-      script.onerror = () =>
-        reject(new Error("Failed to load Cashfree checkout SDK"));
-      document.head.appendChild(script);
-    });
-  }
-
-  return cashfreeLoaderPromise;
-}
-
-/** Mirrors Cashfree SDK redirect checkout: POST form to hosted checkout URL. */
+/** Mirrors Cashfree redirect checkout: one POST form to the hosted checkout URL. */
 export function submitCashfreeHostedCheckoutForm(params: {
   paymentSessionId: string;
   returnUrl: string;
@@ -139,43 +103,14 @@ export function submitCashfreeHostedCheckoutForm(params: {
   form.submit();
 }
 
-async function openCashfreeCheckoutViaSdk(params: {
-  session: CashfreeCheckoutSessionPayload;
-  returnUrl: string;
-  timeoutMs: number;
-}): Promise<void> {
-  const sdk = await loadCashfreeSdk();
-  const cashfree = sdk({
-    mode:
-      params.session.environment === "production" ? "production" : "sandbox",
-  });
-
-  const result = await withCheckoutTimeout(
-    cashfree.checkout({
-      paymentSessionId: params.session.paymentSessionId,
-      redirectTarget: "_self",
-      returnUrl: params.returnUrl,
-    }),
-    params.timeoutMs,
-    "Cashfree SDK checkout timed out",
-  );
-
-  if (result?.redirect) {
-    return;
-  }
-
-  const cashfreeError = readCashfreeCheckoutError(result, {
-    whitelistOrigin: params.session.checkoutOrigin,
-  });
-  if (cashfreeError) {
-    throw new Error(cashfreeError);
-  }
-}
-
-export async function openCashfreeCheckout(params: {
+/**
+ * Opens Cashfree hosted checkout once. Uses a direct form POST (same as Cashfree
+ * redirect checkout) instead of the JS SDK, which can leave UPI/Google Pay flows
+ * pending and accidentally open a second checkout via timeout fallbacks.
+ */
+export function openCashfreeCheckout(params: {
   payload: CashfreeCheckoutSessionPayload;
-  timeoutMs?: number;
-}): Promise<void> {
+}): void {
   const session = parseCashfreeCheckoutSessionPayload(params.payload);
   if (!validatePaymentSessionId(session.paymentSessionId)) {
     throw new Error("Invalid Cashfree payment session.");
@@ -186,21 +121,13 @@ export async function openCashfreeCheckout(params: {
     throw new Error("Cashfree return URL missing from checkout session.");
   }
 
-  const timeoutMs = params.timeoutMs ?? 8_000;
-
-  try {
-    await openCashfreeCheckoutViaSdk({
-      session,
-      returnUrl,
-      timeoutMs,
-    });
+  if (
+    hasCashfreeCheckoutStarted(session.orderId, session.paymentSessionId)
+  ) {
     return;
-  } catch (error) {
-    console.warn(
-      "[cashfree] SDK checkout failed, using hosted form fallback:",
-      error,
-    );
   }
+
+  markCashfreeCheckoutStarted(session.orderId, session.paymentSessionId);
 
   submitCashfreeHostedCheckoutForm({
     paymentSessionId: session.paymentSessionId,
@@ -209,10 +136,4 @@ export async function openCashfreeCheckout(params: {
     hostedCheckoutUrl: session.hostedCheckoutUrl,
     redirectTarget: "_self",
   });
-}
-
-declare global {
-  interface Window {
-    Cashfree?: unknown;
-  }
 }
