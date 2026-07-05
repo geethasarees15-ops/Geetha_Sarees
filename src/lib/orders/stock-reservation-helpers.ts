@@ -1,4 +1,4 @@
-export const STOCK_RESERVATION_TTL_MINUTES = 15;
+export const STOCK_RESERVATION_TTL_MINUTES = 30;
 
 export type StockReservationLine = {
   productId: string;
@@ -57,6 +57,9 @@ export function isReservationExpired(
 export function hasActiveStockReservation(
   meta: Record<string, unknown>,
 ): boolean {
+  if (meta.inventoryFulfilled === true) return false;
+  if (meta.stockReservationConsumed === true) return false;
+
   return (
     meta.stockReserved === true &&
     meta.stockReleased !== true &&

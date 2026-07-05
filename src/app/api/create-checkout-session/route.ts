@@ -10,6 +10,7 @@ import { mergePaymentMeta } from "@/lib/orders/payment-meta";
 import {
   releaseStockReservation,
   reserveStockInTransaction,
+  extendStockReservationExpiry,
   shouldReserveStockAtCheckout,
   StockReservationError,
 } from "@/lib/orders/stock-reservation";
@@ -412,6 +413,8 @@ export async function POST(request: Request) {
         })
         .where(eq(orders.id, order.id));
 
+      await extendStockReservationExpiry(order.id);
+
       return NextResponse.json({
         provider: "cashfree",
         orderId: order.id,
@@ -441,6 +444,8 @@ export async function POST(request: Request) {
           payment_reference: payment.merchantTransactionId,
         })
         .where(eq(orders.id, order.id));
+
+      await extendStockReservationExpiry(order.id);
 
       return NextResponse.json({
         provider: "phonepe",
@@ -508,6 +513,8 @@ export async function POST(request: Request) {
       success_url: successUrl.toString(),
       cancel_url: `${getURL()}/cart`,
     });
+
+    await extendStockReservationExpiry(order.id);
 
     return NextResponse.json({
       provider: "stripe",

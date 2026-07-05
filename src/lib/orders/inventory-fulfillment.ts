@@ -7,23 +7,14 @@ import { mergePaymentMeta, readPaymentMeta } from "@/lib/orders/payment-meta";
 import { shouldDeductStockForPaidOrder } from "@/lib/orders/payment-fulfillment";
 import {
   confirmStockReservation,
+  deductPaidOrderStockAtomic,
   hasActiveStockReservation,
+  readReservationLines,
   releaseStockReservation,
 } from "@/lib/orders/stock-reservation";
-import {
-  getProductSizeConfigKey,
-  normalizeProductSizeConfig,
-  type ProductSizeConfig,
-} from "@/lib/products/sizeConfig";
 import db from "@/lib/supabase/db";
-import {
-  apiSettings,
-  orderLines,
-  orders,
-  products,
-  type SelectOrders,
-} from "@/lib/supabase/schema";
-import { eq, inArray, sql } from "drizzle-orm";
+import { orderLines, orders } from "@/lib/supabase/schema";
+import { eq } from "drizzle-orm";
 
 type FulfillmentResult = {
   fulfilled: boolean;
@@ -44,22 +35,29 @@ function readSelectedSizes(meta: Record<string, unknown>) {
   );
 }
 
-async function loadSizeConfigs(productIds: string[]) {
-  const unique = [...new Set(productIds.filter(Boolean))];
-  if (unique.length === 0) return new Map<string, ProductSizeConfig>();
+async function loadFulfillmentLines(
+  orderId: string,
+  meta: Record<string, unknown>,
+) {
+  const reserved = readReservationLines(meta);
+  if (reserved.length > 0) return reserved;
 
-  const keys = unique.map(getProductSizeConfigKey);
-  const rows = await db
-    .select({ key: apiSettings.key, value: apiSettings.value })
-    .from(apiSettings)
-    .where(inArray(apiSettings.key, keys));
+  const selectedSizes = readSelectedSizes(meta);
+  const lines = await db
+    .select({
+      productId: orderLines.productId,
+      quantity: orderLines.quantity,
+    })
+    .from(orderLines)
+    .where(eq(orderLines.orderId, orderId));
 
-  const map = new Map<string, ProductSizeConfig>();
-  rows.forEach((row) => {
-    const productId = row.key.replace(/^product_size_/, "");
-    map.set(productId, normalizeProductSizeConfig(row.value));
-  });
-  return map;
+  return lines.map((line) => ({
+    productId: line.productId,
+    quantity: line.quantity,
+    ...(selectedSizes[line.productId]
+      ? { size: selectedSizes[line.productId] }
+      : {}),
+  }));
 }
 
 export async function fulfillPaidOrderInventory(
@@ -123,89 +121,51 @@ export async function fulfillPaidOrderInventory(
     };
   }
 
-  const lines = await db
-    .select({
-      productId: orderLines.productId,
-      quantity: orderLines.quantity,
-    })
-    .from(orderLines)
-    .where(eq(orderLines.orderId, order.id));
-
+  const lines = await loadFulfillmentLines(orderId, meta);
   if (lines.length === 0) {
     return { fulfilled: false, skippedReason: "no_lines" };
   }
 
-  const selectedSizes = readSelectedSizes(meta);
-  const sizeConfigs = await loadSizeConfigs(
-    lines.map((line) => line.productId),
-  );
+  const reservationWasReleased = meta.stockReleased === true;
+  const deductResult = await deductPaidOrderStockAtomic(lines);
 
-  await db.transaction(async (tx) => {
-    for (const line of lines) {
-      await tx
-        .update(products)
-        .set({
-          stock: sql`GREATEST(${products.stock} - ${line.quantity}, 0)`,
-        })
-        .where(eq(products.id, line.productId));
-
-      const selectedSize = selectedSizes[line.productId];
-      const sizeConfig = sizeConfigs.get(line.productId);
-      if (
-        !selectedSize ||
-        !sizeConfig?.enabled ||
-        sizeConfig.options.length === 0
-      ) {
-        continue;
-      }
-
-      const nextOptions = sizeConfig.options.map((option) => {
-        const optionSize = String(option.size ?? "")
-          .trim()
-          .toUpperCase();
-        if (optionSize !== selectedSize) return option;
-        return {
-          ...option,
-          qty: Math.max(0, Number(option.qty ?? 0) - line.quantity),
-        };
-      });
-
-      const normalized = normalizeProductSizeConfig({
-        enabled: sizeConfig.enabled,
-        options: nextOptions,
-      });
-      const key = getProductSizeConfigKey(line.productId);
-
-      await tx
-        .insert(apiSettings)
-        .values({
-          key,
-          value: normalized,
-          isEnabled: normalized.enabled,
-          updatedAt: new Date().toISOString(),
-        })
-        .onConflictDoUpdate({
-          target: apiSettings.key,
-          set: {
-            value: normalized,
-            isEnabled: normalized.enabled,
-            updatedAt: new Date().toISOString(),
-          },
-        });
-    }
-
-    await tx
+  if (!deductResult.ok) {
+    await db
       .update(orders)
       .set({
         payment_meta: mergePaymentMeta(meta, {
-          inventoryFulfilled: true,
-          inventoryFulfilledAt: new Date().toISOString(),
+          inventoryFulfilled: false,
+          inventoryIssue: reservationWasReleased
+            ? "paid_after_reservation_released"
+            : "paid_without_active_reservation",
+          inventoryIssueAt: new Date().toISOString(),
+          inventoryIssueProductId: deductResult.failedProductId ?? null,
         }),
       })
       .where(eq(orders.id, order.id));
-  });
+
+    return {
+      fulfilled: false,
+      skippedReason: reservationWasReleased
+        ? "paid_after_reservation_released"
+        : "insufficient_stock_after_payment",
+    };
+  }
+
+  await db
+    .update(orders)
+    .set({
+      payment_meta: mergePaymentMeta(meta, {
+        inventoryFulfilled: true,
+        inventoryFulfilledAt: new Date().toISOString(),
+        inventoryLegacyDeduct: true,
+        inventoryLegacyReason: reservationWasReleased
+          ? "paid_after_reservation_released"
+          : "legacy_order_without_reservation",
+      }),
+    })
+    .where(eq(orders.id, order.id));
 
   await invalidateStorefrontCache();
-
   return { fulfilled: true };
 }

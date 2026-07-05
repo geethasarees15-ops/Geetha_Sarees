@@ -103,7 +103,11 @@ async function lockAndDecrementSizeStock(
   );
 
   const row = locked.at(0) as { id?: string; value?: unknown } | undefined;
-  const config = normalizeProductSizeConfig(row?.value);
+  if (!row) {
+    return false;
+  }
+
+  const config = normalizeProductSizeConfig(row.value);
   if (!config.enabled || config.options.length === 0) {
     return true;
   }
@@ -297,6 +301,75 @@ export async function reserveStockInTransaction(
   };
 }
 
+export async function extendStockReservationExpiry(orderId: string) {
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+  });
+  if (!order) return;
+
+  const meta = readPaymentMeta(order.payment_meta);
+  if (!hasActiveStockReservation(meta)) return;
+
+  await db
+    .update(orders)
+    .set({
+      payment_meta: mergePaymentMeta(meta, {
+        stockReservationExpiresAt: buildReservationExpiryIso(),
+        paymentSessionOpenedAt: new Date().toISOString(),
+      }),
+    })
+    .where(eq(orders.id, orderId));
+}
+
+type DeductLine = StockReservationLine;
+
+export async function deductPaidOrderStockAtomic(
+  lines: DeductLine[],
+): Promise<{ ok: boolean; failedProductId?: string }> {
+  try {
+    await db.transaction(async (tx) => {
+      const sortedLines = [...lines].sort((a, b) =>
+        a.productId.localeCompare(b.productId),
+      );
+
+      for (const line of sortedLines) {
+        const productOk = await lockAndDecrementProductStock(
+          tx,
+          line.productId,
+          line.quantity,
+        );
+        if (!productOk) {
+          throw new StockReservationError(
+            "Insufficient stock after payment",
+            line.productId,
+          );
+        }
+
+        if (line.size) {
+          const sizeOk = await lockAndDecrementSizeStock(
+            tx,
+            line.productId,
+            line.size,
+            line.quantity,
+          );
+          if (!sizeOk) {
+            throw new StockReservationError(
+              "Insufficient size stock after payment",
+              line.productId,
+            );
+          }
+        }
+      }
+    });
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof StockReservationError) {
+      return { ok: false, failedProductId: error.productId };
+    }
+    throw error;
+  }
+}
+
 export async function confirmStockReservation(
   orderId: string,
 ): Promise<{ confirmed: boolean; skippedReason?: string }> {
@@ -323,6 +396,7 @@ export async function confirmStockReservation(
       payment_meta: mergePaymentMeta(meta, {
         inventoryFulfilled: true,
         inventoryFulfilledAt: new Date().toISOString(),
+        stockReservationConsumed: true,
         stockReservationConfirmedAt: new Date().toISOString(),
       }),
     })
@@ -336,29 +410,49 @@ export async function releaseStockReservation(
   orderId: string,
   reason: string,
 ): Promise<{ released: boolean; skippedReason?: string }> {
-  const order = await db.query.orders.findFirst({
-    where: eq(orders.id, orderId),
-  });
-
-  if (!order) {
-    return { released: false, skippedReason: "order_not_found" };
-  }
-
-  if (order.payment_status === "paid") {
-    return { released: false, skippedReason: "already_paid" };
-  }
-
-  const meta = readPaymentMeta(order.payment_meta);
-  if (meta.stockReleased === true) {
-    return { released: true, skippedReason: "already_released" };
-  }
-
-  const lines = readReservationLines(meta);
-  if (meta.stockReserved !== true || lines.length === 0) {
-    return { released: false, skippedReason: "no_active_reservation" };
-  }
+  let released = false;
+  let skippedReason: string | undefined;
 
   await db.transaction(async (tx) => {
+    const locked = await tx.execute(
+      sql`SELECT id, payment_status, payment_meta FROM orders WHERE id = ${orderId} FOR UPDATE`,
+    );
+    const row = locked.at(0) as
+      | {
+          id?: string;
+          payment_status?: string;
+          payment_meta?: Record<string, unknown> | null;
+        }
+      | undefined;
+
+    if (!row?.id) {
+      skippedReason = "order_not_found";
+      return;
+    }
+
+    if (row.payment_status === "paid") {
+      skippedReason = "already_paid";
+      return;
+    }
+
+    const meta = readPaymentMeta(row.payment_meta);
+    if (meta.inventoryFulfilled === true || meta.stockReservationConsumed === true) {
+      skippedReason = "reservation_consumed";
+      return;
+    }
+
+    if (meta.stockReleased === true) {
+      skippedReason = "already_released";
+      released = true;
+      return;
+    }
+
+    const lines = readReservationLines(meta);
+    if (meta.stockReserved !== true || lines.length === 0) {
+      skippedReason = "no_active_reservation";
+      return;
+    }
+
     const sortedLines = [...lines].sort((a, b) =>
       a.productId.localeCompare(b.productId),
     );
@@ -380,10 +474,18 @@ export async function releaseStockReservation(
         }),
       })
       .where(eq(orders.id, orderId));
+
+    released = true;
   });
 
-  await invalidateStorefrontCache();
-  return { released: true };
+  if (released) {
+    await invalidateStorefrontCache();
+  }
+
+  return {
+    released,
+    skippedReason: released ? undefined : skippedReason ?? "release_failed",
+  };
 }
 
 export async function releaseExpiredStockReservations(options?: {

@@ -61,5 +61,19 @@ describe("stock reservation helpers", () => {
         stockReservationLines: [{ productId: "prod_1", quantity: 1 }],
       }),
     ).toBe(false);
+    expect(
+      hasActiveStockReservation({
+        stockReserved: true,
+        inventoryFulfilled: true,
+        stockReservationLines: [{ productId: "prod_1", quantity: 1 }],
+      }),
+    ).toBe(false);
+    expect(
+      hasActiveStockReservation({
+        stockReserved: true,
+        stockReservationConsumed: true,
+        stockReservationLines: [{ productId: "prod_1", quantity: 1 }],
+      }),
+    ).toBe(false);
   });
 });
