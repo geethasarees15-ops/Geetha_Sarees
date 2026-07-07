@@ -1,5 +1,9 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  classifyAuthCookieState,
+  clearSupabaseAuthCookiesOnResponse,
+} from "@/lib/auth/middleware-session-cookie";
 import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
 import {
   checkAuthRateLimit,
@@ -8,13 +12,6 @@ import {
 } from "@/lib/auth/rate-limit";
 
 const AUTH_GET_USER_TIMEOUT_MS = 5000;
-
-function hasSupabaseAuthCookie(request: NextRequest): boolean {
-  return request.cookies.getAll().some(
-    (cookie) =>
-      cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token"),
-  );
-}
 
 function redirectToAdminSignIn(
   request: NextRequest,
@@ -128,9 +125,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const isAdminPath = pathname.startsWith("/admin");
+  const authCookieState = classifyAuthCookieState(request);
 
-  // Guests and bots: skip Supabase auth (avoids /auth/v1/user 403 flood during sale traffic).
-  if (!hasSupabaseAuthCookie(request)) {
+  if (authCookieState === "absent") {
     if (isAdminPath) {
       return redirectToAdminSignIn(request, pathname);
     }
@@ -138,6 +135,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({
       request: { headers: request.headers },
     });
+  }
+
+  if (authCookieState === "invalid") {
+    const response = NextResponse.next({
+      request: { headers: request.headers },
+    });
+    clearSupabaseAuthCookiesOnResponse(request, response);
+
+    if (isAdminPath) {
+      return redirectToAdminSignIn(request, pathname);
+    }
+
+    return response;
   }
 
   let response = NextResponse.next({
@@ -195,7 +205,12 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAdminPath && !user) {
+    clearSupabaseAuthCookiesOnResponse(request, response);
     return redirectToAdminSignIn(request, pathname);
+  }
+
+  if (!isAdminPath && !user) {
+    clearSupabaseAuthCookiesOnResponse(request, response);
   }
 
   return response;
