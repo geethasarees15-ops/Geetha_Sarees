@@ -7,6 +7,44 @@ import {
   isAuthRateLimitPath,
 } from "@/lib/auth/rate-limit";
 
+const AUTH_GET_USER_TIMEOUT_MS = 5000;
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some(
+    (cookie) =>
+      cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token"),
+  );
+}
+
+function redirectToAdminSignIn(
+  request: NextRequest,
+  pathname: string,
+  error = "Please sign in to access admin.",
+) {
+  const signIn = new URL("/sign-in", request.url);
+  signIn.searchParams.set("from", pathname);
+  signIn.searchParams.set("error", error);
+  return NextResponse.redirect(signIn);
+}
+
+async function getUserWithTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("Auth check timed out")),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 /** Supabase sometimes returns OAuth to Site URL root (?code=) — forward to /auth/callback. */
 function redirectStrayOAuthToCallback(
   request: NextRequest,
@@ -89,6 +127,19 @@ export async function middleware(request: NextRequest) {
     return strayOAuth;
   }
 
+  const isAdminPath = pathname.startsWith("/admin");
+
+  // Guests and bots: skip Supabase auth (avoids /auth/v1/user 403 flood during sale traffic).
+  if (!hasSupabaseAuthCookie(request)) {
+    if (isAdminPath) {
+      return redirectToAdminSignIn(request, pathname);
+    }
+
+    return NextResponse.next({
+      request: { headers: request.headers },
+    });
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -121,15 +172,30 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { id: string } | null = null;
 
-  if (pathname.startsWith("/admin") && !user) {
-    const signIn = new URL("/sign-in", request.url);
-    signIn.searchParams.set("from", pathname);
-    signIn.searchParams.set("error", "Please sign in to access admin.");
-    return NextResponse.redirect(signIn);
+  try {
+    ({
+      data: { user },
+    } = await getUserWithTimeout(
+      supabase.auth.getUser(),
+      AUTH_GET_USER_TIMEOUT_MS,
+    ));
+  } catch {
+    if (isAdminPath) {
+      return redirectToAdminSignIn(
+        request,
+        pathname,
+        "Session check timed out. Please sign in again.",
+      );
+    }
+
+    // Storefront: don't block shoppers if auth is slow — page-level auth handles /orders.
+    return response;
+  }
+
+  if (isAdminPath && !user) {
+    return redirectToAdminSignIn(request, pathname);
   }
 
   return response;
