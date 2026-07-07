@@ -76,8 +76,7 @@ function compareProducts(
 
   for (const rule of rules) {
     if ("price" in rule && rule.price) {
-      const diff =
-        getEffectiveProductPrice(a) - getEffectiveProductPrice(b);
+      const diff = getEffectiveProductPrice(a) - getEffectiveProductPrice(b);
       if (diff !== 0) {
         return rule.price.includes("Desc") ? -diff : diff;
       }

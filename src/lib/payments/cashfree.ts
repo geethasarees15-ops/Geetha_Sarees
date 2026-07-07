@@ -128,14 +128,18 @@ export async function createCashfreePayment(
       ...createOrderInit,
       timeoutMs: CASHFREE_HTTP_TIMEOUT_MS,
     });
-    data = (await res.json().catch(() => null)) as CashfreeCreateOrderResponse | null;
+    data = (await res
+      .json()
+      .catch(() => null)) as CashfreeCreateOrderResponse | null;
   } catch (error) {
     // One retry for transient network/timeout errors.
     res = await fetchWithTimeout(createOrderUrl, {
       ...createOrderInit,
       timeoutMs: CASHFREE_HTTP_TIMEOUT_MS,
     });
-    data = (await res.json().catch(() => null)) as CashfreeCreateOrderResponse | null;
+    data = (await res
+      .json()
+      .catch(() => null)) as CashfreeCreateOrderResponse | null;
   }
 
   if (!res.ok || !data?.payment_session_id) {
@@ -148,7 +152,9 @@ export async function createCashfreePayment(
         return {
           paymentSessionId: sessionId,
           cashfreeOrderId: String(status.order_id ?? params.orderId).trim(),
-          cashfreeCfOrderId: status.cf_order_id ? String(status.cf_order_id) : null,
+          cashfreeCfOrderId: status.cf_order_id
+            ? String(status.cf_order_id)
+            : null,
           environment: config.environment,
           returnUrl,
           checkoutOrigin: getCanonicalSiteOrigin(),

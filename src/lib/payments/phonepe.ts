@@ -101,20 +101,17 @@ export async function createPhonePePayment(params: CreatePhonePePaymentParams) {
   const xVerify = `${sha256Hex(verifyRaw)}###${config.saltIndex}`;
 
   const payUrl = `${normalizeBaseUrl(config.baseUrl)}${PAY_ENDPOINT}`;
-  const res = await fetchWithTimeout(
-    payUrl,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-VERIFY": xVerify,
-        accept: "application/json",
-      },
-      body: JSON.stringify({ request: payloadBase64 }),
-      cache: "no-store",
-      timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
+  const res = await fetchWithTimeout(payUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-VERIFY": xVerify,
+      accept: "application/json",
     },
-  );
+    body: JSON.stringify({ request: payloadBase64 }),
+    cache: "no-store",
+    timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
+  });
 
   const data = (await res
     .json()
@@ -147,16 +144,16 @@ export async function fetchPhonePePaymentStatus(merchantTransactionId: string) {
   const res = await fetchWithTimeout(
     `${normalizeBaseUrl(config.baseUrl)}${statusPath}`,
     {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "X-VERIFY": xVerify,
-      "X-MERCHANT-ID": config.merchantId,
-      accept: "application/json",
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+        "X-MERCHANT-ID": config.merchantId,
+        accept: "application/json",
+      },
+      cache: "no-store",
+      timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
     },
-    cache: "no-store",
-    timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
-  },
   );
 
   const data = (await res
