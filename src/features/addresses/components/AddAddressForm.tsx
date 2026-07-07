@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import CheckoutTermsNotice from "@/components/layouts/CheckoutTermsNotice";
 import { cn } from "@/lib/utils";
 import { calculateCourierCharge } from "@/lib/courier/calculate";
 import { useCourierChargesConfig } from "@/providers/CourierChargesProvider";
@@ -322,6 +323,7 @@ export function AddAddressForm({
           </div>
         ) : null}
 
+        <CheckoutTermsNotice />
         <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-2 border-t bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-2 sm:backdrop-blur-none sm:flex-row sm:justify-end sm:gap-3">
           <Button
             type="button"

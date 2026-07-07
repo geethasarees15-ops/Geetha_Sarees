@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Branding from "./Branding";
+import LegalFooterLinks from "./LegalFooterLinks";
 import { siteConfig } from "@/config/site";
 import SocialMedias from "./SocialMedias";
 import { useStorefrontContact } from "@/providers/ShopContactProvider";
@@ -150,7 +151,8 @@ function MainFooter() {
             </div>
           </div>
 
-          <p className="mt-8 border-t border-primary/10 pt-6 text-center text-xs text-foreground/70">
+          <LegalFooterLinks className="mb-4" />
+          <p className="border-t border-primary/10 pt-6 text-center text-xs text-foreground/70">
             © {new Date().getFullYear()} {siteConfig.name}. All rights
             reserved.
           </p>

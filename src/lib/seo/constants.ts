@@ -41,6 +41,21 @@ export const SEO_STATIC_PAGES = [
     priority: 0.5,
   },
   {
+    path: "/terms-and-conditions",
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  },
+  {
+    path: "/terms-of-use",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
+    path: "/privacy-policy",
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  },
+  {
     path: "/store-policy",
     changeFrequency: "monthly" as const,
     priority: 0.5,
@@ -73,5 +88,10 @@ export const SEO_PRIMARY_NAV = [
     name: "Contact us",
     href: "/contact",
     description: "Visit our Salem store or call for orders and enquiries.",
+  },
+  {
+    name: "Terms & Conditions",
+    href: "/terms-and-conditions",
+    description: "Terms of use, orders, payments, and store policies.",
   },
 ] as const;

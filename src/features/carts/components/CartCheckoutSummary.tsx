@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import CheckoutTermsNotice from "@/components/layouts/CheckoutTermsNotice";
 import {
   Card,
   CardContent,
@@ -72,7 +73,10 @@ export function CartCheckoutSummary({
             <p className="text-2xl font-bold">{formatPrice(headlineAmount)}</p>
           )}
         </CardContent>
-        <CardFooter className="px-3 pb-3">{checkout}</CardFooter>
+        <CardFooter className="flex flex-col gap-3 px-3 pb-3">
+          {checkout}
+          <CheckoutTermsNotice />
+        </CardFooter>
       </Card>
       {mobileSticky}
     </>

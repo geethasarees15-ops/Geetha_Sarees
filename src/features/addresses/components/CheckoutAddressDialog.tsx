@@ -30,6 +30,7 @@ import {
   creatingOrderProgress,
   savingAddressProgress,
 } from "@/features/checkout/checkout-progress";
+import CheckoutTermsNotice from "@/components/layouts/CheckoutTermsNotice";
 
 type Props = {
   open: boolean;
@@ -265,7 +266,8 @@ export function CheckoutAddressDialog({
         </div>
 
         {step === "select" ? (
-          <div className="border-t bg-background px-4 py-3 sm:px-6">
+          <div className="space-y-3 border-t bg-background px-4 py-3 sm:px-6">
+            <CheckoutTermsNotice />
             <Button
               type="button"
               className="w-full"

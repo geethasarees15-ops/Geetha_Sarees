@@ -145,8 +145,10 @@ export const siteConfig = {
     {
       title: "Customer Service",
       items: [
+        { title: "Terms & Conditions", href: "/terms-and-conditions", items: [] },
+        { title: "Terms of Use", href: "/terms-of-use", items: [] },
+        { title: "Privacy Policy", href: "/privacy-policy", items: [] },
         { title: "Shipping & Returns", href: "/shipping-returns", items: [] },
-        { title: "Store Policy", href: "/store-policy", items: [] },
         { title: "Payment Methods", href: "/payment-methods", items: [] },
         { title: "FAQ", href: "/faq", items: [] },
         { title: "My orders", href: "/orders", items: [] },
