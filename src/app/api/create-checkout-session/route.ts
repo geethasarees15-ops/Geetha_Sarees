@@ -366,12 +366,15 @@ export async function POST(request: Request) {
           productNames,
         });
 
-        await tx
+        const [updatedOrder] = await tx
           .update(orders)
           .set({
             payment_meta: mergePaymentMeta(basePaymentMeta, reservationMeta),
           })
-          .where(eq(orders.id, created[0].id));
+          .where(eq(orders.id, created[0].id))
+          .returning();
+
+        return updatedOrder ? [updatedOrder] : created;
       }
 
       return created;
@@ -528,11 +531,11 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     if (createdOrderId) {
-      await releaseStockReservation(createdOrderId, "checkout_failed").catch(
-        (releaseErr) => {
-          console.error("[checkout] stock release failed:", releaseErr);
-        },
-      );
+      await releaseStockReservation(createdOrderId, "checkout_failed", {
+        allowOrphanFallback: true,
+      }).catch((releaseErr) => {
+        console.error("[checkout] stock release failed:", releaseErr);
+      });
     }
 
     if (err instanceof StockReservationError) {

@@ -1,5 +1,6 @@
 import {
   buildReservationExpiryIso,
+  canReleaseOrphanUnpaidHold,
   hasActiveStockReservation,
   isReservationExpired,
   readReservationLines,
@@ -74,6 +75,56 @@ describe("stock reservation helpers", () => {
         stockReservationConsumed: true,
         stockReservationLines: [{ productId: "prod_1", quantity: 1 }],
       }),
+    ).toBe(false);
+  });
+
+  it("detects orphan unpaid holds eligible for release", () => {
+    const now = Date.parse("2026-07-07T12:00:00.000Z");
+    const createdAt = "2026-07-07T11:00:00.000Z";
+
+    expect(
+      canReleaseOrphanUnpaidHold(
+        {
+          paymentEnvironment: "production",
+        },
+        createdAt,
+        "reservation_expired",
+        now,
+      ),
+    ).toBe(true);
+
+    expect(
+      canReleaseOrphanUnpaidHold(
+        {
+          paymentEnvironment: "production",
+        },
+        "2026-07-07T11:45:00.000Z",
+        "reservation_expired",
+        now,
+      ),
+    ).toBe(false);
+
+    expect(
+      canReleaseOrphanUnpaidHold(
+        {
+          paymentEnvironment: "production",
+        },
+        createdAt,
+        "checkout_failed",
+        now,
+      ),
+    ).toBe(true);
+
+    expect(
+      canReleaseOrphanUnpaidHold(
+        {
+          paymentEnvironment: "production",
+          stockReleased: true,
+        },
+        createdAt,
+        "reservation_expired",
+        now,
+      ),
     ).toBe(false);
   });
 });

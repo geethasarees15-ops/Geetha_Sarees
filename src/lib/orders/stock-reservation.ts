@@ -19,6 +19,7 @@ import type * as schema from "@/lib/supabase/schema";
 
 import {
   buildReservationExpiryIso,
+  canReleaseOrphanUnpaidHold,
   hasActiveStockReservation,
   isReservationExpired,
   readReservationLines,
@@ -29,6 +30,7 @@ import {
 
 export {
   buildReservationExpiryIso,
+  canReleaseOrphanUnpaidHold,
   hasActiveStockReservation,
   isReservationExpired,
   readReservationLines,
@@ -323,6 +325,46 @@ export async function extendStockReservationExpiry(orderId: string) {
 
 type DeductLine = StockReservationLine;
 
+function readSelectedSizesFromMeta(meta: Record<string, unknown>) {
+  const raw = meta.sizes;
+  if (!raw || typeof raw !== "object") return {} as Record<string, string>;
+
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).map(([productId, size]) => [
+      productId,
+      String(size ?? "")
+        .trim()
+        .toUpperCase(),
+    ]),
+  );
+}
+
+async function loadOrderLinesForRelease(
+  tx: DbTx,
+  orderId: string,
+  meta: Record<string, unknown>,
+): Promise<StockReservationLine[]> {
+  const reserved = readReservationLines(meta);
+  if (reserved.length > 0) return reserved;
+
+  const selectedSizes = readSelectedSizesFromMeta(meta);
+  const lines = await tx
+    .select({
+      productId: orderLines.productId,
+      quantity: orderLines.quantity,
+    })
+    .from(orderLines)
+    .where(eq(orderLines.orderId, orderId));
+
+  return lines.map((line) => ({
+    productId: line.productId,
+    quantity: line.quantity,
+    ...(selectedSizes[line.productId]
+      ? { size: selectedSizes[line.productId] }
+      : {}),
+  }));
+}
+
 export async function deductPaidOrderStockAtomic(
   lines: DeductLine[],
 ): Promise<{ ok: boolean; failedProductId?: string }> {
@@ -409,19 +451,21 @@ export async function confirmStockReservation(
 export async function releaseStockReservation(
   orderId: string,
   reason: string,
+  options?: { allowOrphanFallback?: boolean },
 ): Promise<{ released: boolean; skippedReason?: string }> {
   let released = false;
   let skippedReason: string | undefined;
 
   await db.transaction(async (tx) => {
     const locked = await tx.execute(
-      sql`SELECT id, payment_status, payment_meta FROM orders WHERE id = ${orderId} FOR UPDATE`,
+      sql`SELECT id, payment_status, payment_meta, created_at FROM orders WHERE id = ${orderId} FOR UPDATE`,
     );
     const row = locked.at(0) as
       | {
           id?: string;
           payment_status?: string;
           payment_meta?: Record<string, unknown> | null;
+          created_at?: string;
         }
       | undefined;
 
@@ -451,16 +495,59 @@ export async function releaseStockReservation(
     }
 
     const lines = readReservationLines(meta);
-    if (meta.stockReserved !== true || lines.length === 0) {
+    const hasTrackedReservation =
+      meta.stockReserved === true && lines.length > 0;
+
+    if (hasTrackedReservation) {
+      const sortedLines = [...lines].sort((a, b) =>
+        a.productId.localeCompare(b.productId),
+      );
+
+      for (const line of sortedLines) {
+        await incrementProductStock(tx, line.productId, line.quantity);
+        if (line.size) {
+          await incrementSizeStock(tx, line.productId, line.size, line.quantity);
+        }
+      }
+
+      await tx
+        .update(orders)
+        .set({
+          payment_meta: mergePaymentMeta(meta, {
+            stockReleased: true,
+            stockReleasedAt: new Date().toISOString(),
+            stockReleaseReason: reason,
+          }),
+        })
+        .where(eq(orders.id, orderId));
+
+      released = true;
+      return;
+    }
+
+    if (!options?.allowOrphanFallback) {
       skippedReason = "no_active_reservation";
       return;
     }
 
-    const sortedLines = [...lines].sort((a, b) =>
+    if (
+      !canReleaseOrphanUnpaidHold(meta, row.created_at, reason)
+    ) {
+      skippedReason = "orphan_not_eligible";
+      return;
+    }
+
+    const orphanLines = await loadOrderLinesForRelease(tx, orderId, meta);
+    if (orphanLines.length === 0) {
+      skippedReason = "no_release_lines";
+      return;
+    }
+
+    const sortedOrphanLines = [...orphanLines].sort((a, b) =>
       a.productId.localeCompare(b.productId),
     );
 
-    for (const line of sortedLines) {
+    for (const line of sortedOrphanLines) {
       await incrementProductStock(tx, line.productId, line.quantity);
       if (line.size) {
         await incrementSizeStock(tx, line.productId, line.size, line.quantity);
@@ -474,6 +561,7 @@ export async function releaseStockReservation(
           stockReleased: true,
           stockReleasedAt: new Date().toISOString(),
           stockReleaseReason: reason,
+          stockOrphanRelease: true,
         }),
       })
       .where(eq(orders.id, orderId));
@@ -508,18 +596,27 @@ export async function releaseExpiredStockReservations(options?: {
         gte(orders.createdAt, lookbackDate),
       ),
     )
+    .orderBy(orders.createdAt)
     .limit(limit);
 
   let released = 0;
 
   for (const order of candidates) {
     const meta = readPaymentMeta(order.payment_meta);
-    if (!hasActiveStockReservation(meta)) continue;
-    if (!isReservationExpired(meta)) continue;
+    const shouldReleaseTracked =
+      hasActiveStockReservation(meta) && isReservationExpired(meta);
+    const shouldReleaseOrphan = canReleaseOrphanUnpaidHold(
+      meta,
+      order.createdAt,
+      "reservation_expired",
+    );
+
+    if (!shouldReleaseTracked && !shouldReleaseOrphan) continue;
 
     const result = await releaseStockReservation(
       order.id,
       "reservation_expired",
+      { allowOrphanFallback: true },
     );
     if (result.released) released += 1;
   }

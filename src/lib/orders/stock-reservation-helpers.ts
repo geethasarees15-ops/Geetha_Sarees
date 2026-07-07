@@ -66,3 +66,34 @@ export function hasActiveStockReservation(
     readReservationLines(meta).length > 0
   );
 }
+
+const ORPHAN_RELEASE_IMMEDIATE_REASONS = new Set([
+  "checkout_failed",
+  "payment_failed",
+  "payment_canceled",
+]);
+
+/** Unpaid production checkout where stock was held but reservation meta is missing. */
+export function canReleaseOrphanUnpaidHold(
+  meta: Record<string, unknown>,
+  createdAt: string | Date | null | undefined,
+  reason: string,
+  now = Date.now(),
+): boolean {
+  if (meta.stockReleased === true) return false;
+  if (meta.inventoryFulfilled === true) return false;
+  if (meta.stockReservationConsumed === true) return false;
+  if (String(meta.paymentEnvironment ?? "").trim() !== "production") {
+    return false;
+  }
+  if (hasActiveStockReservation(meta)) return false;
+
+  if (ORPHAN_RELEASE_IMMEDIATE_REASONS.has(reason)) return true;
+
+  const createdValue =
+    createdAt instanceof Date ? createdAt.toISOString() : String(createdAt ?? "");
+  const createdMs = Date.parse(createdValue.trim());
+  if (!Number.isFinite(createdMs)) return false;
+
+  return createdMs + STOCK_RESERVATION_TTL_MINUTES * 60_000 <= now;
+}
