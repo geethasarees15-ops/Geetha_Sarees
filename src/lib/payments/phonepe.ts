@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { getPhonePeConfig } from "@/lib/integrations/settings";
+import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 import { getURL } from "@/lib/utils";
 
 type CreatePhonePePaymentParams = {
@@ -47,6 +48,7 @@ type PhonePeStatusResponse = {
 
 const PAY_ENDPOINT = "/pg/v1/pay";
 const STATUS_ENDPOINT_PREFIX = "/pg/v1/status";
+const PHONEPE_HTTP_TIMEOUT_MS = 12_000;
 
 function sha256Hex(content: string) {
   return crypto.createHash("sha256").update(content).digest("hex");
@@ -98,8 +100,9 @@ export async function createPhonePePayment(params: CreatePhonePePaymentParams) {
   const verifyRaw = `${payloadBase64}${PAY_ENDPOINT}${config.saltKey}`;
   const xVerify = `${sha256Hex(verifyRaw)}###${config.saltIndex}`;
 
-  const res = await fetch(
-    `${normalizeBaseUrl(config.baseUrl)}${PAY_ENDPOINT}`,
+  const payUrl = `${normalizeBaseUrl(config.baseUrl)}${PAY_ENDPOINT}`;
+  const res = await fetchWithTimeout(
+    payUrl,
     {
       method: "POST",
       headers: {
@@ -109,6 +112,7 @@ export async function createPhonePePayment(params: CreatePhonePePaymentParams) {
       },
       body: JSON.stringify({ request: payloadBase64 }),
       cache: "no-store",
+      timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
     },
   );
 
@@ -140,7 +144,9 @@ export async function fetchPhonePePaymentStatus(merchantTransactionId: string) {
   const verifyRaw = `${statusPath}${config.saltKey}`;
   const xVerify = `${sha256Hex(verifyRaw)}###${config.saltIndex}`;
 
-  const res = await fetch(`${normalizeBaseUrl(config.baseUrl)}${statusPath}`, {
+  const res = await fetchWithTimeout(
+    `${normalizeBaseUrl(config.baseUrl)}${statusPath}`,
+    {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -149,7 +155,9 @@ export async function fetchPhonePePaymentStatus(merchantTransactionId: string) {
       accept: "application/json",
     },
     cache: "no-store",
-  });
+    timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
+  },
+  );
 
   const data = (await res
     .json()

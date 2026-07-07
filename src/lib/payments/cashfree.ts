@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { getCashfreeConfig } from "@/lib/integrations/settings";
+import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 import {
   buildCashfreeNotifyUrl,
   buildCashfreeReturnUrl,
@@ -46,6 +47,7 @@ function normalizeBaseUrl(url: string) {
 }
 
 const CASHFREE_WEBHOOK_MAX_DRIFT_MS = 10 * 60 * 1000;
+const CASHFREE_HTTP_TIMEOUT_MS = 12_000;
 
 function signCashfreeWebhookPayload(
   rawBody: string,
@@ -88,7 +90,8 @@ export async function createCashfreePayment(
   const returnUrl = buildCashfreeReturnUrl(siteBaseUrl);
   const notifyUrl = buildCashfreeNotifyUrl(siteBaseUrl);
 
-  const res = await fetch(`${normalizeBaseUrl(config.baseUrl)}/orders`, {
+  const createOrderUrl = `${normalizeBaseUrl(config.baseUrl)}/orders`;
+  const createOrderInit = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -113,12 +116,49 @@ export async function createCashfreePayment(
       order_note: `Order ${params.orderId}`,
     }),
     cache: "no-store",
-  });
+  } satisfies RequestInit;
 
-  const data = (await res
-    .json()
-    .catch(() => null)) as CashfreeCreateOrderResponse | null;
+  // Cashfree can occasionally hang or return slow 5xx responses; enforce a
+  // short timeout so checkout doesn't leave customers stuck on "pending".
+  let res: Response | null = null;
+  let data: CashfreeCreateOrderResponse | null = null;
+
+  try {
+    res = await fetchWithTimeout(createOrderUrl, {
+      ...createOrderInit,
+      timeoutMs: CASHFREE_HTTP_TIMEOUT_MS,
+    });
+    data = (await res.json().catch(() => null)) as CashfreeCreateOrderResponse | null;
+  } catch (error) {
+    // One retry for transient network/timeout errors.
+    res = await fetchWithTimeout(createOrderUrl, {
+      ...createOrderInit,
+      timeoutMs: CASHFREE_HTTP_TIMEOUT_MS,
+    });
+    data = (await res.json().catch(() => null)) as CashfreeCreateOrderResponse | null;
+  }
+
   if (!res.ok || !data?.payment_session_id) {
+    // If the order exists already (idempotent order_id), try one status fetch to
+    // recover the payment_session_id.
+    try {
+      const status = await fetchCashfreeOrderStatus(params.orderId);
+      const sessionId = String(status.payment_session_id ?? "").trim();
+      if (sessionId) {
+        return {
+          paymentSessionId: sessionId,
+          cashfreeOrderId: String(status.order_id ?? params.orderId).trim(),
+          cashfreeCfOrderId: status.cf_order_id ? String(status.cf_order_id) : null,
+          environment: config.environment,
+          returnUrl,
+          checkoutOrigin: getCanonicalSiteOrigin(),
+          hostedCheckoutUrl: getCashfreeHostedCheckoutUrl(config.environment),
+        };
+      }
+    } catch {
+      // Ignore recovery errors and fall through to the standard error.
+    }
+
     const reason = String(
       data?.message || data?.type || data?.code || `HTTP_${res.status}`,
     ).trim();
@@ -140,7 +180,7 @@ export async function fetchCashfreeOrderStatus(orderId: string) {
   const config = await getCashfreeConfig();
   if (!config) throw new Error("Cashfree config is not enabled");
 
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${normalizeBaseUrl(config.baseUrl)}/orders/${encodeURIComponent(orderId)}`,
     {
       method: "GET",
@@ -151,6 +191,7 @@ export async function fetchCashfreeOrderStatus(orderId: string) {
         "x-api-version": config.apiVersion,
       },
       cache: "no-store",
+      timeoutMs: CASHFREE_HTTP_TIMEOUT_MS,
     },
   );
 
