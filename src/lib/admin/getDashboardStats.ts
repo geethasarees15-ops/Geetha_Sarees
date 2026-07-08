@@ -10,7 +10,7 @@ const ORDER_SUMMARY_SELECT =
   "id, amount, currency, email, name, payment_status, order_status, created_at, payment_meta";
 
 const ORDER_LINES_SELECT =
-  "orderId, product_id, quantity, price, product:products!order_lines_to_product ( name )";
+  "orderId, product_id, quantity, price, product_name_snapshot";
 
 const SUPABASE_IN_BATCH_SIZE = 300;
 
@@ -149,17 +149,16 @@ async function fetchPaidOrderLines(
 
 type OrderLineRow = {
   orderId: string | null;
-  product_id: string;
+  product_id: string | null;
   quantity: number;
   price: string | number;
-  product: { name: string } | { name: string }[] | null;
+  product_name_snapshot: string | null;
 };
 
 function productNameFromLine(row: OrderLineRow): string {
-  const p = row.product;
-  if (!p) return "Product";
-  if (Array.isArray(p)) return p[0]?.name ?? "Product";
-  return p.name;
+  const snapshot = row.product_name_snapshot?.trim();
+  if (snapshot) return snapshot;
+  return "Product";
 }
 
 function monthStart(d: Date) {
@@ -508,16 +507,17 @@ function computeStats({
     { productId: string; name: string; quantity: number; revenue: number }
   >();
   for (const row of paidOrderLines) {
+    const productKey = row.product_id ?? row.product_name_snapshot ?? "unknown";
     const name = productNameFromLine(row);
     const qty = row.quantity;
     const rev = Number(row.price) * qty;
-    const existing = productAgg.get(row.product_id);
+    const existing = productAgg.get(productKey);
     if (existing) {
       existing.quantity += qty;
       existing.revenue += rev;
     } else {
-      productAgg.set(row.product_id, {
-        productId: row.product_id,
+      productAgg.set(productKey, {
+        productId: row.product_id ?? productKey,
         name,
         quantity: qty,
         revenue: rev,
