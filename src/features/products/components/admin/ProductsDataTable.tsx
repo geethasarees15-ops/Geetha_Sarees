@@ -9,7 +9,6 @@ import {
   VisibilityState,
   flexRender,
   getCoreRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -19,6 +18,13 @@ import { AdminTableSearch } from "@/components/admin/AdminTableSearch";
 import { ADMIN_PRODUCTS_SEARCH } from "@/lib/admin/admin-search-config";
 import type { AdminProductsStockFilter } from "@/lib/admin/getAdminProductsList";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -152,6 +158,14 @@ function DataTable<TData, TValue>({
     pushQueryParams({ q: null, stock: null, page: "1" });
   }, [pushQueryParams]);
 
+  const changePageSize = React.useCallback(
+    (value: string) => {
+      setRowSelection({});
+      pushQueryParams({ pageSize: value, page: "1" });
+    },
+    [pushQueryParams],
+  );
+
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -161,7 +175,6 @@ function DataTable<TData, TValue>({
       rowSelection,
       columnFilters,
     },
-    autoResetPageIndex: true,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -176,7 +189,6 @@ function DataTable<TData, TValue>({
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
   });
 
   const selectedIds = React.useMemo(
@@ -205,10 +217,6 @@ function DataTable<TData, TValue>({
       : appliedStockFilter === "out"
         ? "No out-of-stock products."
         : "No results.";
-
-  React.useEffect(() => {
-    table.setPageIndex(0);
-  }, [appliedSearch, appliedStockFilter, table]);
 
   React.useEffect(() => {
     if (!drag || !enableDragSelect) return;
@@ -463,34 +471,53 @@ function DataTable<TData, TValue>({
           />
         ) : null}
       </div>
-      <div className="flex items-center justify-between px-2">
+      <div className="flex flex-col gap-3 px-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1 text-sm text-muted-foreground">
           {selectedIds.length} of {filteredCount} row(s) selected.
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="h-8 px-2"
-            disabled={page <= 1}
-            onClick={() =>
-              pushQueryParams({ page: String(Math.max(1, page - 1)) })
-            }
-          >
-            Prev
-          </Button>
-          <span className="text-sm font-medium">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            className="h-8 px-2"
-            disabled={page >= totalPages}
-            onClick={() =>
-              pushQueryParams({ page: String(Math.min(totalPages, page + 1)) })
-            }
-          >
-            Next
-          </Button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Rows per page</span>
+            <Select value={String(pageSize)} onValueChange={changePageSize}>
+              <SelectTrigger className="h-8 w-[72px]">
+                <SelectValue placeholder={String(pageSize)} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-8 px-2"
+              disabled={page <= 1}
+              onClick={() =>
+                pushQueryParams({ page: String(Math.max(1, page - 1)) })
+              }
+            >
+              Prev
+            </Button>
+            <span className="text-sm font-medium">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              className="h-8 px-2"
+              disabled={page >= totalPages}
+              onClick={() =>
+                pushQueryParams({
+                  page: String(Math.min(totalPages, page + 1)),
+                })
+              }
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
     </div>
