@@ -1,4 +1,13 @@
-export const STOCK_RESERVATION_TTL_MINUTES = 30;
+import {
+  STOCK_HOLD_ORPHAN_FALLBACK_MINUTES,
+  STOCK_HOLD_PRE_PAYMENT_MINUTES,
+  resolveStockHoldTtlMinutes,
+  stockHoldMinutesAfterPaymentSessionOpened,
+} from "@/lib/orders/stock-reservation-policy";
+
+/** @deprecated Use stock-reservation-policy constants; kept for tests/imports. */
+export const STOCK_RESERVATION_TTL_MINUTES =
+  stockHoldMinutesAfterPaymentSessionOpened();
 
 export type StockReservationLine = {
   productId: string;
@@ -14,7 +23,7 @@ export function shouldReserveStockAtCheckout(
 
 export function buildReservationExpiryIso(
   now = Date.now(),
-  ttlMinutes = STOCK_RESERVATION_TTL_MINUTES,
+  ttlMinutes = stockHoldMinutesAfterPaymentSessionOpened(),
 ): string {
   return new Date(now + ttlMinutes * 60_000).toISOString();
 }
@@ -90,10 +99,18 @@ export function canReleaseOrphanUnpaidHold(
 
   if (ORPHAN_RELEASE_IMMEDIATE_REASONS.has(reason)) return true;
 
+  const ttlMinutes = resolveStockHoldTtlMinutes(meta);
   const createdValue =
-    createdAt instanceof Date ? createdAt.toISOString() : String(createdAt ?? "");
+    createdAt instanceof Date
+      ? createdAt.toISOString()
+      : String(createdAt ?? "");
   const createdMs = Date.parse(createdValue.trim());
   if (!Number.isFinite(createdMs)) return false;
 
-  return createdMs + STOCK_RESERVATION_TTL_MINUTES * 60_000 <= now;
+  const orphanFallbackMinutes = Math.max(
+    ttlMinutes,
+    STOCK_HOLD_ORPHAN_FALLBACK_MINUTES,
+  );
+
+  return createdMs + orphanFallbackMinutes * 60_000 <= now;
 }

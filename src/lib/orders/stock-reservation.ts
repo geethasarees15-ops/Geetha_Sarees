@@ -18,6 +18,11 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type * as schema from "@/lib/supabase/schema";
 
 import {
+  PAYMENT_SESSION_HOLD_MINUTES,
+  STOCK_HOLD_PRE_PAYMENT_MINUTES,
+  stockHoldMinutesAfterPaymentSessionOpened,
+} from "@/lib/orders/stock-reservation-policy";
+import {
   buildReservationExpiryIso,
   canReleaseOrphanUnpaidHold,
   hasActiveStockReservation,
@@ -236,7 +241,11 @@ export async function reserveStockInTransaction(
   input: ReserveInput,
 ): Promise<Record<string, unknown>> {
   const reservedAt = new Date().toISOString();
-  const expiresAt = buildReservationExpiryIso();
+  const paymentSessionTtlMinutes = stockHoldMinutesAfterPaymentSessionOpened();
+  const expiresAt = buildReservationExpiryIso(
+    Date.now(),
+    STOCK_HOLD_PRE_PAYMENT_MINUTES,
+  );
   const reservationLines: StockReservationLine[] = [];
 
   const sortedLines = [...input.lines].sort((a, b) =>
@@ -300,6 +309,9 @@ export async function reserveStockInTransaction(
     stockReservedAt: reservedAt,
     stockReservationExpiresAt: expiresAt,
     stockReservationLines: reservationLines,
+    stockReservationTtlMinutes: paymentSessionTtlMinutes,
+    paymentSessionHoldMinutes: PAYMENT_SESSION_HOLD_MINUTES,
+    stockReservationPhase: "pre_payment",
   };
 }
 
@@ -312,12 +324,21 @@ export async function extendStockReservationExpiry(orderId: string) {
   const meta = readPaymentMeta(order.payment_meta);
   if (!hasActiveStockReservation(meta)) return;
 
+  const paymentSessionTtlMinutes = stockHoldMinutesAfterPaymentSessionOpened();
+  const openedAt = new Date().toISOString();
+
   await db
     .update(orders)
     .set({
       payment_meta: mergePaymentMeta(meta, {
-        stockReservationExpiresAt: buildReservationExpiryIso(),
-        paymentSessionOpenedAt: new Date().toISOString(),
+        stockReservationExpiresAt: buildReservationExpiryIso(
+          Date.now(),
+          paymentSessionTtlMinutes,
+        ),
+        stockReservationTtlMinutes: paymentSessionTtlMinutes,
+        paymentSessionHoldMinutes: PAYMENT_SESSION_HOLD_MINUTES,
+        stockReservationPhase: "payment_session",
+        paymentSessionOpenedAt: openedAt,
       }),
     })
     .where(eq(orders.id, orderId));
@@ -506,7 +527,12 @@ export async function releaseStockReservation(
       for (const line of sortedLines) {
         await incrementProductStock(tx, line.productId, line.quantity);
         if (line.size) {
-          await incrementSizeStock(tx, line.productId, line.size, line.quantity);
+          await incrementSizeStock(
+            tx,
+            line.productId,
+            line.size,
+            line.quantity,
+          );
         }
       }
 
@@ -530,9 +556,7 @@ export async function releaseStockReservation(
       return;
     }
 
-    if (
-      !canReleaseOrphanUnpaidHold(meta, row.created_at, reason)
-    ) {
+    if (!canReleaseOrphanUnpaidHold(meta, row.created_at, reason)) {
       skippedReason = "orphan_not_eligible";
       return;
     }

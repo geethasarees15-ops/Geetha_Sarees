@@ -1,4 +1,8 @@
 import crypto from "crypto";
+import {
+  buildCashfreeOrderExpiryIso,
+  PAYMENT_SESSION_HOLD_MINUTES,
+} from "@/lib/orders/stock-reservation-policy";
 import { getCashfreeConfig } from "@/lib/integrations/settings";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 import {
@@ -103,6 +107,7 @@ export async function createCashfreePayment(
       order_id: params.orderId,
       order_amount: Number(params.amountInRupees.toFixed(2)),
       order_currency: "INR",
+      order_expiry_time: buildCashfreeOrderExpiryIso(),
       customer_details: {
         customer_id: customerId,
         customer_name: customerName,
