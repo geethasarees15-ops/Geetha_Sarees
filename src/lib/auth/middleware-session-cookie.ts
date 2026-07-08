@@ -9,9 +9,7 @@ export function hasSupabaseAuthCookie(request: NextRequest): boolean {
 }
 
 function isSupabaseAuthCookieName(cookie: { name: string }): boolean {
-  return (
-    cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token")
-  );
+  return cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token");
 }
 
 function getSupabaseAuthCookieValue(request: NextRequest): string | null {
@@ -94,9 +92,7 @@ function isAccessTokenExpired(payload: Record<string, unknown>): boolean {
 }
 
 /** Skip Supabase /auth/v1/user when the browser cookie cannot succeed. */
-export function classifyAuthCookieState(
-  request: NextRequest,
-): AuthCookieState {
+export function classifyAuthCookieState(request: NextRequest): AuthCookieState {
   if (!hasSupabaseAuthCookie(request)) {
     return "absent";
   }

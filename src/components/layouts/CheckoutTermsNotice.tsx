@@ -18,7 +18,10 @@ export function CheckoutTermsNotice() {
         Terms of Use
       </Link>
       , and{" "}
-      <Link href="/privacy-policy" className="font-medium text-primary hover:underline">
+      <Link
+        href="/privacy-policy"
+        className="font-medium text-primary hover:underline"
+      >
         Privacy Policy
       </Link>
       .

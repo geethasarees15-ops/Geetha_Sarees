@@ -26,7 +26,9 @@ export default async function PrivacyPolicyPage() {
       heading="Privacy Policy"
       description={`How ${businessName} collects, uses, and protects your personal information.`}
     >
-      <p className="text-xs text-muted-foreground">Last updated: {lastUpdated}</p>
+      <p className="text-xs text-muted-foreground">
+        Last updated: {lastUpdated}
+      </p>
 
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">1. Overview</h2>
@@ -106,7 +108,9 @@ export default async function PrivacyPolicyPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">6. Your choices</h2>
+        <h2 className="text-base font-semibold text-foreground">
+          6. Your choices
+        </h2>
         <p>
           You may request correction of your contact details or ask questions
           about your data by contacting us using the details below. You may sign
@@ -160,7 +164,10 @@ export default async function PrivacyPolicyPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li>
             Phone:{" "}
-            <Link href={contact.phoneHref} className="text-primary hover:underline">
+            <Link
+              href={contact.phoneHref}
+              className="text-primary hover:underline"
+            >
               {contact.phone}
             </Link>
           </li>

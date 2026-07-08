@@ -26,10 +26,14 @@ export default async function TermsAndConditionsPage() {
       heading="Terms & Conditions"
       description={`Please read these terms carefully before using ${businessName} website or placing an order.`}
     >
-      <p className="text-xs text-muted-foreground">Last updated: {lastUpdated}</p>
+      <p className="text-xs text-muted-foreground">
+        Last updated: {lastUpdated}
+      </p>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">1. Introduction</h2>
+        <h2 className="text-base font-semibold text-foreground">
+          1. Introduction
+        </h2>
         <p>
           These Terms &amp; Conditions (&quot;Terms&quot;) govern your access to
           and use of the website{" "}
@@ -51,7 +55,9 @@ export default async function TermsAndConditionsPage() {
       </section>
 
       <section id="terms-of-use" className="scroll-mt-28 space-y-3">
-        <h2 className="text-base font-semibold text-foreground">2. Terms of Use</h2>
+        <h2 className="text-base font-semibold text-foreground">
+          2. Terms of Use
+        </h2>
         <p>
           You may use this website only for lawful purposes related to browsing
           and purchasing sarees and related products.
@@ -107,7 +113,10 @@ export default async function TermsAndConditionsPage() {
           Online payments are processed securely through authorised payment
           partners such as Cashfree and/or PhonePe. We do not store your full
           card, UPI PIN, or net-banking credentials on our servers. See our{" "}
-          <Link href="/payment-methods" className="text-primary hover:underline">
+          <Link
+            href="/payment-methods"
+            className="text-primary hover:underline"
+          >
             Payment Methods
           </Link>{" "}
           page for details.
@@ -191,8 +200,8 @@ export default async function TermsAndConditionsPage() {
           10. Governing law
         </h2>
         <p>
-          These Terms are governed by the laws of India. Courts in Salem,
-          Tamil Nadu shall have jurisdiction, subject to applicable consumer
+          These Terms are governed by the laws of India. Courts in Salem, Tamil
+          Nadu shall have jurisdiction, subject to applicable consumer
           protection laws.
         </p>
       </section>
@@ -209,7 +218,9 @@ export default async function TermsAndConditionsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">12. Contact us</h2>
+        <h2 className="text-base font-semibold text-foreground">
+          12. Contact us
+        </h2>
         <p>
           For questions about these Terms &amp; Conditions or Terms of Use,
           contact {businessName}:
@@ -220,7 +231,10 @@ export default async function TermsAndConditionsPage() {
           ))}
           <li>
             Phone:{" "}
-            <Link href={contact.phoneHref} className="text-primary hover:underline">
+            <Link
+              href={contact.phoneHref}
+              className="text-primary hover:underline"
+            >
               {contact.phone}
             </Link>
           </li>
