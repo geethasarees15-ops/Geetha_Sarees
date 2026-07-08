@@ -2,15 +2,21 @@ import AdminShell from "@/components/admin/AdminShell";
 import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
-import { getAdminOrdersList } from "@/lib/admin/getAdminOrdersList";
-import { publicErrorMessage } from "@/lib/api/public-error";
 import {
-  isPaidPaymentStatus,
-  needsPaymentAttention,
-} from "@/lib/orders/paymentStatus";
+  clampAdminOrdersPageSize,
+  getAdminOrdersCounts,
+  getAdminOrdersList,
+  parseAdminOrdersPage,
+} from "@/lib/admin/getAdminOrdersList";
+import { publicErrorMessage } from "@/lib/api/public-error";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+const PAID_PAGE_PARAM = "paidPage";
+const PENDING_PAGE_PARAM = "pendingPage";
+const PAGE_SIZE_PARAM = "pageSize";
 
 type AdminOrdersPageProps = {
   searchParams: {
@@ -27,27 +33,43 @@ export default function OrdersPage({ searchParams }: AdminOrdersPageProps) {
 }
 
 async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
-  void searchParams;
+  const rawPageSize = searchParams[PAGE_SIZE_PARAM];
+  const pageSize = clampAdminOrdersPageSize(
+    Number.parseInt(
+      String(Array.isArray(rawPageSize) ? rawPageSize[0] : rawPageSize),
+      10,
+    ) || undefined,
+  );
+  const paidPage = parseAdminOrdersPage(searchParams[PAID_PAGE_PARAM]);
+  const pendingPage = parseAdminOrdersPage(searchParams[PENDING_PAGE_PARAM]);
 
   let fetchError: string | null = null;
-  let orders: Awaited<ReturnType<typeof getAdminOrdersList>> = [];
+  let counts = { paid: 0, pending: 0 };
+  let paid: Awaited<ReturnType<typeof getAdminOrdersList>> = {
+    rows: [],
+    totalCount: 0,
+    page: 1,
+    pageSize,
+  };
+  let pending: Awaited<ReturnType<typeof getAdminOrdersList>> = {
+    rows: [],
+    totalCount: 0,
+    page: 1,
+    pageSize,
+  };
 
   try {
-    orders = await getAdminOrdersList();
+    [counts, paid, pending] = await Promise.all([
+      getAdminOrdersCounts(),
+      getAdminOrdersList({ segment: "paid", page: paidPage, pageSize }),
+      getAdminOrdersList({ segment: "pending", page: pendingPage, pageSize }),
+    ]);
   } catch (error) {
     console.error("[admin/orders] page load failed:", error);
     fetchError = publicErrorMessage(error, "Failed to load orders.");
   }
 
-  const paidOrders = orders.filter((order) =>
-    isPaidPaymentStatus(order.paymentStatus),
-  );
-  const pendingOrders = orders.filter((order) =>
-    needsPaymentAttention({
-      payment_status: order.paymentStatus,
-      order_status: order.orderStatus,
-    }),
-  );
+  const resetPageParams = [PAID_PAGE_PARAM, PENDING_PAGE_PARAM];
 
   return (
     <AdminShell heading="Orders">
@@ -65,7 +87,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
               Paid orders
             </p>
             <p className="mt-1 text-2xl font-semibold text-emerald-700">
-              {paidOrders.length}
+              {counts.paid}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Counted in dashboard revenue and top products
@@ -76,7 +98,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
               Pending / unpaid
             </p>
             <p className="mt-1 text-2xl font-semibold text-amber-700">
-              {pendingOrders.length}
+              {counts.pending}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Follow up — ask why payment was not completed
@@ -91,7 +113,13 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
             order page.
           </p>
           <AdminOrdersList
-            orders={paidOrders}
+            orders={paid.rows}
+            totalCount={paid.totalCount}
+            page={paid.page}
+            pageSize={paid.pageSize}
+            pageParam={PAID_PAGE_PARAM}
+            pageSizeParam={PAGE_SIZE_PARAM}
+            resetPageParams={resetPageParams}
             emptyMessage="No paid orders yet."
           />
         </section>
@@ -102,7 +130,13 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
             Contact these customers — not included in sales analytics.
           </p>
           <AdminOrdersList
-            orders={pendingOrders}
+            orders={pending.rows}
+            totalCount={pending.totalCount}
+            page={pending.page}
+            pageSize={pending.pageSize}
+            pageParam={PENDING_PAGE_PARAM}
+            pageSizeParam={PAGE_SIZE_PARAM}
+            resetPageParams={resetPageParams}
             emptyMessage="No pending or unpaid orders."
           />
         </section>

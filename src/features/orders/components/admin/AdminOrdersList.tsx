@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Copy } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,9 +20,19 @@ import { cn, formatDate, formatPrice } from "@/lib/utils";
 
 type Props = {
   orders: AdminOrderListView[];
-  emptyMessage?: string;
+  /** Total matching orders across all pages (from the server). */
+  totalCount: number;
+  /** 1-based current page (already clamped by the server). */
+  page: number;
+  pageSize: number;
+  /** URL query key that controls this section's page (e.g. "paidPage"). */
+  pageParam: string;
+  /** URL query key that controls the shared page size (e.g. "pageSize"). */
+  pageSizeParam?: string;
+  /** Page params reset to 1 when the shared page size changes. */
+  resetPageParams?: string[];
   pageSizeOptions?: number[];
-  defaultPageSize?: number;
+  emptyMessage?: string;
 };
 
 async function copyTextToClipboard(text: string) {
@@ -158,25 +169,55 @@ function AdminOrderRow({ order }: { order: AdminOrderListView }) {
 
 export function AdminOrdersList({
   orders,
-  emptyMessage = "No orders in this section.",
+  totalCount,
+  page,
+  pageSize,
+  pageParam,
+  pageSizeParam = "pageSize",
+  resetPageParams,
   pageSizeOptions = [10, 20, 30, 50],
-  defaultPageSize = 20,
+  emptyMessage = "No orders in this section.",
 }: Props) {
-  const [pageSize, setPageSize] = React.useState(defaultPageSize);
-  const [pageIndex, setPageIndex] = React.useState(0);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const totalCount = orders.length;
+  const pushQueryParams = React.useCallback(
+    (next: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      Object.entries(next).forEach(([key, value]) => {
+        if (value == null || value === "") params.delete(key);
+        else params.set(key, value);
+      });
+      const qs = params.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
 
-  // Clamp the current page whenever the data or page size changes so we never
-  // land on an empty page after refresh / status changes.
-  const safePageIndex = Math.min(pageIndex, totalPages - 1);
-  React.useEffect(() => {
-    if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
-  }, [safePageIndex, pageIndex]);
+  const goToPage = React.useCallback(
+    (nextPage: number) => {
+      const clamped = Math.min(Math.max(1, nextPage), totalPages);
+      pushQueryParams({ [pageParam]: String(clamped) });
+    },
+    [pageParam, pushQueryParams, totalPages],
+  );
 
-  const start = safePageIndex * pageSize;
-  const visibleOrders = orders.slice(start, start + pageSize);
+  const changePageSize = React.useCallback(
+    (value: string) => {
+      const resetKeys = resetPageParams ?? [pageParam];
+      const updates: Record<string, string | null> = {
+        [pageSizeParam]: value,
+      };
+      // Changing rows-per-page invalidates every section's current page.
+      for (const key of resetKeys) updates[key] = "1";
+      pushQueryParams(updates);
+    },
+    [pageParam, pageSizeParam, pushQueryParams, resetPageParams],
+  );
 
   if (totalCount === 0) {
     return (
@@ -186,12 +227,13 @@ export function AdminOrdersList({
     );
   }
 
+  const start = (safePage - 1) * pageSize;
   const rangeStart = start + 1;
-  const rangeEnd = Math.min(start + pageSize, totalCount);
+  const rangeEnd = Math.min(start + orders.length, totalCount);
 
   return (
     <div className="space-y-3">
-      {visibleOrders.map((order) => (
+      {orders.map((order) => (
         <AdminOrderRow key={order.id} order={order} />
       ))}
 
@@ -202,13 +244,7 @@ export function AdminOrdersList({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Rows per page</span>
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => {
-                setPageSize(Number(value));
-                setPageIndex(0);
-              }}
-            >
+            <Select value={String(pageSize)} onValueChange={changePageSize}>
               <SelectTrigger className="h-8 w-[72px]">
                 <SelectValue placeholder={String(pageSize)} />
               </SelectTrigger>
@@ -225,21 +261,19 @@ export function AdminOrdersList({
             <Button
               variant="outline"
               className="h-8 px-2"
-              disabled={safePageIndex <= 0}
-              onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+              disabled={safePage <= 1}
+              onClick={() => goToPage(safePage - 1)}
             >
               Prev
             </Button>
             <span className="text-sm font-medium">
-              Page {safePageIndex + 1} of {totalPages}
+              Page {safePage} of {totalPages}
             </span>
             <Button
               variant="outline"
               className="h-8 px-2"
-              disabled={safePageIndex >= totalPages - 1}
-              onClick={() =>
-                setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))
-              }
+              disabled={safePage >= totalPages}
+              onClick={() => goToPage(safePage + 1)}
             >
               Next
             </Button>
