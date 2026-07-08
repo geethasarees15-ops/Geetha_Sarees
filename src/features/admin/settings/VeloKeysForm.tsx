@@ -276,6 +276,27 @@ export function VeloKeysForm() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Instant order push (Velo app notification)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            When a website order is paid, SSR Tex POSTs to Velo&apos;s{" "}
+            <code className="text-xs">notify-velo-order-push</code> edge
+            function so the Velo app can alert immediately (not only poll every
+            15s).
+          </p>
+          <p>
+            Push secret + shop URL are stored in Supabase{" "}
+            <code className="text-xs">api_settings</code> key{" "}
+            <code className="text-xs">velo_order_push</code>. Run{" "}
+            <code className="text-xs">npm run db:setup-velo-order-push</code> on
+            a new environment if needed.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>How Velo app should collect orders</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">

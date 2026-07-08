@@ -1,4 +1,5 @@
 import { env } from "@/env.mjs";
+import { notifyVeloOrderPushSafe } from "@/lib/integrations/velo-order-push";
 import { notifyOrderWhatsAppTargets } from "@/lib/integrations/whatsapp";
 import { fulfillPaidOrderInventory } from "@/lib/orders/inventory-fulfillment";
 import { mergePaymentMeta, readPaymentMeta } from "@/lib/orders/payment-meta";
@@ -118,6 +119,7 @@ export async function POST(request: NextRequest) {
               }
 
               await fulfillPaidOrderInventory(order.id);
+              await notifyVeloOrderPushSafe(order);
             }
           } else {
             await db

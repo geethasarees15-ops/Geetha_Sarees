@@ -1,5 +1,6 @@
 import db from "@/lib/supabase/db";
 import { carts, orders } from "@/lib/supabase/schema";
+import { notifyVeloOrderPushSafe } from "@/lib/integrations/velo-order-push";
 import { notifyOrderWhatsAppTargets } from "@/lib/integrations/whatsapp";
 import { fetchPhonePePaymentStatus } from "@/lib/payments/phonepe";
 import { fetchCashfreeOrderStatus } from "@/lib/payments/cashfree";
@@ -122,6 +123,7 @@ export async function syncPhonePeOrderPayment(input: SyncInput) {
     }
 
     await fulfillPaidOrderInventory(updated.id);
+    await notifyVeloOrderPushSafe(updated);
   } else if (isFailed) {
     await maybeReleaseUnpaidReservation(updated.id, "payment_failed");
   } else {
@@ -204,6 +206,7 @@ export async function syncCashfreeOrderPayment(orderId: string) {
     }
 
     await fulfillPaidOrderInventory(updated.id);
+    await notifyVeloOrderPushSafe(updated);
   } else if (isTerminalFailure) {
     await maybeReleaseUnpaidReservation(updated.id, "payment_failed");
   } else {

@@ -17,6 +17,8 @@ import {
   type ResolvedShopContact,
   type ShopContactPayload,
 } from "@/lib/admin/shop-contact";
+import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
+import { DEFAULT_VELO_ORDER_PUSH_URL } from "@/lib/integrations/velo-order-push-payload";
 import { resolveCashfreeBaseUrl } from "@/lib/integrations/payment-settings";
 import { siteConfig } from "@/config/site";
 import db from "@/lib/supabase/db";
@@ -41,6 +43,7 @@ export const INTEGRATION_KEYS = {
   stockControl: "stock_control",
   courierCharges: "courier_charges",
   offerCodes: "offer_codes",
+  veloOrderPush: "velo_order_push",
 } as const;
 
 export type IntegrationKey =
@@ -688,6 +691,51 @@ export async function getWhatsAppConfig(): Promise<WhatsAppConfig | null> {
     sellerMobiles,
     enabled: true,
   };
+}
+
+export type VeloOrderPushConfig = {
+  pushSecret: string;
+  pushUrl: string;
+  shopBaseUrl: string;
+  enabled: true;
+};
+
+/** Velo mobile push webhook — secret/url stored in api_settings (velo_order_push). */
+export async function resolveVeloOrderPushConfig(): Promise<VeloOrderPushConfig | null> {
+  try {
+    const setting = await getIntegrationSetting(INTEGRATION_KEYS.veloOrderPush);
+    const envSecret = process.env.VELO_PUSH_SECRET?.trim() ?? "";
+    const envUrl = process.env.VELO_PUSH_URL?.trim() ?? "";
+    const envShop = process.env.VELO_PUSH_SHOP_BASE_URL?.trim() ?? "";
+
+    if (setting?.isEnabled) {
+      const value = (setting.value ?? {}) as Record<string, unknown>;
+      const pushSecret = String(value.pushSecret ?? envSecret).trim();
+      if (!pushSecret) return null;
+
+      return {
+        pushSecret,
+        pushUrl:
+          String(value.pushUrl ?? envUrl).trim() || DEFAULT_VELO_ORDER_PUSH_URL,
+        shopBaseUrl:
+          String(value.shopBaseUrl ?? envShop).trim() ||
+          getCanonicalSiteOrigin(),
+        enabled: true,
+      };
+    }
+
+    if (!envSecret) return null;
+
+    return {
+      pushSecret: envSecret,
+      pushUrl: envUrl || DEFAULT_VELO_ORDER_PUSH_URL,
+      shopBaseUrl: envShop || getCanonicalSiteOrigin(),
+      enabled: true,
+    };
+  } catch (error) {
+    console.error("[settings] resolveVeloOrderPushConfig failed:", error);
+    return null;
+  }
 }
 
 export async function getStorefrontSocialLinks(): Promise<StorefrontSocialLinks | null> {
