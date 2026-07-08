@@ -8,6 +8,7 @@ import {
   effectivePriceInRangeFilter,
   parsePaginationOffset,
 } from "./effective-price";
+import { categorizedPublishedProductConditions } from "./categorized-products";
 import type { StorefrontProductSearchVariables } from "./search-params";
 import { normalizeStorefrontSearchTerm } from "./search-utils";
 
@@ -120,7 +121,10 @@ export async function fetchProductsByEffectivePriceRange(
     };
   }
 
-  const conditions: SQL[] = [eq(products.isDraft, false), priceFilter];
+  const conditions: SQL[] = [
+    categorizedPublishedProductConditions()!,
+    priceFilter,
+  ];
 
   if (variables.collections?.length) {
     conditions.push(inArray(products.collectionId, variables.collections));
@@ -160,8 +164,8 @@ export async function fetchProductsByEffectivePriceRange(
       collectionSlug: collections.slug,
     })
     .from(products)
+    .innerJoin(collections, eq(products.collectionId, collections.id))
     .innerJoin(medias, eq(products.featuredImageId, medias.id))
-    .leftJoin(collections, eq(products.collectionId, collections.id))
     .where(and(...conditions));
 
   const sorted = [...rows].sort((a, b) =>
