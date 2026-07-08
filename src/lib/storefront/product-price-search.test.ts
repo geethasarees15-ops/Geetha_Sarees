@@ -1,4 +1,4 @@
-import { getEffectiveProductPrice } from "@/lib/products/discount";
+import { getEffectiveProductPrice, isEffectivePriceInDisplayRange } from "@/lib/products/discount";
 
 describe("shop by price alignment", () => {
   it("matches homepage bucket bounds for mid-tier sarees", () => {
@@ -26,5 +26,14 @@ describe("shop by price alignment", () => {
     expect(getEffectiveProductPrice(product)).toBe(720);
     expect(getEffectiveProductPrice(product)).toBeGreaterThanOrEqual(500);
     expect(getEffectiveProductPrice(product)).toBeLessThanOrEqual(799);
+  });
+
+  it("matches homepage bucket bounds with shop filter bounds", () => {
+    const at799 = { price: "799.00", discountEnabled: false, discountPercent: null };
+    const at800 = { price: "800.00", discountEnabled: false, discountPercent: null };
+
+    expect(isEffectivePriceInDisplayRange(at799, 500, 799)).toBe(true);
+    expect(isEffectivePriceInDisplayRange(at800, 500, 799)).toBe(false);
+    expect(isEffectivePriceInDisplayRange(at800, 800, 999)).toBe(true);
   });
 });

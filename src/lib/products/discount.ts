@@ -43,6 +43,20 @@ export function getEffectiveProductPrice(
   return getSaleProductPrice(product);
 }
 
+/** Same inclusive range used for homepage buckets and /shop?price_range= pages. */
+export function isEffectivePriceInDisplayRange(
+  product: ProductDiscountFields,
+  min: number,
+  max: number,
+): boolean {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+    return false;
+  }
+
+  const effectivePrice = getEffectiveProductPrice(product);
+  return effectivePrice >= min && effectivePrice <= max;
+}
+
 export function formatDiscountBadgeLabel(percent: number): string {
   return `-${Math.round(percent)}%`;
 }

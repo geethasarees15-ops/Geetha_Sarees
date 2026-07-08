@@ -17,7 +17,11 @@ export type CategorizedProductPriceRow = {
   mediaAlt: string | null;
 };
 
-/** Load published, categorized products for storefront price grouping. */
+/**
+ * Load shop-visible categorized products for price grouping.
+ * Matches the product cards shown on /shop price-range pages:
+ * published, in an active category, with a featured image.
+ */
 export async function loadCategorizedProductsForPricing(): Promise<
   CategorizedProductPriceRow[]
 > {
@@ -33,6 +37,6 @@ export async function loadCategorizedProductsForPricing(): Promise<
     })
     .from(products)
     .innerJoin(collections, eq(products.collectionId, collections.id))
-    .leftJoin(medias, eq(products.featuredImageId, medias.id))
+    .innerJoin(medias, eq(products.featuredImageId, medias.id))
     .where(categorizedPublishedProductConditions());
 }

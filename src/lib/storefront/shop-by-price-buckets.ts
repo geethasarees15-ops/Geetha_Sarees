@@ -1,4 +1,4 @@
-import { getEffectiveProductPrice } from "@/lib/products/discount";
+import { getEffectiveProductPrice, isEffectivePriceInDisplayRange } from "@/lib/products/discount";
 import { formatPrice } from "@/lib/utils";
 
 /** Retail breakpoints; first tier covers budget items below ₹300. */
@@ -40,20 +40,9 @@ function displayMaxForBucket(
   return nextBreakpoint - 1;
 }
 
-function isPriceInBucket(
-  price: number,
-  min: number,
-  nextBreakpoint: number,
-  isLast: boolean,
-): boolean {
-  if (price < min) return false;
-  if (isLast) return price <= nextBreakpoint;
-  return price < nextBreakpoint;
-}
-
 function pickRepresentativeProduct(products: ShopByPriceProductInput[]) {
-  const withImage = products.filter((product) => product.mediaKey);
-  const pool = withImage.length ? withImage : products;
+  const pool = products.filter((product) => product.mediaKey);
+  if (!pool.length) return null;
 
   const featured = pool.find((product) => product.featured);
   if (featured) return featured;
@@ -88,12 +77,13 @@ export function buildShopByPriceBuckets(
     const displayMax = displayMaxForBucket(min, nextBreakpoint, isLast);
 
     const inBucket = priced.filter((product) =>
-      isPriceInBucket(product.effectivePrice, min, nextBreakpoint, isLast),
+      isEffectivePriceInDisplayRange(product, min, displayMax),
     );
 
     if (!inBucket.length) continue;
 
     const representative = pickRepresentativeProduct(inBucket);
+    if (!representative?.mediaKey) continue;
 
     buckets.push({
       id: `${min}-${displayMax}`,

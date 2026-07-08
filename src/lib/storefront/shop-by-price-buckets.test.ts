@@ -76,6 +76,37 @@ describe("buildShopByPriceBuckets", () => {
     expect(buckets).toHaveLength(1);
     expect(buckets[0]).toMatchObject({ min: 500, max: 799 });
   });
+
+  it("keeps bucket bounds aligned with shop price-range filter", () => {
+    const buckets = buildShopByPriceBuckets([
+      {
+        id: "799",
+        price: "799",
+        mediaKey: "edge-low.jpg",
+      },
+      {
+        id: "800",
+        price: "800",
+        mediaKey: "edge-high.jpg",
+      },
+    ]);
+
+    expect(buckets).toHaveLength(2);
+    expect(buckets[0]).toMatchObject({ min: 500, max: 799, productCount: 1 });
+    expect(buckets[1]).toMatchObject({ min: 800, max: 999, productCount: 1 });
+  });
+
+  it("skips buckets when visible products have no featured image", () => {
+    const buckets = buildShopByPriceBuckets([
+      {
+        id: "1",
+        price: "650",
+        mediaKey: null,
+      },
+    ]);
+
+    expect(buckets).toHaveLength(0);
+  });
 });
 
 describe("formatPriceRangeLabel", () => {
