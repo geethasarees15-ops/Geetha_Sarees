@@ -8,6 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import OrderCompletionCleaner from "@/features/orders/components/OrderCompletionCleaner";
 import { canViewOrder } from "@/lib/auth/order-access";
 import { appendFromToSignIn } from "@/lib/auth/redirect";
+import {
+  resolveOrderLineImageAlt,
+  resolveOrderLineImageKey,
+  resolveOrderLineProductName,
+  resolveOrderLineProductSlug,
+} from "@/lib/orders/order-line-display";
 import db from "@/lib/supabase/db";
 import {
   address,
@@ -116,6 +122,9 @@ async function TrackOrderPage({
       unitPrice: orderLines.price,
       productName: products.name,
       productSlug: products.slug,
+      productNameSnapshot: orderLines.productNameSnapshot,
+      productSlugSnapshot: orderLines.productSlugSnapshot,
+      productImageKeySnapshot: orderLines.productImageKeySnapshot,
       imageKey: medias.key,
       imageAlt: medias.alt,
     })
@@ -217,31 +226,43 @@ async function TrackOrderPage({
               <CardTitle className="text-base">Items in this Order</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {lineRows.map((line) => (
+              {lineRows.map((line) => {
+                const productName = resolveOrderLineProductName(line);
+                const productSlug = resolveOrderLineProductSlug(line);
+                const imageKey = resolveOrderLineImageKey(line);
+                const imageAlt = resolveOrderLineImageAlt(line);
+
+                return (
                 <div
                   key={line.id}
                   className="flex items-center gap-3 rounded-md border p-2.5"
                 >
                   <div className="relative h-14 w-14 overflow-hidden rounded-md border bg-muted">
-                    <Image
-                      src={keytoUrl(line.imageKey ?? undefined)}
-                      alt={line.imageAlt || line.productName || "Product"}
-                      fill
-                      className="object-cover"
-                      sizes="56px"
-                    />
+                    {imageKey ? (
+                      <Image
+                        src={keytoUrl(imageKey)}
+                        alt={imageAlt}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                        No image
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    {line.productSlug ? (
+                    {productSlug ? (
                       <Link
-                        href={`/shop/${line.productSlug}`}
+                        href={`/shop/${productSlug}`}
                         className="line-clamp-1 text-sm font-medium hover:underline"
                       >
-                        {line.productName || "Product"}
+                        {productName}
                       </Link>
                     ) : (
                       <p className="line-clamp-1 text-sm font-medium">
-                        {line.productName || "Product"}
+                        {productName}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
@@ -250,7 +271,7 @@ async function TrackOrderPage({
                     </p>
                   </div>
                 </div>
-              ))}
+              )})}
             </CardContent>
           </Card>
         </div>

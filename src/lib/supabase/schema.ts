@@ -244,6 +244,14 @@ export const products = pgTable(
     collectionId: text("collection_id").references(() => collections.id, {
       onDelete: "set null",
     }),
+    archivedAt: timestamp("archived_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    mediaPurgeAt: timestamp("media_purge_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
     featuredImageId: text("featured_image_id")
       .notNull()
       .references(() => medias.id, { onDelete: "restrict" }),
@@ -345,12 +353,16 @@ export const orderLines = pgTable(
       .notNull()
       .primaryKey()
       .$defaultFn(() => createId()),
-    productId: text("product_id")
-      .notNull()
-      .references(() => products.id, { onDelete: "restrict" }),
+    productId: text("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
     orderId: text("orderId")
       .notNull()
       .references(() => orders.id, { onDelete: "restrict" }),
+    productNameSnapshot: text("product_name_snapshot"),
+    productSlugSnapshot: text("product_slug_snapshot"),
+    productCodeSnapshot: text("product_code_snapshot"),
+    productImageKeySnapshot: text("product_image_key_snapshot"),
     quantity: integer("quantity").notNull(),
     price: decimal("price", { precision: 8, scale: 2 }).notNull(),
     createdAt: timestamp("created_at", {
@@ -366,7 +378,7 @@ export const orderLines = pgTable(
         foreignColumns: [products.id],
         name: "order_lines_to_product",
       })
-        .onDelete("restrict")
+        .onDelete("set null")
         .onUpdate("cascade"),
       order: foreignKey({
         columns: [table.orderId],

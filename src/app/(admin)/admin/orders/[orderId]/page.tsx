@@ -1,5 +1,12 @@
 import AdminShell from "@/components/admin/AdminShell";
 import AdminOrderDetailView from "@/features/orders/components/admin/AdminOrderDetailView";
+import {
+  resolveOrderLineImageAlt,
+  resolveOrderLineImageKey,
+  resolveOrderLineProductCode,
+  resolveOrderLineProductName,
+  resolveOrderLineProductSlug,
+} from "@/lib/orders/order-line-display";
 import { buildShippingAddressCopyText } from "@/lib/orders/shipping-address-text";
 import { keytoUrl } from "@/lib/utils";
 import db from "@/lib/supabase/db";
@@ -96,6 +103,10 @@ async function OrderDetailPage({ params }: AdminOrderDetailPageProps) {
       productName: products.name,
       productSlug: products.slug,
       productCode: products.productCode,
+      productNameSnapshot: orderLines.productNameSnapshot,
+      productSlugSnapshot: orderLines.productSlugSnapshot,
+      productCodeSnapshot: orderLines.productCodeSnapshot,
+      productImageKeySnapshot: orderLines.productImageKeySnapshot,
       imageKey: medias.key,
       imageAlt: medias.alt,
     })
@@ -106,14 +117,16 @@ async function OrderDetailPage({ params }: AdminOrderDetailPageProps) {
 
   const itemViews = lineRows.map((row) => {
     const unitPrice = Number(row.unitPrice ?? 0);
+    const productName = resolveOrderLineProductName(row);
+    const imageKey = resolveOrderLineImageKey(row);
     return {
       id: row.id,
       productId: row.productId,
-      productName: row.productName || "Product",
-      productSlug: row.productSlug ?? null,
-      productCode: row.productCode ?? null,
-      imageUrl: keytoUrl(row.imageKey ?? undefined),
-      imageAlt: row.imageAlt || row.productName || "Product image",
+      productName,
+      productSlug: resolveOrderLineProductSlug(row),
+      productCode: resolveOrderLineProductCode(row),
+      imageUrl: keytoUrl(imageKey ?? undefined),
+      imageAlt: resolveOrderLineImageAlt(row),
       quantity: row.quantity,
       unitPrice,
       lineTotal: unitPrice * row.quantity,

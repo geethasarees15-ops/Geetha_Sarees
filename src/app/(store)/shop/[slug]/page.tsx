@@ -19,7 +19,7 @@ import { AddToWishListButton } from "@/features/wishlists";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import { getProductSizeConfig } from "@/lib/products/sizeConfig";
 import { buildBreadcrumbJsonLd, buildProductJsonLd } from "@/lib/seo/json-ld";
-import { getProductDetailCached } from "@/lib/storefront/product-detail";
+import { getPublishedProductDetailCached } from "@/lib/storefront/product-detail";
 import {
   ProductDiscountBadge,
   ProductPriceDisplay,
@@ -40,7 +40,7 @@ type Props = {
   };
 };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const data = await getProductDetailCached(params.slug);
+  const data = await getPublishedProductDetailCached(params.slug);
   const productName = data?.productsCollection?.edges?.[0]?.node?.name;
   const path = `/shop/${params.slug}`;
 
@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 async function ProductDetailPage({ params }: Props) {
-  const data = await getProductDetailCached(params.slug);
+  const data = await getPublishedProductDetailCached(params.slug);
 
   const productEdge = data?.productsCollection?.edges?.[0];
   if (!productEdge?.node) return notFound();

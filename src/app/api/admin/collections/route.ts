@@ -2,6 +2,7 @@ import {
   publicErrorMessage,
   publicValidationPayload,
 } from "@/lib/api/public-error";
+import { deleteCategoryWithProducts } from "@/lib/admin/product-lifecycle";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import db from "@/lib/supabase/db";
@@ -180,12 +181,8 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const rows = await db
-      .delete(collections)
-      .where(eq(collections.id, parsed.data.id))
-      .returning({ id: collections.id });
-
-    if (rows.length < 1) {
+    const outcome = await deleteCategoryWithProducts(parsed.data.id);
+    if (!outcome) {
       return NextResponse.json(
         { message: "Category not found." },
         { status: 404 },
@@ -193,7 +190,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     await revalidateCollectionPages();
-    return NextResponse.json({ ok: true, deletedId: parsed.data.id });
+    return NextResponse.json({
+      ok: true,
+      deletedId: parsed.data.id,
+      ...outcome,
+    });
   } catch (error) {
     console.error("[admin/collections] DELETE failed:", error);
     return NextResponse.json(

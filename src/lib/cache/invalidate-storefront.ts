@@ -9,6 +9,9 @@ const REDIS_PREFIXES = [
   "sf:size:",
   "sf:collection:",
   "sf:product:",
+  "sf:landing",
+  "sf:recommendations:",
+  "sf:shop-by-price",
 ] as const;
 
 /** Bust admin products table cache after catalog writes. */

@@ -280,6 +280,7 @@ function DataTable<TData, TValue>({
       });
       const payload = (await res.json().catch(() => null)) as {
         deletedIds?: string[];
+        archivedIds?: string[];
         blocked?: { id: string; reason: string }[];
         message?: string;
       } | null;
@@ -287,12 +288,13 @@ function DataTable<TData, TValue>({
         throw new Error(payload?.message || "Bulk delete failed.");
       }
       const deleted = payload?.deletedIds?.length ?? 0;
+      const archived = payload?.archivedIds?.length ?? 0;
       const blocked = payload?.blocked?.length ?? 0;
       setRowSelection({});
       router.refresh();
       toast({
         title: "Bulk delete completed",
-        description: `Deleted: ${deleted}, Blocked: ${blocked}.`,
+        description: `Deleted: ${deleted}, Hidden (paid orders): ${archived}, Blocked: ${blocked}.`,
       });
     } catch (error) {
       toast({

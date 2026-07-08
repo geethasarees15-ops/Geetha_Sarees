@@ -1,4 +1,5 @@
 import { publicErrorMessage } from "@/lib/api/public-error";
+import { deleteOrArchiveProducts } from "@/lib/admin/product-lifecycle";
 import {
   getProductSizeConfigsByProductIds,
   normalizeProductSizeConfig,
@@ -821,37 +822,44 @@ async function handleDelete(
     };
   }
 
-  const linked = await db
-    .select({ productId: orderLines.productId })
-    .from(orderLines)
-    .where(eq(orderLines.productId, productId))
-    .limit(1);
+  const outcome = await deleteOrArchiveProducts([productId]);
 
-  if (linked.length > 0) {
+  if (outcome.deletedIds.length > 0) {
+    if (parsed.data.externalProductId) {
+      await db
+        .delete(apiSettings)
+        .where(
+          eq(apiSettings.key, externalProductKey(parsed.data.externalProductId)),
+        );
+    }
+
     return {
-      ok: false,
+      ok: true,
       requestId,
       action: "delete",
-      message: "Product has order history and cannot be deleted.",
-      errors: ["Product has order history and cannot be deleted."],
+      message: "Product deleted.",
+      productId,
     };
   }
 
-  await db.delete(products).where(eq(products.id, productId));
-  if (parsed.data.externalProductId) {
-    await db
-      .delete(apiSettings)
-      .where(
-        eq(apiSettings.key, externalProductKey(parsed.data.externalProductId)),
-      );
+  if (outcome.archivedIds.length > 0) {
+    return {
+      ok: true,
+      requestId,
+      action: "delete",
+      message:
+        "Product has paid order history. It was hidden from the shop and photos will be removed after 30 days. Order details are kept.",
+      productId,
+      archived: true,
+    };
   }
 
   return {
-    ok: true,
+    ok: false,
     requestId,
     action: "delete",
-    message: "Product deleted.",
-    productId,
+    message: outcome.blocked[0]?.reason ?? "Product could not be deleted.",
+    errors: [outcome.blocked[0]?.reason ?? "Product could not be deleted."],
   };
 }
 

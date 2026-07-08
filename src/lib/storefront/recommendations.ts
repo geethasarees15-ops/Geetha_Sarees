@@ -3,6 +3,7 @@ import type { RecomendationProductsQueryQuery } from "@/gql/graphql";
 import { gql } from "@/gql";
 import { CACHE_TAGS } from "@/lib/cache/constants";
 import { withStorefrontCache } from "@/lib/cache/storefront-cache";
+import { filterDraftProductsFromCollection } from "@/lib/storefront/filter-draft-products";
 import { getClient } from "@/lib/urql";
 
 const RecommendationProductsQuery = gql(/* GraphQL */ `
@@ -19,7 +20,7 @@ const RecommendationProductsQuery = gql(/* GraphQL */ `
 `);
 
 export async function getRecommendationProductsCached(first = 4) {
-  return withStorefrontCache(
+  const data = await withStorefrontCache(
     `sf:recommendations:${first}`,
     async () => {
       const { data, error } = await getClient().query(
@@ -32,6 +33,14 @@ export async function getRecommendationProductsCached(first = 4) {
       }
       return data as RecomendationProductsQueryQuery | null;
     },
-    { tags: [CACHE_TAGS.products] },
+    { tags: [CACHE_TAGS.products, CACHE_TAGS.drafts] },
   );
+
+  if (!data?.recommendations) return data;
+
+  const filtered = await filterDraftProductsFromCollection(data.recommendations);
+  return {
+    ...data,
+    recommendations: filtered,
+  };
 }

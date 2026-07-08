@@ -8,6 +8,7 @@ import type { StorefrontProductSearchVariables } from "@/lib/storefront/search-p
 import { getClient } from "@/lib/urql";
 import { CACHE_TAGS } from "@/lib/cache/constants";
 import { withStorefrontCache } from "@/lib/cache/storefront-cache";
+import { filterDraftProductsFromCollection } from "./filter-draft-products";
 import { findMatchingCollections } from "./collection-search";
 import { fetchProductsByEffectivePriceRange } from "./product-price-search";
 import {
@@ -82,11 +83,13 @@ export async function fetchProductSearchCached(
       if (error) throw error;
       return data?.productsCollection ?? null;
     },
-    { tags: [CACHE_TAGS.products] },
+    { tags: [CACHE_TAGS.products, CACHE_TAGS.drafts] },
   );
 
   return {
-    productsCollection,
+    productsCollection: await filterDraftProductsFromCollection(
+      productsCollection,
+    ),
     matchingCollections: searchTerm ? matchingCollections : [],
   };
 }
@@ -97,7 +100,7 @@ export async function fetchFeaturedProductsCached(variables: {
 }) {
   const cacheKey = `sf:products:featured:${stableKey(variables)}`;
 
-  return withStorefrontCache(
+  const productsCollection = await withStorefrontCache(
     cacheKey,
     async () => {
       const { data, error } = await getClient().query<
@@ -107,6 +110,8 @@ export async function fetchFeaturedProductsCached(variables: {
       if (error) throw error;
       return data?.productsCollection ?? null;
     },
-    { tags: [CACHE_TAGS.products] },
+    { tags: [CACHE_TAGS.products, CACHE_TAGS.drafts] },
   );
+
+  return filterDraftProductsFromCollection(productsCollection);
 }

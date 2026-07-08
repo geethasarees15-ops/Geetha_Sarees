@@ -38,13 +38,30 @@ function CollectionRowActions({
       });
       const payload = (await res.json().catch(() => null)) as {
         message?: string;
+        deletedIds?: string[];
+        archivedIds?: string[];
       } | null;
 
       if (!res.ok) {
         throw new Error(payload?.message || "Delete failed");
       }
 
-      toast({ title: `"${name}" deleted.` });
+      const deletedCount = payload?.deletedIds?.length ?? 0;
+      const archivedCount = payload?.archivedIds?.length ?? 0;
+
+      if (archivedCount > 0 && deletedCount > 0) {
+        toast({
+          title: `"${name}" deleted`,
+          description: `${deletedCount} product(s) removed. ${archivedCount} with paid orders hidden for 30 days.`,
+        });
+      } else if (archivedCount > 0) {
+        toast({
+          title: `"${name}" deleted`,
+          description: `${archivedCount} product(s) with paid orders hidden from shop (photos purge in 30 days).`,
+        });
+      } else {
+        toast({ title: `"${name}" deleted.` });
+      }
       router.refresh();
     } catch (error) {
       toast({
@@ -69,7 +86,7 @@ function CollectionRowActions({
         }}
         triggerLabel="Delete"
         title={`Delete "${name}"?`}
-        description="Products in this category will become uncategorized. This cannot be undone."
+        description="Deletes all products and images inside. Products with paid orders are hidden from shop instead; their photos are removed after 30 days."
         actionLabel="Delete"
       />
     </div>

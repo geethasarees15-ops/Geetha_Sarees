@@ -24,7 +24,7 @@ import { resolveCheckoutPaymentProvider } from "@/lib/payments/resolve-checkout-
 import { stripe } from "@/lib/stripe";
 import { getProductSizeConfigsByProductIds } from "@/lib/products/sizeConfig";
 import db from "@/lib/supabase/db";
-import { address, orders } from "@/lib/supabase/schema";
+import { address, medias, orderLines, orders } from "@/lib/supabase/schema";
 import {
   calculateCourierCharge,
   calculateGstAmount,
@@ -37,8 +37,7 @@ import {
 } from "@/lib/integrations/settings";
 import { createOrderAccessToken } from "@/lib/auth/order-access";
 import { getURL } from "@/lib/utils";
-import { and, eq } from "drizzle-orm";
-import { orderLines } from "./../../../lib/supabase/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
@@ -345,12 +344,28 @@ export async function POST(request: Request) {
         })
         .returning();
 
+      const featuredImageIds = [
+        ...new Set(productsQuantity.map((line) => line.featuredImageId)),
+      ];
+      const mediaRows =
+        featuredImageIds.length > 0
+          ? await tx
+              .select({ id: medias.id, key: medias.key })
+              .from(medias)
+              .where(inArray(medias.id, featuredImageIds))
+          : [];
+      const mediaKeyById = new Map(mediaRows.map((row) => [row.id, row.key]));
+
       await tx.insert(orderLines).values(
-        productsQuantity.map(({ id, quantity, pricing }) => ({
+        productsQuantity.map(({ id, quantity, pricing, name, slug, productCode, featuredImageId }) => ({
           productId: id,
           quantity,
           price: `${pricing.unitPrice}`,
           orderId: created[0].id,
+          productNameSnapshot: name,
+          productSlugSnapshot: slug,
+          productCodeSnapshot: productCode ?? null,
+          productImageKeySnapshot: mediaKeyById.get(featuredImageId) ?? null,
         })),
       );
 

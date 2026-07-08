@@ -1,4 +1,5 @@
 import { publicValidationPayload } from "@/lib/api/public-error";
+import { getProductIdsWithPaidOrders } from "@/lib/admin/product-lifecycle";
 import {
   ADMIN_MEDIA_PAGE_SIZE,
   fetchMediaLibraryPage,
@@ -11,7 +12,6 @@ import db from "@/lib/supabase/db";
 import {
   apiSettings,
   medias,
-  orderLines,
   products,
 } from "@/lib/supabase/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -100,14 +100,9 @@ export async function DELETE(request: NextRequest) {
 
   const orderLineRows =
     productIdsForOrderCheck.size > 0
-      ? await db
-          .select({ productId: orderLines.productId })
-          .from(orderLines)
-          .where(inArray(orderLines.productId, [...productIdsForOrderCheck]))
+      ? [...(await getProductIdsWithPaidOrders([...productIdsForOrderCheck]))]
       : [];
-  const hasOrderLinesByProduct = new Set(
-    orderLineRows.map((row) => row.productId),
-  );
+  const hasPaidOrderHistoryByProduct = new Set(orderLineRows);
 
   const deletedMediaIds: string[] = [];
   const deletedProductIds: string[] = [];
@@ -175,11 +170,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     const productId = usage.productIds[0];
-    if (hasOrderLinesByProduct.has(productId)) {
+    if (hasPaidOrderHistoryByProduct.has(productId)) {
       blocked.push({
         mediaId,
         reason:
-          "Product has order history; auto-delete is blocked for data integrity.",
+          "Product has paid order history; it is archived instead of deleted.",
       });
       continue;
     }

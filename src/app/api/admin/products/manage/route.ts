@@ -1,9 +1,10 @@
+import { deleteOrArchiveProducts } from "@/lib/admin/product-lifecycle";
 import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
-import db from "@/lib/supabase/db";
-import { orderLines, products } from "@/lib/supabase/schema";
-import { eq, inArray } from "drizzle-orm";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
+import db from "@/lib/supabase/db";
+import { products } from "@/lib/supabase/schema";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -24,6 +25,14 @@ async function ensureAdmin() {
   return user;
 }
 
+async function revalidateProductPages() {
+  revalidatePath("/admin/products");
+  revalidatePath("/shop");
+  revalidatePath("/featured");
+  revalidatePath("/collections");
+  await invalidateStorefrontCache();
+}
+
 export async function DELETE(request: NextRequest) {
   const user = await ensureAdmin();
   if (!user) {
@@ -40,52 +49,10 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  const ids = [...new Set(parsed.data.ids)];
+  const outcome = await deleteOrArchiveProducts(parsed.data.ids);
+  await revalidateProductPages();
 
-  const existingProducts = await db
-    .select({ id: products.id })
-    .from(products)
-    .where(inArray(products.id, ids));
-  const existingIds = new Set(existingProducts.map((p) => p.id));
-
-  const orderLinkedRows = await db
-    .select({ productId: orderLines.productId })
-    .from(orderLines)
-    .where(inArray(orderLines.productId, ids));
-  const orderLinkedIds = new Set(orderLinkedRows.map((row) => row.productId));
-
-  const blocked: { id: string; reason: string }[] = [];
-  const deletableIds: string[] = [];
-
-  for (const id of ids) {
-    if (!existingIds.has(id)) {
-      blocked.push({ id, reason: "Product not found." });
-      continue;
-    }
-    if (orderLinkedIds.has(id)) {
-      blocked.push({
-        id,
-        reason: "Product has order history and cannot be deleted.",
-      });
-      continue;
-    }
-    deletableIds.push(id);
-  }
-
-  if (deletableIds.length > 0) {
-    await db.delete(products).where(inArray(products.id, deletableIds));
-  }
-
-  revalidatePath("/admin/products");
-  revalidatePath("/shop");
-  revalidatePath("/featured");
-  revalidatePath("/collections");
-  await invalidateStorefrontCache();
-
-  return NextResponse.json({
-    deletedIds: deletableIds,
-    blocked,
-  });
+  return NextResponse.json(outcome);
 }
 
 export async function GET(request: NextRequest) {

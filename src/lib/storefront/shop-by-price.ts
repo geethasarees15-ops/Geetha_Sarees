@@ -31,6 +31,6 @@ export async function getShopByPriceBucketsCached(): Promise<
 > {
   return withStorefrontCache("sf:shop-by-price", loadShopByPriceBuckets, {
     revalidate: 300,
-    tags: [CACHE_TAGS.products],
+    tags: [CACHE_TAGS.products, CACHE_TAGS.drafts],
   });
 }

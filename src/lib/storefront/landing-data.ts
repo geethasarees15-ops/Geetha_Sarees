@@ -5,6 +5,7 @@ import type { LandingRouteQueryQuery } from "@/gql/graphql";
 import { gql } from "@/gql";
 import { CACHE_TAGS } from "@/lib/cache/constants";
 import { withStorefrontCache } from "@/lib/cache/storefront-cache";
+import { filterDraftProductsFromCollection } from "@/lib/storefront/filter-draft-products";
 import { getClient } from "@/lib/urql";
 
 const LandingRouteQuery = gql(/* GraphQL */ `
@@ -50,7 +51,7 @@ const LandingRouteQuery = gql(/* GraphQL */ `
 `);
 
 export async function getLandingPageDataCached(): Promise<LandingRouteQueryQuery | null> {
-  return withStorefrontCache(
+  const data = await withStorefrontCache(
     "sf:landing",
     async () => {
       const { data, error } = await getClient().query(LandingRouteQuery, {});
@@ -62,7 +63,15 @@ export async function getLandingPageDataCached(): Promise<LandingRouteQueryQuery
     },
     {
       revalidate: 300,
-      tags: [CACHE_TAGS.products, CACHE_TAGS.collections],
+      tags: [CACHE_TAGS.products, CACHE_TAGS.collections, CACHE_TAGS.drafts],
     },
   );
+
+  if (!data?.products) return data;
+
+  const filteredProducts = await filterDraftProductsFromCollection(data.products);
+  return {
+    ...data,
+    products: filteredProducts,
+  };
 }

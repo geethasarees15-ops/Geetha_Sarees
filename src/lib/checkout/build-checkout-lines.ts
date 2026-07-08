@@ -9,6 +9,10 @@ import {
   getCartProductPricingByIds,
   type CartProductPricing,
 } from "@/lib/storefront/cart-pricing";
+import {
+  assertProductsArePublished,
+  findUnpublishedProductIds,
+} from "@/lib/storefront/product-visibility";
 
 export type CheckoutLineItem = SelectProducts & {
   quantity: number;
@@ -43,6 +47,14 @@ export async function buildCheckoutLineItems(
   ]);
 
   const productById = new Map(products.map((product) => [product.id, product]));
+
+  const unpublishedIds = await findUnpublishedProductIds(productIds);
+  assertProductsArePublished(
+    new Map(
+      products.map((product) => [product.id, product.name] as const),
+    ),
+    unpublishedIds,
+  );
 
   return productIds.map((productId) => {
     const product = productById.get(productId);

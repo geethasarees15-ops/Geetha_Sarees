@@ -54,6 +54,7 @@ function ProductRowActions({ productId }: { productId: string }) {
       });
       const payload = (await res.json().catch(() => null)) as {
         deletedIds?: string[];
+        archivedIds?: string[];
         blocked?: { id: string; reason: string }[];
         message?: string;
       } | null;
@@ -67,7 +68,15 @@ function ProductRowActions({ productId }: { productId: string }) {
         throw new Error(blocked[0].reason || "Product cannot be deleted.");
       }
 
-      toast({ title: "Product deleted." });
+      if ((payload?.archivedIds ?? []).length > 0) {
+        toast({
+          title: "Product hidden (paid orders)",
+          description:
+            "Drafted and removed from shop. Photos auto-delete after 30 days; order text is kept.",
+        });
+      } else {
+        toast({ title: "Product deleted." });
+      }
       router.refresh();
     } catch (error) {
       toast({
@@ -91,7 +100,7 @@ function ProductRowActions({ productId }: { productId: string }) {
         }}
         triggerLabel="Delete"
         title="Delete product?"
-        description="This action permanently removes the product if it has no order history."
+        description="Permanently deletes if no paid orders. With paid orders, hides from shop and removes photos after 30 days."
         actionLabel="Delete"
       />
     </div>

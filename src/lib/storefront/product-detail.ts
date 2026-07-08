@@ -5,6 +5,7 @@ import type {
 import { getClient } from "@/lib/urql";
 import { CACHE_TAGS } from "@/lib/cache/constants";
 import { withStorefrontCache } from "@/lib/cache/storefront-cache";
+import { isProductSlugPublished } from "@/lib/storefront/product-visibility";
 import { ProductDetailPageQueryDocument } from "./documents";
 
 export async function getProductDetailCached(productSlug: string) {
@@ -18,6 +19,13 @@ export async function getProductDetailCached(productSlug: string) {
       if (error) throw error;
       return data;
     },
-    { tags: [CACHE_TAGS.products] },
+    { tags: [CACHE_TAGS.products, CACHE_TAGS.drafts] },
   );
+}
+
+/** Returns null when the slug is draft or missing — always checks live DB first. */
+export async function getPublishedProductDetailCached(productSlug: string) {
+  const published = await isProductSlugPublished(productSlug);
+  if (!published) return null;
+  return getProductDetailCached(productSlug);
 }
