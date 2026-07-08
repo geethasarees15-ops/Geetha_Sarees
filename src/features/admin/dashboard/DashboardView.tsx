@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import {
   AlertTriangle,
   BarChart3,
@@ -197,7 +199,32 @@ function SectionCard({
   );
 }
 
+/** Re-fetch server data when the admin returns to the tab (min 15s apart). */
+function useRevalidateOnFocus() {
+  const router = useRouter();
+  const lastRefresh = useRef(Date.now());
+
+  useEffect(() => {
+    const REFRESH_MIN_INTERVAL_MS = 15_000;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastRefresh.current < REFRESH_MIN_INTERVAL_MS) return;
+      lastRefresh.current = Date.now();
+      router.refresh();
+    };
+
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [router]);
+}
+
 export function DashboardView({ stats, statsError }: Props) {
+  useRevalidateOnFocus();
+
   return (
     <div className="space-y-5">
       {statsError ? (
@@ -372,12 +399,22 @@ export function DashboardView({ stats, statsError }: Props) {
                       key={p.productId}
                       className="flex gap-2 border-b border-border/50 py-2 text-sm last:border-0"
                     >
-                      <Link
-                        href={`/admin/products/${p.productId}`}
-                        className="min-w-0 flex-1 truncate font-medium hover:underline"
-                      >
-                        {p.name}
-                      </Link>
+                      {p.productExists ? (
+                        <Link
+                          href={`/admin/products/${p.productId}`}
+                          className="min-w-0 flex-1 truncate font-medium hover:underline"
+                        >
+                          {p.name}
+                        </Link>
+                      ) : (
+                        <span
+                          className="min-w-0 flex-1 truncate font-medium text-muted-foreground"
+                          title="Product no longer in catalog"
+                        >
+                          {p.name}
+                          <span className="ml-1 text-[11px]">(removed)</span>
+                        </span>
+                      )}
                       <span className="shrink-0 tabular-nums text-muted-foreground">
                         {p.quantity} sold · {formatInr(p.revenue)}
                       </span>

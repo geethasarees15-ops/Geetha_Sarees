@@ -76,6 +76,12 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ["@aws-sdk/client-s3", "sharp"],
+    // Always refetch dynamic routes (e.g. admin dashboard) when navigating
+    // back to them, instead of replaying the stale client Router Cache.
+    staleTimes: {
+      dynamic: 0,
+      static: 180,
+    },
   },
 }
 

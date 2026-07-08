@@ -61,6 +61,7 @@ export type TopProductRow = {
   name: string;
   quantity: number;
   revenue: number;
+  productExists: boolean;
 };
 
 export type DashboardStats = {
@@ -145,6 +146,32 @@ async function fetchPaidOrderLines(
   paidOrderIds: string[],
 ): Promise<OrderLineRow[]> {
   return fetchOrderLinesByOrderIds(supabase, paidOrderIds);
+}
+
+/** Product ids that still exist in the catalog (so dashboard links don't 404). */
+async function fetchExistingProductIds(
+  supabase: ReturnType<typeof createServiceRoleClient>,
+  productIds: string[],
+): Promise<Set<string>> {
+  if (productIds.length === 0) return new Set();
+
+  const batches = chunkArray(productIds, SUPABASE_IN_BATCH_SIZE);
+  const results = await Promise.all(
+    batches.map((ids) => supabase.from("products").select("id").in("id", ids)),
+  );
+
+  const firstError = results.find((result) => result.error)?.error;
+  if (firstError) {
+    throw new Error(firstError.message);
+  }
+
+  const existing = new Set<string>();
+  for (const result of results) {
+    for (const row of (result.data ?? []) as { id: string }[]) {
+      existing.add(row.id);
+    }
+  }
+  return existing;
 }
 
 type OrderLineRow = {
@@ -304,28 +331,46 @@ export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
       .from("orders")
       .select(ORDER_SUMMARY_SELECT)
       .order("created_at", { ascending: false }),
-    supabase.from("products").select("id", { count: "exact", head: true }),
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
-      .eq("featured", true),
+      .eq("is_draft", false)
+      .is("archived_at", null),
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
+      .eq("featured", true)
+      .eq("is_draft", false)
+      .is("archived_at", null),
+    supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("is_draft", false)
+      .is("archived_at", null)
       .gte("stock", 1)
       .lt("stock", 5),
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
+      .eq("is_draft", false)
+      .is("archived_at", null)
       .eq("stock", 0),
     supabase
       .from("products")
       .select("id, name, stock")
+      .eq("is_draft", false)
+      .is("archived_at", null)
       .gte("stock", 1)
       .lt("stock", 5)
       .order("stock", { ascending: true })
       .limit(8),
-    supabase.from("products").select("id, name, stock").eq("stock", 0).limit(5),
+    supabase
+      .from("products")
+      .select("id, name, stock")
+      .eq("is_draft", false)
+      .is("archived_at", null)
+      .eq("stock", 0)
+      .limit(5),
     supabase.from("collections").select("id", { count: "exact", head: true }),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
   ]);
@@ -355,8 +400,21 @@ export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
     fetchOrderLinesByOrderIds(supabase, recentOrderIds),
   ]);
 
+  const paidLineProductIds = [
+    ...new Set(
+      topProductRows
+        .map((row) => row.product_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const existingProductIds = await fetchExistingProductIds(
+    supabase,
+    paidLineProductIds,
+  );
+
   return computeStats({
     allOrders,
+    existingProductIds,
     totalProducts: totalProductsRes.count ?? 0,
     featuredProducts: featuredProductsRes.count ?? 0,
     lowStockCount: lowStockCountRes.count ?? 0,
@@ -372,6 +430,7 @@ export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
 
 function computeStats({
   allOrders,
+  existingProductIds,
   totalProducts,
   featuredProducts,
   lowStockCount,
@@ -384,6 +443,7 @@ function computeStats({
   recentOrderLines,
 }: {
   allOrders: OrderRow[];
+  existingProductIds: Set<string>;
   totalProducts: number;
   featuredProducts: number;
   lowStockCount: number;
@@ -504,7 +564,13 @@ function computeStats({
 
   const productAgg = new Map<
     string,
-    { productId: string; name: string; quantity: number; revenue: number }
+    {
+      productId: string;
+      name: string;
+      quantity: number;
+      revenue: number;
+      productExists: boolean;
+    }
   >();
   for (const row of paidOrderLines) {
     const productKey = row.product_id ?? row.product_name_snapshot ?? "unknown";
@@ -521,6 +587,9 @@ function computeStats({
         name,
         quantity: qty,
         revenue: rev,
+        productExists: row.product_id
+          ? existingProductIds.has(row.product_id)
+          : false,
       });
     }
   }
