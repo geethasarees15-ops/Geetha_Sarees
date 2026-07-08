@@ -17,7 +17,9 @@ export function effectivePriceInRangeFilter(
     return undefined;
   }
 
-  return sql`${effectivePriceSql} >= ${min} AND ${effectivePriceSql} <= ${max}`;
+  // Round to whole rupees so fractional discounted prices (e.g. ₹799.80)
+  // match the same bucket the homepage tile shows.
+  return sql`ROUND(${effectivePriceSql}) >= ${min} AND ROUND(${effectivePriceSql}) <= ${max}`;
 }
 
 export function parsePaginationOffset(after?: string | null): number {

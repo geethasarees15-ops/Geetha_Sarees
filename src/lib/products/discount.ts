@@ -43,6 +43,17 @@ export function getEffectiveProductPrice(
   return getSaleProductPrice(product);
 }
 
+/**
+ * Whole-rupee sale price used for price-range placement.
+ * Rounding avoids the fractional dead zone between buckets
+ * (e.g. a discounted ₹799.80 becomes ₹800 → the ₹800–₹999 tier).
+ */
+export function getRoundedEffectiveProductPrice(
+  product: ProductDiscountFields,
+): number {
+  return Math.round(getEffectiveProductPrice(product));
+}
+
 /** Same inclusive range used for homepage buckets and /shop?price_range= pages. */
 export function isEffectivePriceInDisplayRange(
   product: ProductDiscountFields,
@@ -53,7 +64,7 @@ export function isEffectivePriceInDisplayRange(
     return false;
   }
 
-  const effectivePrice = getEffectiveProductPrice(product);
+  const effectivePrice = getRoundedEffectiveProductPrice(product);
   return effectivePrice >= min && effectivePrice <= max;
 }
 

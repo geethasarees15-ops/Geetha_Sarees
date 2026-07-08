@@ -1,4 +1,7 @@
-import { getEffectiveProductPrice, isEffectivePriceInDisplayRange } from "@/lib/products/discount";
+import {
+  getEffectiveProductPrice,
+  isEffectivePriceInDisplayRange,
+} from "@/lib/products/discount";
 
 describe("shop by price alignment", () => {
   it("matches homepage bucket bounds for mid-tier sarees", () => {
@@ -29,11 +32,32 @@ describe("shop by price alignment", () => {
   });
 
   it("matches homepage bucket bounds with shop filter bounds", () => {
-    const at799 = { price: "799.00", discountEnabled: false, discountPercent: null };
-    const at800 = { price: "800.00", discountEnabled: false, discountPercent: null };
+    const at799 = {
+      price: "799.00",
+      discountEnabled: false,
+      discountPercent: null,
+    };
+    const at800 = {
+      price: "800.00",
+      discountEnabled: false,
+      discountPercent: null,
+    };
 
     expect(isEffectivePriceInDisplayRange(at799, 500, 799)).toBe(true);
     expect(isEffectivePriceInDisplayRange(at800, 500, 799)).toBe(false);
     expect(isEffectivePriceInDisplayRange(at800, 800, 999)).toBe(true);
+  });
+
+  it("rounds fractional discounted prices into a single bucket", () => {
+    // ₹2666 with 70% off = ₹799.80 → rounds to ₹800 → ₹800–₹999 tier.
+    const discounted = {
+      price: "2666.00",
+      discountEnabled: true,
+      discountPercent: 70,
+    };
+
+    expect(getEffectiveProductPrice(discounted)).toBeCloseTo(799.8, 2);
+    expect(isEffectivePriceInDisplayRange(discounted, 500, 799)).toBe(false);
+    expect(isEffectivePriceInDisplayRange(discounted, 800, 999)).toBe(true);
   });
 });
