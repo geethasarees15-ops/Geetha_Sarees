@@ -55,7 +55,9 @@ export async function sweepExpiredStockReservationsIfEnabled(options?: {
 
   try {
     const result = await releaseExpiredStockReservations({
-      lookbackHours: options?.lookbackHours ?? 24,
+      // Without a scheduled cron, store/cart/checkout sweeps must cover
+      // abandoned checkouts older than one day (common on low-traffic hours).
+      lookbackHours: options?.lookbackHours ?? 168,
       limit: options?.limit ?? 100,
     });
 
