@@ -1,7 +1,4 @@
-import {
-  unwrapJsonRecord,
-  unwrapJsonValue,
-} from "@/lib/supabase/json-column";
+import { unwrapJsonRecord, unwrapJsonValue } from "@/lib/supabase/json-column";
 
 describe("json-column unwrap", () => {
   it("returns objects unchanged", () => {
