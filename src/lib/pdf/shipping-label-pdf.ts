@@ -45,7 +45,6 @@ function buildTimestampedFilename(prefix: string): string {
   return `${prefix}_${YYYY}${MM}${DD}_${HH}${mm}${SS}.pdf`;
 }
 
-
 /** Force direct download to device: hidden <a download> with Blob URL (web & mobile browsers). */
 function forceDownloadPdf(blob: Blob, filename: string): void {
   if (typeof window === "undefined") return;
@@ -70,7 +69,10 @@ function forceDownloadPdf(blob: Blob, filename: string): void {
   }, 500);
 }
 
-export async function savePdfBlob(blob: Blob, filename: string): Promise<string | null> {
+export async function savePdfBlob(
+  blob: Blob,
+  filename: string,
+): Promise<string | null> {
   if (typeof window === "undefined") {
     console.warn("[PDF] savePdfBlob called in SSR context, skipping");
     return null;
@@ -86,7 +88,11 @@ export async function savePdfBlob(blob: Blob, filename: string): Promise<string 
   }
 }
 
-const DEFAULT_LOGO_PATHS = ["/logo.png", "/logo2.png", "/images/ssr-tex-emblem.png"];
+const DEFAULT_LOGO_PATHS = [
+  "/logo.png",
+  "/logo2.png",
+  "/images/ssr-tex-emblem.png",
+];
 let defaultLogoCache: string | null | undefined;
 
 /** Load default logo from public folder; returns base64 data URL or null. */
@@ -186,9 +192,9 @@ const centerX = centerColStart + CENTER_COL_W / 2;
 // Typography (Helvetica only = identical on Mobile, Android, Web)
 const FONT_HEADING = "helvetica";
 const FONT_BODY = "helvetica";
-const SIZE_LABEL = 14;       // TO / FROM labels — larger than address for emphasis
-const SIZE_ADDRESS = 12;     // address lines — larger and bold for print visibility
-const SIZE_THANKS_TITLE = 10;  // reduced for better balance
+const SIZE_LABEL = 14; // TO / FROM labels — larger than address for emphasis
+const SIZE_ADDRESS = 12; // address lines — larger and bold for print visibility
+const SIZE_THANKS_TITLE = 10; // reduced for better balance
 const SIZE_THANKS_SUB = 10;
 const LINE_HEIGHT_ADDRESS = 6; // matches SIZE_ADDRESS for clean print
 const MAX_ADDRESS_LINES = 7;
@@ -197,10 +203,10 @@ const MAX_ADDRESS_LINES = 7;
 // ADDRESS_PADDING = distance from vertical border line to start of text inside a column.
 // EDGE_SAFE_GAP   = extra gap from the *other* side so text stays away from the opposite border.
 // With both set to 4mm, FROM/TO text always has a 4mm margin from left *and* right borders.
-const ADDRESS_PADDING = 4;   // 4mm from column border to text start
-const EDGE_SAFE_GAP = 4;     // 4mm from text end to opposite border
-const VERTICAL_OFFSET = 4;   // shift address blocks downward for balance
-const THANKS_LINE_GAP = 3;   // slightly increased gap between center lines
+const ADDRESS_PADDING = 4; // 4mm from column border to text start
+const EDGE_SAFE_GAP = 4; // 4mm from text end to opposite border
+const VERTICAL_OFFSET = 4; // shift address blocks downward for balance
+const THANKS_LINE_GAP = 3; // slightly increased gap between center lines
 /** Minimum gap between center column edge and FROM/TO text (prevents column overlap). */
 const MIN_GAP_TO_CENTER_MM = 2;
 
@@ -278,7 +284,7 @@ function fitAddressLinesToColumn(
   doc: { splitTextToSize: (s: string, w: number) => string[] },
   text: string,
   maxW: number,
-  maxLines: number
+  maxLines: number,
 ): string[] {
   const wrapped = getPdfAddressLines(doc, text, maxW);
   if (wrapped.length <= maxLines) return wrapped;
@@ -303,7 +309,7 @@ export function layoutBlocksInSection(
   lineHeightMm: number,
   labelToAddressGap: number,
   logoHalfH: number,
-  centerBlockHalfH = 0
+  centerBlockHalfH = 0,
 ): SectionVerticalLayout {
   const fromLines = [...fromLinesIn];
   const toLines = [...toLinesIn];
@@ -322,7 +328,7 @@ export function layoutBlocksInSection(
   let logoY = clamp(
     logoCenterYRel,
     topLimit + effectiveLogoHalf,
-    bottomLimit - effectiveLogoHalf
+    bottomLimit - effectiveLogoHalf,
   );
 
   const measureBottoms = () => {
@@ -341,7 +347,7 @@ export function layoutBlocksInSection(
       overflow,
       Math.max(0, fromY - topLimit),
       Math.max(0, toY - topLimit),
-      Math.max(0, logoY - (topLimit + effectiveLogoHalf))
+      Math.max(0, logoY - (topLimit + effectiveLogoHalf)),
     );
     fromY -= shiftUp;
     toY -= shiftUp;
@@ -368,7 +374,7 @@ export function layoutBlocksInSection(
 function measureCenterBlockHalfH(
   doc: DocShape,
   options: PdfRenderOptions,
-  centerTextSizePt: number
+  centerTextSizePt: number,
 ): number {
   const contentType = options.settings?.content_type ?? "logo";
   const customText = (options.settings?.custom_text ?? "").trim();
@@ -388,11 +394,17 @@ function measureOrderSectionLayout(
   toShiftMm: number,
   labelSizePt: number,
   addressSizePt: number,
-  centerTextSizePt: number
+  centerTextSizePt: number,
 ): { fits: boolean; layout: SectionVerticalLayout; centerBlockHalfH: number } {
   const shouldNormalize = options.settings?.normalize_addresses === true;
-  const fromSource = prepareAddressForPdf(order.sender_details ?? "", shouldNormalize);
-  const toSource = prepareAddressForPdf(order.recipient_details ?? "", shouldNormalize);
+  const fromSource = prepareAddressForPdf(
+    order.sender_details ?? "",
+    shouldNormalize,
+  );
+  const toSource = prepareAddressForPdf(
+    order.recipient_details ?? "",
+    shouldNormalize,
+  );
 
   const maxWFrom = getLeftColumnMaxTextWidth();
   const maxWTo = getRightColumnMaxTextWidth(toShiftMm);
@@ -401,17 +413,39 @@ function measureOrderSectionLayout(
   doc.setFont(FONT_BODY, textBold ? "bold" : "normal");
   doc.setFontSize(addressSizePt);
 
-  const fromLines = fitAddressLinesToColumn(doc, fromSource, maxWFrom, MAX_ADDRESS_LINES);
-  const toLines = fitAddressLinesToColumn(doc, toSource, maxWTo, MAX_ADDRESS_LINES);
+  const fromLines = fitAddressLinesToColumn(
+    doc,
+    fromSource,
+    maxWFrom,
+    MAX_ADDRESS_LINES,
+  );
+  const toLines = fitAddressLinesToColumn(
+    doc,
+    toSource,
+    maxWTo,
+    MAX_ADDRESS_LINES,
+  );
 
   const sectionH = SECTION_H;
   /** Label baseline; first address line is +6 mm (default 8 → address starts at 14 mm). */
-  const toYBase = options.settings?.to_y_mm != null ? clamp(options.settings.to_y_mm, 0, sectionH) : 8;
-  const fromYBase = options.settings?.from_y_mm != null ? clamp(options.settings.from_y_mm, 0, sectionH) : 8;
+  const toYBase =
+    options.settings?.to_y_mm != null
+      ? clamp(options.settings.to_y_mm, 0, sectionH)
+      : 8;
+  const fromYBase =
+    options.settings?.from_y_mm != null
+      ? clamp(options.settings.from_y_mm, 0, sectionH)
+      : 8;
   const placement = options.settings?.placement ?? "bottom";
   const logoYSetting =
-    options.settings?.logo_y_mm != null ? clamp(options.settings.logo_y_mm, 0, sectionH) : null;
-  const centerBlockHalfH = measureCenterBlockHalfH(doc, options, centerTextSizePt);
+    options.settings?.logo_y_mm != null
+      ? clamp(options.settings.logo_y_mm, 0, sectionH)
+      : null;
+  const centerBlockHalfH = measureCenterBlockHalfH(
+    doc,
+    options,
+    centerTextSizePt,
+  );
   const logoHalfH = Math.max(LOGO_MAX_H_MM / 2, centerBlockHalfH);
   let logoCenterYRel =
     logoYSetting != null
@@ -422,7 +456,7 @@ function measureOrderSectionLayout(
   logoCenterYRel = clamp(
     logoCenterYRel,
     VERTICAL_OFFSET + logoHalfH,
-    SECTION_H - VERTICAL_OFFSET - logoHalfH
+    SECTION_H - VERTICAL_OFFSET - logoHalfH,
   );
 
   const lineHeightMm = addressSizePt * 0.5;
@@ -437,7 +471,7 @@ function measureOrderSectionLayout(
     lineHeightMm,
     labelToAddressGap,
     LOGO_MAX_H_MM / 2,
-    centerBlockHalfH
+    centerBlockHalfH,
   );
 
   return { fits: layout.fits, layout, centerBlockHalfH };
@@ -447,7 +481,7 @@ function measureOrderSectionLayout(
 export function resolveOrderLabelLayout(
   doc: DocShape,
   order: PdfLabelOrder,
-  options: PdfRenderOptions
+  options: PdfRenderOptions,
 ): ResolvedLabelLayout {
   const base = getBaseTypographyPt(options.settings);
   let labelPt = base.labelPt;
@@ -463,7 +497,7 @@ export function resolveOrderLabelLayout(
       toShift,
       labelPt,
       addressPt,
-      Math.max(centerPt, PDF_MIN_CENTER_TEXT_PT)
+      Math.max(centerPt, PDF_MIN_CENTER_TEXT_PT),
     );
 
     if (measured.fits) {
@@ -493,7 +527,7 @@ export function resolveOrderLabelLayout(
 export function getPdfAddressLines(
   doc: { splitTextToSize: (s: string, w: number) => string[] },
   text: string,
-  maxW: number
+  maxW: number,
 ): string[] {
   const raw = stripEmptyAddressLines(text);
   if (!raw) return ["-"];
@@ -532,8 +566,9 @@ export function normalizeAddressBlock(text: string): string {
   const phoneLines: string[] = [];
 
   const phoneRegex = /\b[6-9]\d{9}\b/; // Indian-style mobile numbers
-  const pinRegex = /\b\d{6}\b/;        // 6-digit PIN
-  const doorRegex = /^(door\s*no\.?|d\.?\s*no\.?|flat|apt|apartment|house|plot|no\.?|#|\d+)/i;
+  const pinRegex = /\b\d{6}\b/; // 6-digit PIN
+  const doorRegex =
+    /^(door\s*no\.?|d\.?\s*no\.?|flat|apt|apartment|house|plot|no\.?|#|\d+)/i;
 
   for (const line of lines) {
     if (phoneRegex.test(line)) {
@@ -632,7 +667,7 @@ export function prepareAddressForPdf(text: string, normalize: boolean): string {
       line.replace(/^Web\s*#\s*(\S+)/i, (_match, id: string) => {
         const chunks = id.match(/.{1,12}/g) ?? [id];
         return `Web # ${chunks.join(" ")}`;
-      })
+      }),
     )
     .join("\n");
   return normalize ? normalizeAddressBlock(stripped) : stripped;
@@ -655,7 +690,7 @@ export class PdfAddressTooLongError extends Error {
   readonly name = "PdfAddressTooLongError";
 
   constructor(
-    message = "Address text is too long for the label. Please shorten the sender and/or recipient address, then try again."
+    message = "Address text is too long for the label. Please shorten the sender and/or recipient address, then try again.",
   ) {
     super(message);
   }
@@ -684,7 +719,14 @@ type DocShape = {
   setFillColor: (r: number, g?: number, b?: number) => void;
   setTextColor: (r: number, g?: number, b?: number) => void;
   circle: (x: number, y: number, radius: number, style?: string) => void;
-  addImage?: (imageData: string, format: string, x: number, y: number, w: number, h: number) => void;
+  addImage?: (
+    imageData: string,
+    format: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) => void;
   internal?: { write: (s: string) => void; scaleFactor: number };
 };
 
@@ -696,7 +738,7 @@ function computeToShiftMm(
   doc: DocShape,
   order: PdfLabelOrder,
   options: PdfRenderOptions,
-  addressSizePt: number
+  addressSizePt: number,
 ): number {
   const shouldNormalize = options.settings?.normalize_addresses === true;
   const rawTo = order.recipient_details ?? "";
@@ -732,7 +774,7 @@ function drawOrderLabel(
   order: PdfLabelOrder,
   sectionTop: number,
   options: PdfRenderOptions,
-  resolved: ResolvedLabelLayout
+  resolved: ResolvedLabelLayout,
 ) {
   const leftX = leftColStart + ADDRESS_PADDING;
   const rightColStartShifted = rightColStart - resolved.toShiftMm;
@@ -811,7 +853,7 @@ function drawOrderLabel(
       const rw = LOGO_MAX_W_MM * k;
       const rh = LOGO_MAX_H_MM * k;
       doc.internal.write(
-        `${rx.toFixed(2)} ${ry.toFixed(2)} ${rw.toFixed(2)} ${rh.toFixed(2)} re W n`
+        `${rx.toFixed(2)} ${ry.toFixed(2)} ${rw.toFixed(2)} ${rh.toFixed(2)} re W n`,
       );
     }
 
@@ -833,7 +875,7 @@ function drawOrderLabel(
     doc,
     toLines.join("\n"),
     maxWToDraw,
-    MAX_ADDRESS_LINES
+    MAX_ADDRESS_LINES,
   );
   safeToLines.forEach((line, i) => {
     doc.text(line, rightX, addressStartYTo + i * lineHeightMm);
@@ -845,9 +887,15 @@ function drawSectionBorder(
     setDrawColor: (r: number, g?: number, b?: number) => void;
     setLineWidth: (w: number) => void;
     setLineDashPattern: (dashArray: number[], dashPhase: number) => void;
-    line: (x1: number, y1: number, x2: number, y2: number, style?: string) => void;
+    line: (
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      style?: string,
+    ) => void;
   },
-  sectionTop: number
+  sectionTop: number,
 ) {
   const left = MARGIN;
   const right = A4_W - MARGIN;
@@ -874,15 +922,16 @@ export async function downloadOrderPdf(order: PdfLabelOrder) {
     return;
   }
   console.log(`[PDF] downloadOrderPdf called for order: ${order.id}`);
-  
+
   try {
     const renderOptions = await fetchPdfSettingsForRendering();
     console.log(`[PDF] Creating jsPDF document...`);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const d = doc as unknown as DocShape & Parameters<typeof drawSectionBorder>[0];
+    const d = doc as unknown as DocShape &
+      Parameters<typeof drawSectionBorder>[0];
     const resolved = resolveOrderLabelLayout(d, order, renderOptions);
     console.log(
-      `[PDF] Drawing ${SECTIONS_PER_PAGE} sections (TO shift: ${resolved.toShiftMm}mm, font: ${resolved.addressSizePt}pt)...`
+      `[PDF] Drawing ${SECTIONS_PER_PAGE} sections (TO shift: ${resolved.toShiftMm}mm, font: ${resolved.addressSizePt}pt)...`,
     );
     for (let i = 0; i < SECTIONS_PER_PAGE; i++) {
       drawSectionBorder(d, i * SECTION_H);
@@ -912,7 +961,8 @@ export async function downloadOrdersPdf(orders: PdfLabelOrder[]) {
   try {
     console.log(`[PDF] Creating jsPDF document...`);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const d = doc as unknown as DocShape & Parameters<typeof drawSectionBorder>[0];
+    const d = doc as unknown as DocShape &
+      Parameters<typeof drawSectionBorder>[0];
     let page = 0;
     let slot = 0;
 
@@ -931,7 +981,13 @@ export async function downloadOrdersPdf(orders: PdfLabelOrder[]) {
       }
       const sectionTop = slot * SECTION_H;
       drawSectionBorder(d, sectionTop);
-      drawOrderLabel(d, orders[i], sectionTop, renderOptions, resolvedByOrder[i]);
+      drawOrderLabel(
+        d,
+        orders[i],
+        sectionTop,
+        renderOptions,
+        resolvedByOrder[i],
+      );
       slot++;
       if (slot >= SECTIONS_PER_PAGE) {
         slot = 0;
@@ -947,7 +1003,9 @@ export async function downloadOrdersPdf(orders: PdfLabelOrder[]) {
     const filename = buildTimestampedFilename("SareeOrders");
     console.log(`[PDF] Generating blob for filename: ${filename}`);
     const blob = doc.output("blob");
-    console.log(`[PDF] Blob generated, size: ${blob.size} bytes, pages: ${page + 1}`);
+    console.log(
+      `[PDF] Blob generated, size: ${blob.size} bytes, pages: ${page + 1}`,
+    );
     await savePdfBlob(blob, filename);
   } catch (e) {
     console.error("[PDF] downloadOrdersPdf failed:", e);

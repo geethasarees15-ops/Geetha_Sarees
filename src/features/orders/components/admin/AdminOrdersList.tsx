@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
-import { adminOrderToPdfLabel, adminOrdersToPdfLabels } from "@/lib/pdf/admin-order-pdf-label";
+import {
+  adminOrderToPdfLabel,
+  adminOrdersToPdfLabels,
+} from "@/lib/pdf/admin-order-pdf-label";
 import {
   downloadOrderPdf,
   downloadOrdersPdf,
@@ -343,11 +346,7 @@ export function AdminOrdersList({
       ) : null}
 
       {orders.map((order) => (
-        <AdminOrderRow
-          key={order.id}
-          order={order}
-          enablePdf={enablePdf}
-        />
+        <AdminOrderRow key={order.id} order={order} enablePdf={enablePdf} />
       ))}
 
       <div className="flex flex-col gap-3 px-1 pt-1 sm:flex-row sm:items-center sm:justify-between">
