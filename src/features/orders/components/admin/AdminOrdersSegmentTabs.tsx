@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CircleAlert, CircleCheck, Loader2 } from "lucide-react";
 
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
@@ -30,6 +30,8 @@ type Props = {
 };
 
 const ORDERS_PATH = "/admin/orders";
+/** If RSC navigation stalls, unlock the UI so the admin can retry. */
+const NAV_STALL_TIMEOUT_MS = 12_000;
 
 export function segmentHref(nextSegment: OrdersSegment, pageSize: number) {
   const params = new URLSearchParams();
@@ -59,34 +61,34 @@ export function AdminOrdersSegmentTabs({
   pageSizeParam,
   resetPageParams,
 }: Props) {
-  const router = useRouter();
-  const [isPending, startTransition] = React.useTransition();
-  const [optimisticSegment, setOptimisticSegment] =
-    React.useState<OrdersSegment>(segment);
-
   const active = segment === "unpaid" ? unpaid : paid;
   const pageSize = active.pageSize;
-  const showListPending = isPending || optimisticSegment !== segment;
+
+  // Explicit loading target — do NOT rely on useTransition isPending (can stick
+  // true after a few App Router searchParam navigations and freeze the UI).
+  const [loadingTo, setLoadingTo] = React.useState<OrdersSegment | null>(null);
 
   React.useEffect(() => {
-    setOptimisticSegment(segment);
+    setLoadingTo(null);
   }, [segment]);
 
-  // Prefetch the other tab so Paid ↔ Unpaid feels snappy.
   React.useEffect(() => {
-    router.prefetch(segmentHref("paid", pageSize));
-    router.prefetch(segmentHref("unpaid", pageSize));
-  }, [pageSize, router]);
+    if (loadingTo == null) return;
+    const timer = window.setTimeout(() => {
+      setLoadingTo(null);
+    }, NAV_STALL_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [loadingTo]);
 
-  const selectSegment = React.useCallback(
+  const displaySegment = loadingTo ?? segment;
+  const isLoading = loadingTo != null;
+
+  const beginNavigate = React.useCallback(
     (next: OrdersSegment) => {
-      if (next === optimisticSegment) return;
-      setOptimisticSegment(next);
-      startTransition(() => {
-        router.push(segmentHref(next, pageSize), { scroll: false });
-      });
+      if (next === segment && loadingTo == null) return;
+      setLoadingTo(next);
     },
-    [optimisticSegment, pageSize, router],
+    [loadingTo, segment],
   );
 
   return (
@@ -100,18 +102,19 @@ export function AdminOrdersSegmentTabs({
           role="tablist"
           aria-label="Order payment status"
         >
-          <button
-            type="button"
+          <Link
+            href={segmentHref("paid", pageSize)}
+            replace
+            scroll={false}
+            prefetch
             role="tab"
-            aria-selected={optimisticSegment === "paid"}
-            aria-busy={isPending && optimisticSegment === "paid"}
-            disabled={isPending && optimisticSegment !== "paid"}
-            onClick={() => selectSegment("paid")}
+            aria-selected={displaySegment === "paid"}
+            aria-busy={isLoading && loadingTo === "paid"}
+            onClick={() => beginNavigate("paid")}
             className={cn(
               "flex items-start gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              "disabled:cursor-wait",
-              optimisticSegment === "paid"
+              displaySegment === "paid"
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted/40",
             )}
@@ -119,7 +122,7 @@ export function AdminOrdersSegmentTabs({
             <CircleCheck
               className={cn(
                 "mt-0.5 h-5 w-5 shrink-0",
-                optimisticSegment === "paid"
+                displaySegment === "paid"
                   ? "text-primary-foreground"
                   : "text-primary",
               )}
@@ -133,7 +136,7 @@ export function AdminOrdersSegmentTabs({
                 <span
                   className={cn(
                     "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-                    optimisticSegment === "paid"
+                    displaySegment === "paid"
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-muted text-foreground",
                   )}
@@ -144,7 +147,7 @@ export function AdminOrdersSegmentTabs({
               <span
                 className={cn(
                   "mt-1 block text-xs leading-snug",
-                  optimisticSegment === "paid"
+                  displaySegment === "paid"
                     ? "text-primary-foreground/85"
                     : "text-muted-foreground",
                 )}
@@ -152,20 +155,21 @@ export function AdminOrdersSegmentTabs({
                 Payment completed — ready to pack and ship
               </span>
             </span>
-          </button>
+          </Link>
 
-          <button
-            type="button"
+          <Link
+            href={segmentHref("unpaid", pageSize)}
+            replace
+            scroll={false}
+            prefetch
             role="tab"
-            aria-selected={optimisticSegment === "unpaid"}
-            aria-busy={isPending && optimisticSegment === "unpaid"}
-            disabled={isPending && optimisticSegment !== "unpaid"}
-            onClick={() => selectSegment("unpaid")}
+            aria-selected={displaySegment === "unpaid"}
+            aria-busy={isLoading && loadingTo === "unpaid"}
+            onClick={() => beginNavigate("unpaid")}
             className={cn(
               "flex items-start gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              "disabled:cursor-wait",
-              optimisticSegment === "unpaid"
+              displaySegment === "unpaid"
                 ? "border-destructive bg-destructive text-destructive-foreground shadow-sm"
                 : "border-border bg-card text-foreground hover:border-destructive/50 hover:bg-muted/40",
             )}
@@ -173,7 +177,7 @@ export function AdminOrdersSegmentTabs({
             <CircleAlert
               className={cn(
                 "mt-0.5 h-5 w-5 shrink-0",
-                optimisticSegment === "unpaid"
+                displaySegment === "unpaid"
                   ? "text-destructive-foreground"
                   : "text-destructive",
               )}
@@ -187,7 +191,7 @@ export function AdminOrdersSegmentTabs({
                 <span
                   className={cn(
                     "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-                    optimisticSegment === "unpaid"
+                    displaySegment === "unpaid"
                       ? "bg-destructive-foreground/20 text-destructive-foreground"
                       : "bg-muted text-foreground",
                   )}
@@ -198,7 +202,7 @@ export function AdminOrdersSegmentTabs({
               <span
                 className={cn(
                   "mt-1 block text-xs leading-snug",
-                  optimisticSegment === "unpaid"
+                  displaySegment === "unpaid"
                     ? "text-destructive-foreground/85"
                     : "text-muted-foreground",
                 )}
@@ -206,12 +210,12 @@ export function AdminOrdersSegmentTabs({
                 Payment not completed — follow up if needed
               </span>
             </span>
-          </button>
+          </Link>
         </div>
       </div>
 
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {showListPending ? (
+        {isLoading ? (
           <>
             <Loader2
               className="h-3.5 w-3.5 shrink-0 animate-spin"
@@ -220,7 +224,7 @@ export function AdminOrdersSegmentTabs({
             <span>
               Loading{" "}
               <span className="font-medium text-foreground">
-                {optimisticSegment === "unpaid" ? "unpaid" : "paid"}
+                {displaySegment === "unpaid" ? "unpaid" : "paid"}
               </span>{" "}
               orders…
             </span>
@@ -237,7 +241,7 @@ export function AdminOrdersSegmentTabs({
         )}
       </p>
 
-      {showListPending ? (
+      {isLoading ? (
         <OrdersListSkeleton />
       ) : (
         <AdminOrdersList
