@@ -81,7 +81,11 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
     all: searchParams.all,
     from: searchParams.from,
     to: searchParams.to,
+    range: searchParams.range,
   });
+  const productCodeQuery = String(
+    Array.isArray(searchParams.q) ? searchParams.q[0] : (searchParams.q ?? ""),
+  ).trim();
 
   const emptyList = {
     rows: [] as Awaited<ReturnType<typeof getAdminOrdersList>>["rows"],
@@ -105,6 +109,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
           page: paidPage,
           pageSize,
           dateFilter: paidDateFilter,
+          productCodeQuery,
         }),
       ]);
       counts = nextCounts;
@@ -117,6 +122,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
           segment: "pending",
           page: pendingPage,
           pageSize,
+          productCodeQuery,
         }),
       ]);
       counts = nextCounts;
@@ -157,6 +163,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
         pageSizeParam={PAGE_SIZE_PARAM}
         resetPageParams={resetPageParams}
         paidDateFilter={paidDateFilter}
+        productCodeQuery={productCodeQuery}
       />
     </div>
   );

@@ -1,10 +1,13 @@
 import {
+  addIsoDays,
   defaultPaidOrdersDateFilter,
   describePaidDateFilter,
   formatIsoToDdMmYyyy,
   indiaDateRangeToUtcBounds,
   parseDdMmYyyyToIso,
+  rangeForPreset,
   resolvePaidOrdersDateFilter,
+  startOfWeekMonday,
   todayIsoDateInIndia,
 } from "./admin-orders-date-filter";
 
@@ -42,10 +45,20 @@ describe("resolvePaidOrdersDateFilter", () => {
       allOrders: true,
       fromDate: "",
       toDate: "",
+      range: "all",
     });
   });
 
-  it("honors from/to ISO range", () => {
+  it("honors range presets", () => {
+    expect(resolvePaidOrdersDateFilter({ range: "yesterday", now })).toEqual({
+      allOrders: false,
+      fromDate: "2026-07-10",
+      toDate: "2026-07-10",
+      range: "yesterday",
+    });
+  });
+
+  it("honors from/to ISO range as custom", () => {
     expect(
       resolvePaidOrdersDateFilter({
         from: "2026-07-01",
@@ -56,7 +69,44 @@ describe("resolvePaidOrdersDateFilter", () => {
       allOrders: false,
       fromDate: "2026-07-01",
       toDate: "2026-07-10",
+      range: "custom",
     });
+  });
+});
+
+describe("rangeForPreset", () => {
+  const now = new Date("2026-07-11T12:00:00+05:30"); // Saturday
+
+  it("computes week from Monday", () => {
+    expect(startOfWeekMonday("2026-07-11")).toBe("2026-07-06");
+    expect(rangeForPreset("week", now)).toEqual({
+      fromDate: "2026-07-06",
+      toDate: "2026-07-11",
+    });
+  });
+
+  it("computes last month", () => {
+    expect(rangeForPreset("last_month", now)).toEqual({
+      fromDate: "2026-06-01",
+      toDate: "2026-06-30",
+    });
+  });
+
+  it("computes quarter and year", () => {
+    expect(rangeForPreset("quarter", now)).toEqual({
+      fromDate: "2026-07-01",
+      toDate: "2026-07-11",
+    });
+    expect(rangeForPreset("year", now)).toEqual({
+      fromDate: "2026-01-01",
+      toDate: "2026-07-11",
+    });
+  });
+});
+
+describe("addIsoDays", () => {
+  it("crosses months", () => {
+    expect(addIsoDays("2026-07-01", -1)).toBe("2026-06-30");
   });
 });
 
@@ -72,16 +122,30 @@ describe("indiaDateRangeToUtcBounds", () => {
 });
 
 describe("describePaidDateFilter", () => {
-  it("describes today and ranges", () => {
+  it("describes presets and custom ranges", () => {
     expect(
       describePaidDateFilter({
         allOrders: false,
         fromDate: "2026-07-11",
         toDate: "2026-07-11",
+        range: "today",
       }),
-    ).toBe("11-07-2026");
+    ).toBe("Today");
     expect(
-      describePaidDateFilter({ allOrders: true, fromDate: "", toDate: "" }),
+      describePaidDateFilter({
+        allOrders: true,
+        fromDate: "",
+        toDate: "",
+        range: "all",
+      }),
     ).toBe("All orders");
+    expect(
+      describePaidDateFilter({
+        allOrders: false,
+        fromDate: "2026-07-01",
+        toDate: "2026-07-10",
+        range: "custom",
+      }),
+    ).toBe("01-07-2026 – 10-07-2026");
   });
 });

@@ -62,6 +62,8 @@ export type AdminOrdersListParams = {
   pageSize?: number;
   /** Paid segment only — IST calendar day filter. */
   dateFilter?: PaidOrdersDateFilter | null;
+  /** Match order line product code (snapshot or live product). */
+  productCodeQuery?: string | null;
 };
 
 export type AdminOrdersListResult = {
@@ -103,6 +105,30 @@ function buildDateWhereClause(
   )!;
 }
 
+function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function buildProductCodeWhereClause(
+  productCodeQuery: string | null | undefined,
+): SQL | null {
+  const term = String(productCodeQuery ?? "")
+    .trim()
+    .toLowerCase();
+  if (!term) return null;
+  const pattern = `%${escapeIlikePattern(term)}%`;
+  return sql`exists (
+    select 1
+    from ${orderLines}
+    left join ${products} on ${orderLines.productId} = ${products.id}
+    where ${orderLines.orderId} = ${orders.id}
+      and (
+        lower(coalesce(${orderLines.productCodeSnapshot}, '')) like ${pattern} escape '\\'
+        or lower(coalesce(${products.productCode}, '')) like ${pattern} escape '\\'
+      )
+  )`;
+}
+
 function combineWhere(parts: Array<SQL | null | undefined>): SQL {
   const active = parts.filter(Boolean) as SQL[];
   if (active.length === 1) return active[0]!;
@@ -142,6 +168,7 @@ async function loadOrderLinesByOrderId(
       quantity: orderLines.quantity,
       productName: products.name,
       productCode: products.productCode,
+      productCodeSnapshot: orderLines.productCodeSnapshot,
       imageKey: medias.key,
       imageAlt: medias.alt,
     })
@@ -155,7 +182,7 @@ async function loadOrderLinesByOrderId(
       id: row.id,
       quantity: row.quantity,
       productName: row.productName || "Product",
-      productCode: row.productCode ?? null,
+      productCode: row.productCodeSnapshot ?? row.productCode ?? null,
       imageUrl: keytoUrl(row.imageKey ?? undefined),
       imageAlt: row.imageAlt || row.productName || "Product image",
     };
@@ -179,12 +206,12 @@ export async function getAdminOrdersList(
   const pageSize = clampAdminOrdersPageSize(params.pageSize);
   const requestedPage = Math.max(1, Math.round(params.page ?? 1));
   const dateWhere =
-    params.segment === "paid"
-      ? buildDateWhereClause(params.dateFilter)
-      : null;
+    params.segment === "paid" ? buildDateWhereClause(params.dateFilter) : null;
+  const productCodeWhere = buildProductCodeWhereClause(params.productCodeQuery);
   const where = combineWhere([
     buildSegmentWhereClause(params.segment),
     dateWhere,
+    productCodeWhere,
   ]);
 
   const totalCount = await countOrders(where);
