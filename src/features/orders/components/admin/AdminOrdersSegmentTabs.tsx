@@ -130,7 +130,7 @@ export function AdminOrdersSegmentTabs({
   return (
     <div className="space-y-4">
       <div
-        className="inline-flex rounded-md border border-border bg-muted/40 p-0.5"
+        className="grid gap-4 md:grid-cols-2"
         role="tablist"
         aria-label="Order payment status"
       >
@@ -144,25 +144,31 @@ export function AdminOrdersSegmentTabs({
           aria-busy={isLoading && loadingTo === "paid"}
           onClick={() => beginNavigate("paid")}
           className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors",
+            "rounded-lg border p-4 text-left transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             displaySegment === "paid"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
+              ? "border-primary bg-primary/5 shadow-sm"
+              : "border-border bg-card hover:border-primary/40 hover:bg-muted/30",
           )}
         >
-          Paid
-          <span
+          <p
             className={cn(
-              "rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+              "text-xs uppercase tracking-wide",
               displaySegment === "paid"
-                ? "bg-muted text-foreground"
-                : "bg-background/60 text-muted-foreground",
+                ? "text-primary"
+                : "text-muted-foreground",
             )}
           >
+            Paid orders
+          </p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
             {counts.paid}
-          </span>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Counted in dashboard revenue and top products
+          </p>
         </Link>
+
         <Link
           href={segmentHref("unpaid", pageSize)}
           replace
@@ -173,24 +179,29 @@ export function AdminOrdersSegmentTabs({
           aria-busy={isLoading && loadingTo === "unpaid"}
           onClick={() => beginNavigate("unpaid")}
           className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors",
+            "rounded-lg border p-4 text-left transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             displaySegment === "unpaid"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
+              ? "border-destructive bg-destructive/5 shadow-sm"
+              : "border-border bg-card hover:border-destructive/40 hover:bg-muted/30",
           )}
         >
-          Unpaid
-          <span
+          <p
             className={cn(
-              "rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+              "text-xs uppercase tracking-wide",
               displaySegment === "unpaid"
-                ? "bg-muted text-foreground"
-                : "bg-background/60 text-muted-foreground",
+                ? "text-destructive"
+                : "text-muted-foreground",
             )}
           >
+            Unpaid / pending
+          </p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
             {counts.pending}
-          </span>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Follow up — payment not completed
+          </p>
         </Link>
       </div>
 

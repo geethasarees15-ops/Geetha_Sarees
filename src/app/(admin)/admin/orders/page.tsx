@@ -126,31 +126,6 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Paid orders
-          </p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-            {counts.paid}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Counted in dashboard revenue and top products
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Unpaid / pending
-          </p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-            {counts.pending}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Follow up — payment not completed
-          </p>
-        </div>
-      </div>
-
       <AdminOrdersSegmentTabs
         segment={segment}
         counts={counts}
