@@ -1,6 +1,6 @@
 import AdminShell from "@/components/admin/AdminShell";
-import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AdminOrdersSegmentTabs,
   type OrdersSegment,
@@ -13,6 +13,23 @@ import {
 } from "@/lib/admin/getAdminOrdersList";
 import { publicErrorMessage } from "@/lib/api/public-error";
 import { Suspense } from "react";
+
+function OrdersContentSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-24 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </div>
+      <Skeleton className="h-10 w-56" />
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <Skeleton key={index} className="h-24 w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -39,9 +56,11 @@ function parseOrdersSegment(
 
 export default function OrdersPage({ searchParams }: AdminOrdersPageProps) {
   return (
-    <Suspense fallback={<AdminTablePageSkeleton statCards={2} tableRows={8} />}>
-      <OrdersPageContent searchParams={searchParams} />
-    </Suspense>
+    <AdminShell heading="Orders">
+      <Suspense fallback={<OrdersContentSkeleton />}>
+        <OrdersPageContent searchParams={searchParams} />
+      </Suspense>
+    </AdminShell>
   );
 }
 
@@ -98,40 +117,49 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
   const resetPageParams = [PAID_PAGE_PARAM, PENDING_PAGE_PARAM];
 
   return (
-    <AdminShell heading="Orders">
-      <div className="space-y-6">
-        {fetchError ? (
-          <Alert variant="destructive">
-            <AlertTitle>Could not fully load orders</AlertTitle>
-            <AlertDescription>{fetchError}</AlertDescription>
-          </Alert>
-        ) : null}
+    <div className="space-y-6">
+      {fetchError ? (
+        <Alert variant="destructive">
+          <AlertTitle>Could not fully load orders</AlertTitle>
+          <AlertDescription>{fetchError}</AlertDescription>
+        </Alert>
+      ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Paid orders
-            </p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-              {counts.paid}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Counted in dashboard revenue and top products
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Unpaid / pending
-            </p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-              {counts.pending}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Follow up — payment not completed
-            </p>
-          </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Paid orders
+          </p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+            {counts.paid}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Counted in dashboard revenue and top products
+          </p>
         </div>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Unpaid / pending
+          </p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+            {counts.pending}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Follow up — payment not completed
+          </p>
+        </div>
+      </div>
 
+      <Suspense
+        fallback={
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-56" />
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-24 w-full rounded-lg" />
+            ))}
+          </div>
+        }
+      >
         <AdminOrdersSegmentTabs
           segment={segment}
           counts={counts}
@@ -142,7 +170,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
           pageSizeParam={PAGE_SIZE_PARAM}
           resetPageParams={resetPageParams}
         />
-      </div>
-    </AdminShell>
+      </Suspense>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
@@ -27,18 +26,14 @@ type Props = {
   resetPageParams: string[];
 };
 
-function segmentHref(
-  pathname: string,
-  searchParams: URLSearchParams,
-  nextSegment: OrdersSegment,
-) {
-  const params = new URLSearchParams(searchParams.toString());
+const ORDERS_PATH = "/admin/orders";
+
+function segmentHref(nextSegment: OrdersSegment, pageSize: number) {
+  const params = new URLSearchParams();
   params.set("status", nextSegment);
-  // Switching lists should start at page 1 for that segment.
-  params.delete("paidPage");
-  params.delete("pendingPage");
-  const qs = params.toString();
-  return qs ? `${pathname}?${qs}` : pathname;
+  // Keep shared page size; reset per-segment pages by omitting them.
+  if (pageSize > 0) params.set("pageSize", String(pageSize));
+  return `${ORDERS_PATH}?${params.toString()}`;
 }
 
 export function AdminOrdersSegmentTabs({
@@ -51,10 +46,8 @@ export function AdminOrdersSegmentTabs({
   pageSizeParam,
   resetPageParams,
 }: Props) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const params = new URLSearchParams(searchParams?.toString() ?? "");
   const active = segment === "unpaid" ? unpaid : paid;
+  const pageSize = active.pageSize;
 
   return (
     <div className="space-y-4">
@@ -64,7 +57,7 @@ export function AdminOrdersSegmentTabs({
         aria-label="Order payment status"
       >
         <Link
-          href={segmentHref(pathname, params, "paid")}
+          href={segmentHref("paid", pageSize)}
           role="tab"
           aria-selected={segment === "paid"}
           className={cn(
@@ -88,7 +81,7 @@ export function AdminOrdersSegmentTabs({
           </span>
         </Link>
         <Link
-          href={segmentHref(pathname, params, "unpaid")}
+          href={segmentHref("unpaid", pageSize)}
           role="tab"
           aria-selected={segment === "unpaid"}
           className={cn(
