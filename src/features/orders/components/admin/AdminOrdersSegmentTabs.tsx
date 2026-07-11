@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileDown, Loader2 } from "lucide-react";
 
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
+import { clampAdminOrdersPageSize } from "@/lib/admin/admin-orders-pagination";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
@@ -40,6 +42,15 @@ const ORDERS_PATH = "/admin/orders";
 /** If RSC navigation stalls, unlock the UI so the admin can retry. */
 const NAV_STALL_TIMEOUT_MS = 12_000;
 
+export function parseOrdersSegment(
+  value: string | null | undefined,
+): OrdersSegment {
+  const raw = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return raw === "unpaid" || raw === "pending" ? "unpaid" : "paid";
+}
+
 export function segmentHref(nextSegment: OrdersSegment, pageSize: number) {
   const params = new URLSearchParams();
   params.set("status", nextSegment);
@@ -68,37 +79,64 @@ export function AdminOrdersSegmentTabs({
   pageSizeParam,
   resetPageParams,
 }: Props) {
-  const active = segment === "unpaid" ? unpaid : paid;
-  const pageSize = active.pageSize;
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [downloadingBulkPdf, setDownloadingBulkPdf] = React.useState(false);
-
-  // Explicit loading target — do NOT rely on useTransition isPending (can stick
-  // true after a few App Router searchParam navigations and freeze the UI).
   const [loadingTo, setLoadingTo] = React.useState<OrdersSegment | null>(null);
+  const [navError, setNavError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    setLoadingTo(null);
-  }, [segment]);
+  const urlSegment = parseOrdersSegment(searchParams?.get("status"));
+  const pageSize = clampAdminOrdersPageSize(
+    Number.parseInt(String(searchParams?.get(pageSizeParam) ?? ""), 10) ||
+      paid.pageSize ||
+      unpaid.pageSize ||
+      undefined,
+  );
 
+  // Props caught up with the URL — navigation succeeded.
   React.useEffect(() => {
-    if (loadingTo == null) return;
+    if (segment === urlSegment) {
+      setLoadingTo((current) =>
+        current == null || current === segment ? null : current,
+      );
+      setNavError(null);
+    }
+  }, [segment, urlSegment]);
+
+  // Stall watchdog: never leave the unpaid/paid switch hanging forever.
+  React.useEffect(() => {
+    if (loadingTo == null && segment === urlSegment) return;
+    const waitingFor = loadingTo ?? urlSegment;
     const timer = window.setTimeout(() => {
-      setLoadingTo(null);
+      // Still out of sync after timeout — surface retry instead of blank/stuck UI.
+      if (segment !== waitingFor) {
+        setNavError(
+          `Could not load ${waitingFor} orders. Check your connection and retry.`,
+        );
+        setLoadingTo(null);
+      }
     }, NAV_STALL_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
-  }, [loadingTo]);
+  }, [loadingTo, segment, urlSegment]);
 
-  const displaySegment = loadingTo ?? segment;
-  const isLoading = loadingTo != null;
-  const showPdfToolbar = !isLoading && segment === "paid";
+  const displaySegment = loadingTo ?? urlSegment;
+  const dataReady = segment === urlSegment && loadingTo == null;
+  const isLoading = !dataReady;
+  const active = segment === "unpaid" ? unpaid : paid;
+  const showPdfToolbar = dataReady && segment === "paid";
 
-  const beginNavigate = React.useCallback(
+  const navigateTo = React.useCallback(
     (next: OrdersSegment) => {
-      if (next === segment && loadingTo == null) return;
+      if (next === segment && next === urlSegment && loadingTo == null) return;
+      setNavError(null);
       setLoadingTo(next);
+      const href = segmentHref(next, pageSize);
+      router.push(href, { scroll: false });
+      // Force RSC refetch — soft Link nav alone can stall on searchParam switches.
+      router.refresh();
     },
-    [loadingTo, segment],
+    [loadingTo, pageSize, router, segment, urlSegment],
   );
 
   const downloadBulkPdf = React.useCallback(async () => {
@@ -141,8 +179,11 @@ export function AdminOrdersSegmentTabs({
           prefetch
           role="tab"
           aria-selected={displaySegment === "paid"}
-          aria-busy={isLoading && loadingTo === "paid"}
-          onClick={() => beginNavigate("paid")}
+          aria-busy={isLoading && displaySegment === "paid"}
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("paid");
+          }}
           className={cn(
             "rounded-lg border p-4 text-left transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -176,8 +217,11 @@ export function AdminOrdersSegmentTabs({
           prefetch
           role="tab"
           aria-selected={displaySegment === "unpaid"}
-          aria-busy={isLoading && loadingTo === "unpaid"}
-          onClick={() => beginNavigate("unpaid")}
+          aria-busy={isLoading && displaySegment === "unpaid"}
+          onClick={(event) => {
+            event.preventDefault();
+            navigateTo("unpaid");
+          }}
           className={cn(
             "rounded-lg border p-4 text-left transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -252,10 +296,25 @@ export function AdminOrdersSegmentTabs({
         ) : null}
       </div>
 
+      {navError ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+          <p className="text-destructive">{navError}</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => navigateTo(urlSegment)}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <OrdersListSkeleton />
       ) : (
         <AdminOrdersList
+          key={segment}
           orders={active.rows}
           totalCount={active.totalCount}
           page={active.page}

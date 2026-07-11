@@ -102,6 +102,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
       const [nextCounts, nextUnpaid] = await Promise.all([
         countsPromise,
         getAdminOrdersList({
+          // DB segment key is "pending" (unpaid / needs attention).
           segment: "pending",
           page: pendingPage,
           pageSize,
@@ -111,8 +112,16 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
       unpaid = nextUnpaid;
     }
   } catch (error) {
-    console.error("[admin/orders] page load failed:", error);
-    fetchError = publicErrorMessage(error, "Failed to load orders.");
+    console.error(
+      `[admin/orders] page load failed (segment=${segment}):`,
+      error,
+    );
+    fetchError = publicErrorMessage(
+      error,
+      segment === "unpaid"
+        ? "Failed to load unpaid orders."
+        : "Failed to load paid orders.",
+    );
   }
 
   const resetPageParams = [PAID_PAGE_PARAM, PENDING_PAGE_PARAM];
@@ -127,6 +136,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
       ) : null}
 
       <AdminOrdersSegmentTabs
+        key={segment}
         segment={segment}
         counts={counts}
         paid={paid}
