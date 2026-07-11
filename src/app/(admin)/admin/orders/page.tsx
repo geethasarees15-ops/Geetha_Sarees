@@ -1,7 +1,10 @@
 import AdminShell from "@/components/admin/AdminShell";
 import { AdminTablePageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
+import {
+  AdminOrdersSegmentTabs,
+  type OrdersSegment,
+} from "@/features/orders/components/admin/AdminOrdersSegmentTabs";
 import {
   clampAdminOrdersPageSize,
   getAdminOrdersCounts,
@@ -17,12 +20,22 @@ export const maxDuration = 60;
 const PAID_PAGE_PARAM = "paidPage";
 const PENDING_PAGE_PARAM = "pendingPage";
 const PAGE_SIZE_PARAM = "pageSize";
+const STATUS_PARAM = "status";
 
 type AdminOrdersPageProps = {
   searchParams: {
     [key: string]: string | string[] | undefined;
   };
 };
+
+function parseOrdersSegment(
+  value: string | string[] | undefined,
+): OrdersSegment {
+  const raw = String(Array.isArray(value) ? value[0] : value ?? "")
+    .trim()
+    .toLowerCase();
+  return raw === "unpaid" || raw === "pending" ? "unpaid" : "paid";
+}
 
 export default function OrdersPage({ searchParams }: AdminOrdersPageProps) {
   return (
@@ -40,30 +53,43 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
       10,
     ) || undefined,
   );
+  const segment = parseOrdersSegment(searchParams[STATUS_PARAM]);
   const paidPage = parseAdminOrdersPage(searchParams[PAID_PAGE_PARAM]);
   const pendingPage = parseAdminOrdersPage(searchParams[PENDING_PAGE_PARAM]);
 
-  let fetchError: string | null = null;
-  let counts = { paid: 0, pending: 0 };
-  let paid: Awaited<ReturnType<typeof getAdminOrdersList>> = {
-    rows: [],
-    totalCount: 0,
-    page: 1,
-    pageSize,
-  };
-  let pending: Awaited<ReturnType<typeof getAdminOrdersList>> = {
-    rows: [],
+  const emptyList = {
+    rows: [] as Awaited<ReturnType<typeof getAdminOrdersList>>["rows"],
     totalCount: 0,
     page: 1,
     pageSize,
   };
 
+  let fetchError: string | null = null;
+  let counts = { paid: 0, pending: 0 };
+  let paid = emptyList;
+  let unpaid = emptyList;
+
   try {
-    [counts, paid, pending] = await Promise.all([
-      getAdminOrdersCounts(),
-      getAdminOrdersList({ segment: "paid", page: paidPage, pageSize }),
-      getAdminOrdersList({ segment: "pending", page: pendingPage, pageSize }),
-    ]);
+    const countsPromise = getAdminOrdersCounts();
+    if (segment === "paid") {
+      const [nextCounts, nextPaid] = await Promise.all([
+        countsPromise,
+        getAdminOrdersList({ segment: "paid", page: paidPage, pageSize }),
+      ]);
+      counts = nextCounts;
+      paid = nextPaid;
+    } else {
+      const [nextCounts, nextUnpaid] = await Promise.all([
+        countsPromise,
+        getAdminOrdersList({
+          segment: "pending",
+          page: pendingPage,
+          pageSize,
+        }),
+      ]);
+      counts = nextCounts;
+      unpaid = nextUnpaid;
+    }
   } catch (error) {
     console.error("[admin/orders] page load failed:", error);
     fetchError = publicErrorMessage(error, "Failed to load orders.");
@@ -82,64 +108,40 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/40 p-4">
-            <p className="text-xs uppercase tracking-wide text-emerald-700">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Paid orders
             </p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-700">
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
               {counts.paid}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Counted in dashboard revenue and top products
             </p>
           </div>
-          <div className="rounded-lg border border-amber-300/50 bg-amber-50/40 p-4">
-            <p className="text-xs uppercase tracking-wide text-amber-700">
-              Pending / unpaid
+          <div className="rounded-lg border border-border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Unpaid / pending
             </p>
-            <p className="mt-1 text-2xl font-semibold text-amber-700">
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
               {counts.pending}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Follow up — ask why payment was not completed
+              Follow up — payment not completed
             </p>
           </div>
         </div>
 
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Paid orders</h2>
-          <p className="text-sm text-muted-foreground">
-            Tap an order to open packing details. Copy address from the list or
-            order page.
-          </p>
-          <AdminOrdersList
-            orders={paid.rows}
-            totalCount={paid.totalCount}
-            page={paid.page}
-            pageSize={paid.pageSize}
-            pageParam={PAID_PAGE_PARAM}
-            pageSizeParam={PAGE_SIZE_PARAM}
-            resetPageParams={resetPageParams}
-            emptyMessage="No paid orders yet."
-          />
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Pending / unpaid orders</h2>
-          <p className="text-sm text-muted-foreground">
-            Contact these customers — not included in sales analytics.
-          </p>
-          <AdminOrdersList
-            orders={pending.rows}
-            totalCount={pending.totalCount}
-            page={pending.page}
-            pageSize={pending.pageSize}
-            pageParam={PENDING_PAGE_PARAM}
-            pageSizeParam={PAGE_SIZE_PARAM}
-            resetPageParams={resetPageParams}
-            emptyMessage="No pending or unpaid orders."
-          />
-        </section>
+        <AdminOrdersSegmentTabs
+          segment={segment}
+          counts={counts}
+          paid={paid}
+          unpaid={unpaid}
+          paidPageParam={PAID_PAGE_PARAM}
+          unpaidPageParam={PENDING_PAGE_PARAM}
+          pageSizeParam={PAGE_SIZE_PARAM}
+          resetPageParams={resetPageParams}
+        />
       </div>
     </AdminShell>
   );
