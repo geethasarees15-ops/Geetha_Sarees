@@ -2,11 +2,18 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { FileDown, Loader2 } from "lucide-react";
 
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
+import { adminOrdersToPdfLabels } from "@/lib/pdf/admin-order-pdf-label";
+import {
+  downloadOrdersPdf,
+  PdfAddressTooLongError,
+} from "@/lib/pdf/shipping-label-pdf";
 import { cn } from "@/lib/utils";
 
 export type OrdersSegment = "paid" | "unpaid";
@@ -63,6 +70,8 @@ export function AdminOrdersSegmentTabs({
 }: Props) {
   const active = segment === "unpaid" ? unpaid : paid;
   const pageSize = active.pageSize;
+  const { toast } = useToast();
+  const [downloadingBulkPdf, setDownloadingBulkPdf] = React.useState(false);
 
   // Explicit loading target — do NOT rely on useTransition isPending (can stick
   // true after a few App Router searchParam navigations and freeze the UI).
@@ -82,6 +91,7 @@ export function AdminOrdersSegmentTabs({
 
   const displaySegment = loadingTo ?? segment;
   const isLoading = loadingTo != null;
+  const showPdfToolbar = !isLoading && segment === "paid";
 
   const beginNavigate = React.useCallback(
     (next: OrdersSegment) => {
@@ -91,155 +101,145 @@ export function AdminOrdersSegmentTabs({
     [loadingTo, segment],
   );
 
+  const downloadBulkPdf = React.useCallback(async () => {
+    if (downloadingBulkPdf || paid.rows.length === 0) return;
+    setDownloadingBulkPdf(true);
+    try {
+      await downloadOrdersPdf(adminOrdersToPdfLabels(paid.rows));
+      toast({
+        title: "PDF downloaded",
+        description: `Shipping labels for ${paid.rows.length} paid order${paid.rows.length === 1 ? "" : "s"} on this page.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof PdfAddressTooLongError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Unknown error";
+      toast({
+        title: "Failed to generate PDF",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingBulkPdf(false);
+    }
+  }, [downloadingBulkPdf, paid.rows, toast]);
+
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">
-          Choose which orders to view
-        </p>
-        <div
-          className="grid gap-3 sm:grid-cols-2"
-          role="tablist"
-          aria-label="Order payment status"
+      <div
+        className="inline-flex rounded-md border border-border bg-muted/40 p-0.5"
+        role="tablist"
+        aria-label="Order payment status"
+      >
+        <Link
+          href={segmentHref("paid", pageSize)}
+          replace
+          scroll={false}
+          prefetch
+          role="tab"
+          aria-selected={displaySegment === "paid"}
+          aria-busy={isLoading && loadingTo === "paid"}
+          onClick={() => beginNavigate("paid")}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            displaySegment === "paid"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
         >
-          <Link
-            href={segmentHref("paid", pageSize)}
-            replace
-            scroll={false}
-            prefetch
-            role="tab"
-            aria-selected={displaySegment === "paid"}
-            aria-busy={isLoading && loadingTo === "paid"}
-            onClick={() => beginNavigate("paid")}
+          Paid
+          <span
             className={cn(
-              "flex items-start gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums",
               displaySegment === "paid"
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted/40",
+                ? "bg-muted text-foreground"
+                : "bg-background/60 text-muted-foreground",
             )}
           >
-            <CheckCircle2
-              className={cn(
-                "mt-0.5 h-5 w-5 shrink-0",
-                displaySegment === "paid"
-                  ? "text-primary-foreground"
-                  : "text-primary",
-              )}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center justify-between gap-2">
-                <span className="text-base font-semibold tracking-tight">
-                  Paid orders
-                </span>
-                <span
-                  className={cn(
-                    "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-                    displaySegment === "paid"
-                      ? "bg-primary-foreground/20 text-primary-foreground"
-                      : "bg-muted text-foreground",
-                  )}
-                >
-                  {counts.paid}
-                </span>
-              </span>
-              <span
-                className={cn(
-                  "mt-1 block text-xs leading-snug",
-                  displaySegment === "paid"
-                    ? "text-primary-foreground/85"
-                    : "text-muted-foreground",
-                )}
-              >
-                Payment completed — ready to pack and ship
-              </span>
-            </span>
-          </Link>
-
-          <Link
-            href={segmentHref("unpaid", pageSize)}
-            replace
-            scroll={false}
-            prefetch
-            role="tab"
-            aria-selected={displaySegment === "unpaid"}
-            aria-busy={isLoading && loadingTo === "unpaid"}
-            onClick={() => beginNavigate("unpaid")}
+            {counts.paid}
+          </span>
+        </Link>
+        <Link
+          href={segmentHref("unpaid", pageSize)}
+          replace
+          scroll={false}
+          prefetch
+          role="tab"
+          aria-selected={displaySegment === "unpaid"}
+          aria-busy={isLoading && loadingTo === "unpaid"}
+          onClick={() => beginNavigate("unpaid")}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm font-medium transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            displaySegment === "unpaid"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Unpaid
+          <span
             className={cn(
-              "flex items-start gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums",
               displaySegment === "unpaid"
-                ? "border-destructive bg-destructive text-destructive-foreground shadow-sm"
-                : "border-border bg-card text-foreground hover:border-destructive/50 hover:bg-muted/40",
+                ? "bg-muted text-foreground"
+                : "bg-background/60 text-muted-foreground",
             )}
           >
-            <AlertCircle
-              className={cn(
-                "mt-0.5 h-5 w-5 shrink-0",
-                displaySegment === "unpaid"
-                  ? "text-destructive-foreground"
-                  : "text-destructive",
-              )}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center justify-between gap-2">
-                <span className="text-base font-semibold tracking-tight">
-                  Unpaid orders
-                </span>
-                <span
-                  className={cn(
-                    "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-                    displaySegment === "unpaid"
-                      ? "bg-destructive-foreground/20 text-destructive-foreground"
-                      : "bg-muted text-foreground",
-                  )}
-                >
-                  {counts.pending}
-                </span>
-              </span>
-              <span
-                className={cn(
-                  "mt-1 block text-xs leading-snug",
-                  displaySegment === "unpaid"
-                    ? "text-destructive-foreground/85"
-                    : "text-muted-foreground",
-                )}
-              >
-                Payment not completed — follow up if needed
-              </span>
-            </span>
-          </Link>
-        </div>
+            {counts.pending}
+          </span>
+        </Link>
       </div>
 
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {isLoading ? (
-          <>
-            <Loader2
-              className="h-3.5 w-3.5 shrink-0 animate-spin"
-              aria-hidden
-            />
-            <span>
-              Loading{" "}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          {isLoading ? (
+            <>
+              <Loader2
+                className="h-3.5 w-3.5 shrink-0 animate-spin"
+                aria-hidden
+              />
+              <span>
+                Loading{" "}
+                <span className="font-medium text-foreground">
+                  {displaySegment === "unpaid" ? "unpaid" : "paid"}
+                </span>{" "}
+                orders…
+              </span>
+            </>
+          ) : (
+            <>
+              Showing{" "}
               <span className="font-medium text-foreground">
-                {displaySegment === "unpaid" ? "unpaid" : "paid"}
+                {segment === "unpaid" ? "unpaid" : "paid"}
               </span>{" "}
-              orders…
-            </span>
-          </>
-        ) : (
-          <>
-            Showing{" "}
-            <span className="font-medium text-foreground">
-              {segment === "unpaid" ? "unpaid" : "paid"}
-            </span>{" "}
-            orders below
-            {active.totalCount > 0 ? <> ({active.totalCount} total)</> : null}.
-          </>
-        )}
-      </p>
+              orders
+              {active.totalCount > 0 ? <> ({active.totalCount})</> : null}
+            </>
+          )}
+        </p>
+
+        {showPdfToolbar ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void downloadBulkPdf()}
+            disabled={downloadingBulkPdf || paid.rows.length === 0}
+            title="Download shipping label PDF for paid orders on this page"
+          >
+            {downloadingBulkPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
+            {downloadingBulkPdf ? "Generating…" : "PDF"}
+          </Button>
+        ) : null}
+      </div>
 
       {isLoading ? (
         <OrdersListSkeleton />

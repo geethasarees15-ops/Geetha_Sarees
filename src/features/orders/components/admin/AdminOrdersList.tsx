@@ -18,11 +18,9 @@ import { useToast } from "@/components/ui/use-toast";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
 import {
   adminOrderToPdfLabel,
-  adminOrdersToPdfLabels,
 } from "@/lib/pdf/admin-order-pdf-label";
 import {
   downloadOrderPdf,
-  downloadOrdersPdf,
   PdfAddressTooLongError,
 } from "@/lib/pdf/shipping-label-pdf";
 import { cn, formatPrice } from "@/lib/utils";
@@ -203,6 +201,7 @@ function AdminOrderRow({
             <Button
               type="button"
               size="sm"
+              variant="outline"
               className="w-full sm:w-auto"
               disabled={downloadingPdf}
               onClick={(event) => void downloadPdf(event)}
@@ -247,34 +246,6 @@ export function AdminOrdersList({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
-  const [downloadingBulkPdf, setDownloadingBulkPdf] = React.useState(false);
-
-  const downloadBulkPdf = React.useCallback(async () => {
-    if (downloadingBulkPdf || orders.length === 0) return;
-    setDownloadingBulkPdf(true);
-    try {
-      await downloadOrdersPdf(adminOrdersToPdfLabels(orders));
-      toast({
-        title: "PDF downloaded",
-        description: `Shipping labels for ${orders.length} paid order${orders.length === 1 ? "" : "s"} on this page.`,
-      });
-    } catch (error) {
-      const message =
-        error instanceof PdfAddressTooLongError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Unknown error";
-      toast({
-        title: "Failed to generate PDF",
-        description: message,
-        variant: "destructive",
-      });
-    } finally {
-      setDownloadingBulkPdf(false);
-    }
-  }, [downloadingBulkPdf, orders, toast]);
 
   const pushQueryParams = React.useCallback(
     (next: Record<string, string | null>) => {
@@ -327,24 +298,6 @@ export function AdminOrdersList({
 
   return (
     <div className="space-y-3">
-      {enablePdf && orders.length > 0 ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={() => void downloadBulkPdf()}
-            disabled={downloadingBulkPdf}
-            title="Download shipping label PDF for paid orders on this page"
-          >
-            {downloadingBulkPdf ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <FileDown className="mr-2 h-4 w-4" />
-            )}
-            {downloadingBulkPdf ? "Generating…" : "PDF"}
-          </Button>
-        </div>
-      ) : null}
-
       {orders.map((order) => (
         <AdminOrderRow key={order.id} order={order} enablePdf={enablePdf} />
       ))}
