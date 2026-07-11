@@ -5,6 +5,7 @@ import {
   AdminOrdersSegmentTabs,
   type OrdersSegment,
 } from "@/features/orders/components/admin/AdminOrdersSegmentTabs";
+import { resolvePaidOrdersDateFilter } from "@/lib/admin/admin-orders-date-filter";
 import {
   clampAdminOrdersPageSize,
   getAdminOrdersCounts,
@@ -76,6 +77,11 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
   const segment = parseOrdersSegment(searchParams[STATUS_PARAM]);
   const paidPage = parseAdminOrdersPage(searchParams[PAID_PAGE_PARAM]);
   const pendingPage = parseAdminOrdersPage(searchParams[PENDING_PAGE_PARAM]);
+  const paidDateFilter = resolvePaidOrdersDateFilter({
+    all: searchParams.all,
+    from: searchParams.from,
+    to: searchParams.to,
+  });
 
   const emptyList = {
     rows: [] as Awaited<ReturnType<typeof getAdminOrdersList>>["rows"],
@@ -94,7 +100,12 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
     if (segment === "paid") {
       const [nextCounts, nextPaid] = await Promise.all([
         countsPromise,
-        getAdminOrdersList({ segment: "paid", page: paidPage, pageSize }),
+        getAdminOrdersList({
+          segment: "paid",
+          page: paidPage,
+          pageSize,
+          dateFilter: paidDateFilter,
+        }),
       ]);
       counts = nextCounts;
       paid = nextPaid;
@@ -145,6 +156,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
         unpaidPageParam={PENDING_PAGE_PARAM}
         pageSizeParam={PAGE_SIZE_PARAM}
         resetPageParams={resetPageParams}
+        paidDateFilter={paidDateFilter}
       />
     </div>
   );

@@ -8,11 +8,15 @@ import {
   products,
 } from "@/lib/supabase/schema";
 import { keytoUrl } from "@/lib/utils";
-import { desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 import {
   clampAdminOrdersPageSize,
   type AdminOrdersSegment,
 } from "@/lib/admin/admin-orders-pagination";
+import {
+  indiaDateRangeToUtcBounds,
+  type PaidOrdersDateFilter,
+} from "@/lib/admin/admin-orders-date-filter";
 
 export {
   ADMIN_ORDERS_DEFAULT_PAGE_SIZE,
@@ -56,6 +60,8 @@ export type AdminOrdersListParams = {
   segment: AdminOrdersSegment;
   page?: number;
   pageSize?: number;
+  /** Paid segment only — IST calendar day filter. */
+  dateFilter?: PaidOrdersDateFilter | null;
 };
 
 export type AdminOrdersListResult = {
@@ -80,6 +86,27 @@ function buildSegmentWhereClause(segment: AdminOrdersSegment): SQL {
 
   // "Needs attention": not cancelled AND (order pending OR payment unpaid/pending/failed).
   return sql`${orderStatus} <> 'cancelled' and (${orderStatus} = 'pending' or ${paymentStatus} in ('unpaid', 'pending', 'failed'))`;
+}
+
+function buildDateWhereClause(
+  dateFilter: PaidOrdersDateFilter | null | undefined,
+): SQL | null {
+  if (!dateFilter || dateFilter.allOrders) return null;
+  const bounds = indiaDateRangeToUtcBounds(
+    dateFilter.fromDate,
+    dateFilter.toDate,
+  );
+  if (!bounds) return null;
+  return and(
+    gte(orders.createdAt, bounds.startUtc),
+    lt(orders.createdAt, bounds.endExclusiveUtc),
+  )!;
+}
+
+function combineWhere(parts: Array<SQL | null | undefined>): SQL {
+  const active = parts.filter(Boolean) as SQL[];
+  if (active.length === 1) return active[0]!;
+  return and(...active)!;
 }
 
 async function countOrders(where: SQL): Promise<number> {
@@ -151,7 +178,14 @@ export async function getAdminOrdersList(
 ): Promise<AdminOrdersListResult> {
   const pageSize = clampAdminOrdersPageSize(params.pageSize);
   const requestedPage = Math.max(1, Math.round(params.page ?? 1));
-  const where = buildSegmentWhereClause(params.segment);
+  const dateWhere =
+    params.segment === "paid"
+      ? buildDateWhereClause(params.dateFilter)
+      : null;
+  const where = combineWhere([
+    buildSegmentWhereClause(params.segment),
+    dateWhere,
+  ]);
 
   const totalCount = await countOrders(where);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
