@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CircleAlert, CircleCheck, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
@@ -119,7 +119,7 @@ export function AdminOrdersSegmentTabs({
                 : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted/40",
             )}
           >
-            <CircleCheck
+            <CheckCircle2
               className={cn(
                 "mt-0.5 h-5 w-5 shrink-0",
                 displaySegment === "paid"
@@ -174,7 +174,7 @@ export function AdminOrdersSegmentTabs({
                 : "border-border bg-card text-foreground hover:border-destructive/50 hover:bg-muted/40",
             )}
           >
-            <CircleAlert
+            <AlertCircle
               className={cn(
                 "mt-0.5 h-5 w-5 shrink-0",
                 displaySegment === "unpaid"
