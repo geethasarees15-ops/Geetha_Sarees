@@ -21,7 +21,7 @@ function OrdersContentSkeleton() {
         <Skeleton className="h-24 w-full rounded-lg" />
         <Skeleton className="h-24 w-full rounded-lg" />
       </div>
-      <Skeleton className="h-10 w-56" />
+      <Skeleton className="h-10 w-full max-w-xl" />
       <div className="space-y-3">
         {Array.from({ length: 6 }).map((_, index) => (
           <Skeleton key={index} className="h-24 w-full rounded-lg" />
@@ -33,6 +33,7 @@ function OrdersContentSkeleton() {
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+export const revalidate = 0;
 
 const PAID_PAGE_PARAM = "paidPage";
 const PENDING_PAGE_PARAM = "pendingPage";
@@ -150,27 +151,16 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
         </div>
       </div>
 
-      <Suspense
-        fallback={
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-56" />
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full rounded-lg" />
-            ))}
-          </div>
-        }
-      >
-        <AdminOrdersSegmentTabs
-          segment={segment}
-          counts={counts}
-          paid={paid}
-          unpaid={unpaid}
-          paidPageParam={PAID_PAGE_PARAM}
-          unpaidPageParam={PENDING_PAGE_PARAM}
-          pageSizeParam={PAGE_SIZE_PARAM}
-          resetPageParams={resetPageParams}
-        />
-      </Suspense>
+      <AdminOrdersSegmentTabs
+        segment={segment}
+        counts={counts}
+        paid={paid}
+        unpaid={unpaid}
+        paidPageParam={PAID_PAGE_PARAM}
+        unpaidPageParam={PENDING_PAGE_PARAM}
+        pageSizeParam={PAGE_SIZE_PARAM}
+        resetPageParams={resetPageParams}
+      />
     </div>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { CircleAlert, CircleCheck } from "lucide-react";
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { CircleAlert, CircleCheck, Loader2 } from "lucide-react";
 
 import AdminOrdersList from "@/features/orders/components/admin/AdminOrdersList";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export type OrdersSegment = "paid" | "unpaid";
@@ -29,12 +31,22 @@ type Props = {
 
 const ORDERS_PATH = "/admin/orders";
 
-function segmentHref(nextSegment: OrdersSegment, pageSize: number) {
+export function segmentHref(nextSegment: OrdersSegment, pageSize: number) {
   const params = new URLSearchParams();
   params.set("status", nextSegment);
   // Keep shared page size; reset per-segment pages by omitting them.
   if (pageSize > 0) params.set("pageSize", String(pageSize));
   return `${ORDERS_PATH}?${params.toString()}`;
+}
+
+function OrdersListSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true" aria-live="polite">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Skeleton key={index} className="h-24 w-full rounded-lg" />
+      ))}
+    </div>
+  );
 }
 
 export function AdminOrdersSegmentTabs({
@@ -47,8 +59,35 @@ export function AdminOrdersSegmentTabs({
   pageSizeParam,
   resetPageParams,
 }: Props) {
+  const router = useRouter();
+  const [isPending, startTransition] = React.useTransition();
+  const [optimisticSegment, setOptimisticSegment] =
+    React.useState<OrdersSegment>(segment);
+
   const active = segment === "unpaid" ? unpaid : paid;
   const pageSize = active.pageSize;
+  const showListPending = isPending || optimisticSegment !== segment;
+
+  React.useEffect(() => {
+    setOptimisticSegment(segment);
+  }, [segment]);
+
+  // Prefetch the other tab so Paid ↔ Unpaid feels snappy.
+  React.useEffect(() => {
+    router.prefetch(segmentHref("paid", pageSize));
+    router.prefetch(segmentHref("unpaid", pageSize));
+  }, [pageSize, router]);
+
+  const selectSegment = React.useCallback(
+    (next: OrdersSegment) => {
+      if (next === optimisticSegment) return;
+      setOptimisticSegment(next);
+      startTransition(() => {
+        router.push(segmentHref(next, pageSize), { scroll: false });
+      });
+    },
+    [optimisticSegment, pageSize, router],
+  );
 
   return (
     <div className="space-y-4">
@@ -61,14 +100,18 @@ export function AdminOrdersSegmentTabs({
           role="tablist"
           aria-label="Order payment status"
         >
-          <Link
-            href={segmentHref("paid", pageSize)}
+          <button
+            type="button"
             role="tab"
-            aria-selected={segment === "paid"}
+            aria-selected={optimisticSegment === "paid"}
+            aria-busy={isPending && optimisticSegment === "paid"}
+            disabled={isPending && optimisticSegment !== "paid"}
+            onClick={() => selectSegment("paid")}
             className={cn(
-              "flex items-start gap-3 rounded-lg border-2 px-4 py-3 transition-colors",
+              "flex items-start gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              segment === "paid"
+              "disabled:cursor-wait",
+              optimisticSegment === "paid"
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-card text-foreground hover:border-primary/50 hover:bg-muted/40",
             )}
@@ -76,11 +119,13 @@ export function AdminOrdersSegmentTabs({
             <CircleCheck
               className={cn(
                 "mt-0.5 h-5 w-5 shrink-0",
-                segment === "paid" ? "text-primary-foreground" : "text-primary",
+                optimisticSegment === "paid"
+                  ? "text-primary-foreground"
+                  : "text-primary",
               )}
               aria-hidden
             />
-            <span className="min-w-0 flex-1 text-left">
+            <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2">
                 <span className="text-base font-semibold tracking-tight">
                   Paid orders
@@ -88,7 +133,7 @@ export function AdminOrdersSegmentTabs({
                 <span
                   className={cn(
                     "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-                    segment === "paid"
+                    optimisticSegment === "paid"
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-muted text-foreground",
                   )}
@@ -99,7 +144,7 @@ export function AdminOrdersSegmentTabs({
               <span
                 className={cn(
                   "mt-1 block text-xs leading-snug",
-                  segment === "paid"
+                  optimisticSegment === "paid"
                     ? "text-primary-foreground/85"
                     : "text-muted-foreground",
                 )}
@@ -107,16 +152,20 @@ export function AdminOrdersSegmentTabs({
                 Payment completed — ready to pack and ship
               </span>
             </span>
-          </Link>
+          </button>
 
-          <Link
-            href={segmentHref("unpaid", pageSize)}
+          <button
+            type="button"
             role="tab"
-            aria-selected={segment === "unpaid"}
+            aria-selected={optimisticSegment === "unpaid"}
+            aria-busy={isPending && optimisticSegment === "unpaid"}
+            disabled={isPending && optimisticSegment !== "unpaid"}
+            onClick={() => selectSegment("unpaid")}
             className={cn(
-              "flex items-start gap-3 rounded-lg border-2 px-4 py-3 transition-colors",
+              "flex items-start gap-3 rounded-lg border-2 px-4 py-3 text-left transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              segment === "unpaid"
+              "disabled:cursor-wait",
+              optimisticSegment === "unpaid"
                 ? "border-destructive bg-destructive text-destructive-foreground shadow-sm"
                 : "border-border bg-card text-foreground hover:border-destructive/50 hover:bg-muted/40",
             )}
@@ -124,13 +173,13 @@ export function AdminOrdersSegmentTabs({
             <CircleAlert
               className={cn(
                 "mt-0.5 h-5 w-5 shrink-0",
-                segment === "unpaid"
+                optimisticSegment === "unpaid"
                   ? "text-destructive-foreground"
                   : "text-destructive",
               )}
               aria-hidden
             />
-            <span className="min-w-0 flex-1 text-left">
+            <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2">
                 <span className="text-base font-semibold tracking-tight">
                   Unpaid orders
@@ -138,7 +187,7 @@ export function AdminOrdersSegmentTabs({
                 <span
                   className={cn(
                     "rounded-md px-2 py-0.5 text-sm font-semibold tabular-nums",
-                    segment === "unpaid"
+                    optimisticSegment === "unpaid"
                       ? "bg-destructive-foreground/20 text-destructive-foreground"
                       : "bg-muted text-foreground",
                   )}
@@ -149,7 +198,7 @@ export function AdminOrdersSegmentTabs({
               <span
                 className={cn(
                   "mt-1 block text-xs leading-snug",
-                  segment === "unpaid"
+                  optimisticSegment === "unpaid"
                     ? "text-destructive-foreground/85"
                     : "text-muted-foreground",
                 )}
@@ -157,33 +206,55 @@ export function AdminOrdersSegmentTabs({
                 Payment not completed — follow up if needed
               </span>
             </span>
-          </Link>
+          </button>
         </div>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Showing{" "}
-        <span className="font-medium text-foreground">
-          {segment === "unpaid" ? "unpaid" : "paid"}
-        </span>{" "}
-        orders below
-        {active.totalCount > 0 ? <> ({active.totalCount} total)</> : null}.
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        {showListPending ? (
+          <>
+            <Loader2
+              className="h-3.5 w-3.5 shrink-0 animate-spin"
+              aria-hidden
+            />
+            <span>
+              Loading{" "}
+              <span className="font-medium text-foreground">
+                {optimisticSegment === "unpaid" ? "unpaid" : "paid"}
+              </span>{" "}
+              orders…
+            </span>
+          </>
+        ) : (
+          <>
+            Showing{" "}
+            <span className="font-medium text-foreground">
+              {segment === "unpaid" ? "unpaid" : "paid"}
+            </span>{" "}
+            orders below
+            {active.totalCount > 0 ? <> ({active.totalCount} total)</> : null}.
+          </>
+        )}
       </p>
 
-      <AdminOrdersList
-        orders={active.rows}
-        totalCount={active.totalCount}
-        page={active.page}
-        pageSize={active.pageSize}
-        pageParam={segment === "unpaid" ? unpaidPageParam : paidPageParam}
-        pageSizeParam={pageSizeParam}
-        resetPageParams={resetPageParams}
-        emptyMessage={
-          segment === "unpaid"
-            ? "No unpaid orders right now."
-            : "No paid orders yet."
-        }
-      />
+      {showListPending ? (
+        <OrdersListSkeleton />
+      ) : (
+        <AdminOrdersList
+          orders={active.rows}
+          totalCount={active.totalCount}
+          page={active.page}
+          pageSize={active.pageSize}
+          pageParam={segment === "unpaid" ? unpaidPageParam : paidPageParam}
+          pageSizeParam={pageSizeParam}
+          resetPageParams={resetPageParams}
+          emptyMessage={
+            segment === "unpaid"
+              ? "No unpaid orders right now."
+              : "No paid orders yet."
+          }
+        />
+      )}
     </div>
   );
 }
