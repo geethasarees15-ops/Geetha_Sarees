@@ -291,9 +291,9 @@ export function DashboardView({ stats, statsError }: Props) {
               detail={`${stats.ordersThisMonth} this month · ${stats.pendingOrdersCount} need follow-up`}
             />
             <MetricCard
-              label="Products"
+              label="Active products"
               value={stats.totalProducts}
-              detail={`${stats.featuredProducts} featured on homepage`}
+              detail={`${stats.featuredProducts} featured · live catalog SKUs (not stock units)`}
               alert={
                 stats.lowStockCount > 0 || stats.outOfStockCount > 0 ? (
                   <p className="mt-1.5 flex items-center gap-1 text-xs text-amber-700">
@@ -386,7 +386,7 @@ export function DashboardView({ stats, statsError }: Props) {
             </SectionCard>
             <SectionCard
               title="Top products (paid orders)"
-              description={`Product line sales at checkout price · ${formatInr(stats.productSalesRevenue)} total (excl. shipping & GST)`}
+              description={`Units sold from paid orders · ${formatInr(stats.productSalesRevenue)} product sales (excl. shipping & GST)`}
             >
               <div className="space-y-2.5">
                 {stats.topProducts.length === 0 ? (
@@ -416,7 +416,7 @@ export function DashboardView({ stats, statsError }: Props) {
                         </span>
                       )}
                       <span className="shrink-0 tabular-nums text-muted-foreground">
-                        {p.quantity} sold · {formatInr(p.revenue)}
+                        {p.quantity} units sold · {formatInr(p.revenue)}
                       </span>
                     </div>
                   ))
@@ -426,7 +426,9 @@ export function DashboardView({ stats, statsError }: Props) {
             <SectionCard title="Inventory health">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between border-b border-border/50 py-2">
-                  <span className="text-muted-foreground">Total products</span>
+                  <span className="text-muted-foreground">
+                    Active products (SKU count)
+                  </span>
                   <span className="font-medium tabular-nums">
                     {stats.totalProducts}
                   </span>
@@ -440,13 +442,15 @@ export function DashboardView({ stats, statsError }: Props) {
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-border/50 py-2 text-amber-800">
-                  <span>Low stock (&lt;5)</span>
+                  <span>
+                    Low stock products (&lt;{stats.lowStockThreshold})
+                  </span>
                   <span className="font-medium tabular-nums">
                     {stats.lowStockCount}
                   </span>
                 </div>
                 <div className="flex justify-between py-2 text-red-700">
-                  <span>Out of stock</span>
+                  <span>Out of stock products</span>
                   <span className="font-medium tabular-nums">
                     {stats.outOfStockCount}
                   </span>
@@ -536,7 +540,7 @@ export function DashboardView({ stats, statsError }: Props) {
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 text-muted-foreground">
-                      Catalog products
+                      Active catalog products (SKUs)
                     </td>
                     <td className="py-2.5 tabular-nums">
                       {stats.totalProducts}
