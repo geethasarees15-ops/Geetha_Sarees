@@ -252,6 +252,7 @@ export function AdminOrdersSegmentTabs({
           pageParam={segment === "unpaid" ? unpaidPageParam : paidPageParam}
           pageSizeParam={pageSizeParam}
           resetPageParams={resetPageParams}
+          enablePdf={segment === "paid"}
           emptyMessage={
             segment === "unpaid"
               ? "No unpaid orders right now."

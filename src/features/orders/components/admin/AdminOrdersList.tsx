@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Copy } from "lucide-react";
+import { Copy, FileDown, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
+import { adminOrderToPdfLabel, adminOrdersToPdfLabels } from "@/lib/pdf/admin-order-pdf-label";
+import {
+  downloadOrderPdf,
+  downloadOrdersPdf,
+  PdfAddressTooLongError,
+} from "@/lib/pdf/shipping-label-pdf";
 import { cn, formatPrice } from "@/lib/utils";
 import { formatOrderDateTimeIst } from "@/lib/datetime/india";
 
@@ -34,6 +40,8 @@ type Props = {
   resetPageParams?: string[];
   pageSizeOptions?: number[];
   emptyMessage?: string;
+  /** Paid section only — shipping-label PDF (Software-Saree-order). */
+  enablePdf?: boolean;
 };
 
 async function copyTextToClipboard(text: string) {
@@ -66,8 +74,15 @@ function paymentBadgeClass(paymentStatus: string) {
     : "border-amber-500 text-amber-700";
 }
 
-function AdminOrderRow({ order }: { order: AdminOrderListView }) {
+function AdminOrderRow({
+  order,
+  enablePdf,
+}: {
+  order: AdminOrderListView;
+  enablePdf?: boolean;
+}) {
   const { toast } = useToast();
+  const [downloadingPdf, setDownloadingPdf] = React.useState(false);
 
   const copyAddress = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -85,6 +100,35 @@ function AdminOrderRow({ order }: { order: AdminOrderListView }) {
         description: error instanceof Error ? error.message : "Please retry.",
         variant: "destructive",
       });
+    }
+  };
+
+  const downloadPdf = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (downloadingPdf) return;
+
+    setDownloadingPdf(true);
+    try {
+      await downloadOrderPdf(adminOrderToPdfLabel(order));
+      toast({
+        title: "PDF downloaded",
+        description: "Shipping label PDF saved to your downloads.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof PdfAddressTooLongError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Unknown error";
+      toast({
+        title: "Failed to generate PDF",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -152,6 +196,23 @@ function AdminOrderRow({ order }: { order: AdminOrderListView }) {
           <p className="text-sm font-semibold sm:text-right">
             {formatPrice(order.amount)}
           </p>
+          {enablePdf ? (
+            <Button
+              type="button"
+              size="sm"
+              className="w-full sm:w-auto"
+              disabled={downloadingPdf}
+              onClick={(event) => void downloadPdf(event)}
+              title="Download shipping label PDF"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-2 h-4 w-4" />
+              )}
+              {downloadingPdf ? "Generating…" : "PDF"}
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"
@@ -178,10 +239,39 @@ export function AdminOrdersList({
   resetPageParams,
   pageSizeOptions = [10, 20, 30, 50],
   emptyMessage = "No orders in this section.",
+  enablePdf = false,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const [downloadingBulkPdf, setDownloadingBulkPdf] = React.useState(false);
+
+  const downloadBulkPdf = React.useCallback(async () => {
+    if (downloadingBulkPdf || orders.length === 0) return;
+    setDownloadingBulkPdf(true);
+    try {
+      await downloadOrdersPdf(adminOrdersToPdfLabels(orders));
+      toast({
+        title: "PDF downloaded",
+        description: `Shipping labels for ${orders.length} paid order${orders.length === 1 ? "" : "s"} on this page.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof PdfAddressTooLongError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Unknown error";
+      toast({
+        title: "Failed to generate PDF",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingBulkPdf(false);
+    }
+  }, [downloadingBulkPdf, orders, toast]);
 
   const pushQueryParams = React.useCallback(
     (next: Record<string, string | null>) => {
@@ -234,8 +324,30 @@ export function AdminOrdersList({
 
   return (
     <div className="space-y-3">
+      {enablePdf && orders.length > 0 ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={() => void downloadBulkPdf()}
+            disabled={downloadingBulkPdf}
+            title="Download shipping label PDF for paid orders on this page"
+          >
+            {downloadingBulkPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
+            {downloadingBulkPdf ? "Generating…" : "PDF"}
+          </Button>
+        </div>
+      ) : null}
+
       {orders.map((order) => (
-        <AdminOrderRow key={order.id} order={order} />
+        <AdminOrderRow
+          key={order.id}
+          order={order}
+          enablePdf={enablePdf}
+        />
       ))}
 
       <div className="flex flex-col gap-3 px-1 pt-1 sm:flex-row sm:items-center sm:justify-between">
