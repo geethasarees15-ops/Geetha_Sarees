@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
-import { cn, formatDate, formatPrice } from "@/lib/utils";
+import { cn, formatPrice } from "@/lib/utils";
+import { formatOrderDateTimeIst } from "@/lib/datetime/india";
 
 type Props = {
   orders: AdminOrderListView[];
@@ -109,7 +110,7 @@ function AdminOrderRow({ order }: { order: AdminOrderListView }) {
               {order.paymentStatus}
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {formatDate(order.createdAt)}
+              {formatOrderDateTimeIst(order.createdAt)}
             </span>
           </div>
 

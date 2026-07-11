@@ -22,7 +22,8 @@ import {
   orders,
   products,
 } from "@/lib/supabase/schema";
-import { formatDate, formatPrice, keytoUrl } from "@/lib/utils";
+import { formatOrderDateTimeIst } from "@/lib/datetime/india";
+import { formatPrice, keytoUrl } from "@/lib/utils";
 import { eq } from "drizzle-orm";
 import Image from "next/image";
 
@@ -162,7 +163,7 @@ async function TrackOrderPage({
               Order ID:{" "}
               <span className="font-medium text-foreground">#{order.id}</span>
               {" • "}
-              Placed on {formatDate(order.createdAt)}
+              Placed on {formatOrderDateTimeIst(order.createdAt)}
             </p>
             <p className="text-sm text-muted-foreground">
               Payment:{" "}
@@ -233,45 +234,46 @@ async function TrackOrderPage({
                 const imageAlt = resolveOrderLineImageAlt(line);
 
                 return (
-                <div
-                  key={line.id}
-                  className="flex items-center gap-3 rounded-md border p-2.5"
-                >
-                  <div className="relative h-14 w-14 overflow-hidden rounded-md border bg-muted">
-                    {imageKey ? (
-                      <Image
-                        src={keytoUrl(imageKey)}
-                        alt={imageAlt}
-                        fill
-                        className="object-cover"
-                        sizes="56px"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {productSlug ? (
-                      <Link
-                        href={`/shop/${productSlug}`}
-                        className="line-clamp-1 text-sm font-medium hover:underline"
-                      >
-                        {productName}
-                      </Link>
-                    ) : (
-                      <p className="line-clamp-1 text-sm font-medium">
-                        {productName}
+                  <div
+                    key={line.id}
+                    className="flex items-center gap-3 rounded-md border p-2.5"
+                  >
+                    <div className="relative h-14 w-14 overflow-hidden rounded-md border bg-muted">
+                      {imageKey ? (
+                        <Image
+                          src={keytoUrl(imageKey)}
+                          alt={imageAlt}
+                          fill
+                          className="object-cover"
+                          sizes="56px"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                          No image
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {productSlug ? (
+                        <Link
+                          href={`/shop/${productSlug}`}
+                          className="line-clamp-1 text-sm font-medium hover:underline"
+                        >
+                          {productName}
+                        </Link>
+                      ) : (
+                        <p className="line-clamp-1 text-sm font-medium">
+                          {productName}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Qty: {line.quantity} •{" "}
+                        {formatPrice(Number(line.unitPrice))}
                       </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Qty: {line.quantity} •{" "}
-                      {formatPrice(Number(line.unitPrice))}
-                    </p>
+                    </div>
                   </div>
-                </div>
-              )})}
+                );
+              })}
             </CardContent>
           </Card>
         </div>

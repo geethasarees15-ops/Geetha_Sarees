@@ -1,8 +1,17 @@
 import { getCanonicalSiteBaseUrl } from "@/lib/auth/site-urls";
+import {
+  formatOrderDateIst,
+  formatOrderDateTimeIst,
+} from "@/lib/datetime/india";
 import { env } from "@/env.mjs";
 import { clsx, type ClassValue } from "clsx";
-import dayjs from "dayjs";
 import { twMerge } from "tailwind-merge";
+import {
+  DEFAULT_SAREE_PLACEHOLDER,
+  collectionPlaceholderImage,
+} from "@/lib/supabase/seedData/collectionPlaceholders";
+
+export { formatOrderDateIst, formatOrderDateTimeIst };
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -28,11 +37,6 @@ export function supabaseStoragePublicUrl(storagePath: string) {
   const base = env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "");
   return `${base}/storage/v1/object/public/${SUPABASE_MEDIA_BUCKET}/${storagePath}`;
 }
-
-import {
-  DEFAULT_SAREE_PLACEHOLDER,
-  collectionPlaceholderImage,
-} from "@/lib/supabase/seedData/collectionPlaceholders";
 
 export const keytoUrl = (key?: string) => {
   if (!key) {
@@ -80,7 +84,8 @@ export function formatInr(price: number | string) {
 }
 
 export function formatDate(date: Date | string) {
-  return dayjs(date).format("MMMM D, YYYY");
+  // Date-only labels for the shop use India time (Asia/Kolkata).
+  return formatOrderDateIst(date);
 }
 
 export function formatBytes(

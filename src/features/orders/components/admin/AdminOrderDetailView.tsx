@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDate, formatPrice } from "@/lib/utils";
+import { formatOrderDateTimeIst } from "@/lib/datetime/india";
+import { formatPrice } from "@/lib/utils";
 
 type OrderItemView = {
   id: string;
@@ -219,7 +220,7 @@ export function AdminOrderDetailView({
               </p>
               <p>
                 <span className="text-muted-foreground">Placed:</span>{" "}
-                {formatDate(order.createdAt)}
+                {formatOrderDateTimeIst(order.createdAt)}
               </p>
               <p>
                 <span className="text-muted-foreground">Amount:</span>{" "}
