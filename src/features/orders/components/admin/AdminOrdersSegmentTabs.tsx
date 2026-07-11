@@ -163,9 +163,7 @@ export function AdminOrdersSegmentTabs({
       : formatIsoToDdMmYyyy(paidDateFilter.fromDate),
   );
   const [draftTo, setDraftTo] = React.useState(
-    paidDateFilter.allOrders
-      ? ""
-      : formatIsoToDdMmYyyy(paidDateFilter.toDate),
+    paidDateFilter.allOrders ? "" : formatIsoToDdMmYyyy(paidDateFilter.toDate),
   );
   const [filterError, setFilterError] = React.useState<string | null>(null);
 
@@ -224,12 +222,19 @@ export function AdminOrdersSegmentTabs({
   }, [loadingTo, segment, urlSegment]);
 
   const pushQuery = React.useCallback(
-    (mutate: (params: URLSearchParams) => void) => {
+    (
+      mutate: (params: URLSearchParams) => void,
+      options?: { refresh?: boolean },
+    ) => {
       const params = new URLSearchParams(searchParams?.toString() ?? "");
+      const before = params.toString();
       mutate(params);
       const qs = params.toString();
+      if (qs === before) return;
       router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-      router.refresh();
+      // Segment switches need a hard RSC refresh; search/filter URL pushes already
+      // re-render the page via searchParams — avoid refresh storms / skeleton loops.
+      if (options?.refresh) router.refresh();
     },
     [pathname, router, searchParams],
   );
@@ -240,6 +245,8 @@ export function AdminOrdersSegmentTabs({
     if (trimmed === productCodeQuery) return;
     const timer = window.setTimeout(() => {
       pushQuery((params) => {
+        const prevQ = params.get("q") ?? "";
+        if (trimmed === prevQ) return;
         if (trimmed) params.set("q", trimmed);
         else params.delete("q");
         params.set(paidPageParam, "1");
@@ -654,7 +661,9 @@ export function AdminOrdersSegmentTabs({
                 ? `No paid orders for ${dateFilterLabel} matching product code “${productCodeQuery}”.`
                 : paidDateFilter.allOrders
                   ? "No paid orders yet."
-                  : `No paid orders for ${dateFilterLabel}.`
+                  : paidDateFilter.range === "today"
+                    ? "No paid orders for today (IST). Use the filter icon for This week, All Orders, or Custom."
+                    : `No paid orders for ${dateFilterLabel}.`
           }
         />
       )}
@@ -666,8 +675,8 @@ export function AdminOrdersSegmentTabs({
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Showing{" "}
-              <span className="font-medium text-foreground">paid</span> orders
+              Showing <span className="font-medium text-foreground">paid</span>{" "}
+              orders
               {paid.totalCount > 0 ? <> ({paid.totalCount})</> : null}
               {" · "}
               <span className="text-foreground">{dateFilterLabel}</span>

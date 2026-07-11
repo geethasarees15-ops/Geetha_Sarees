@@ -106,25 +106,27 @@ function buildDateWhereClause(
 }
 
 function escapeIlikePattern(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  return value.replace(/[\\%_]/g, "");
 }
 
 function buildProductCodeWhereClause(
   productCodeQuery: string | null | undefined,
 ): SQL | null {
-  const term = String(productCodeQuery ?? "")
-    .trim()
-    .toLowerCase();
+  const term = escapeIlikePattern(
+    String(productCodeQuery ?? "")
+      .trim()
+      .toLowerCase(),
+  );
   if (!term) return null;
-  const pattern = `%${escapeIlikePattern(term)}%`;
+  const pattern = `%${term}%`;
   return sql`exists (
     select 1
     from ${orderLines}
     left join ${products} on ${orderLines.productId} = ${products.id}
     where ${orderLines.orderId} = ${orders.id}
       and (
-        lower(coalesce(${orderLines.productCodeSnapshot}, '')) like ${pattern} escape '\\'
-        or lower(coalesce(${products.productCode}, '')) like ${pattern} escape '\\'
+        lower(coalesce(${orderLines.productCodeSnapshot}, '')) like ${pattern}
+        or lower(coalesce(${products.productCode}, '')) like ${pattern}
       )
   )`;
 }

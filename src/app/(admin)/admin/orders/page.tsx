@@ -15,19 +15,12 @@ import {
 import { publicErrorMessage } from "@/lib/api/public-error";
 import { Suspense } from "react";
 
-function OrdersContentSkeleton() {
+function OrdersListOnlySkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-24 w-full rounded-lg" />
-        <Skeleton className="h-24 w-full rounded-lg" />
-      </div>
-      <Skeleton className="h-10 w-full max-w-xl" />
-      <div className="space-y-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={index} className="h-24 w-full rounded-lg" />
-        ))}
-      </div>
+    <div className="space-y-3" aria-busy="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} className="h-24 w-full rounded-lg" />
+      ))}
     </div>
   );
 }
@@ -59,9 +52,12 @@ function parseOrdersSegment(
 export default function OrdersPage({ searchParams }: AdminOrdersPageProps) {
   return (
     <AdminShell heading="Orders">
-      <Suspense fallback={<OrdersContentSkeleton />}>
-        <OrdersPageContent searchParams={searchParams} />
-      </Suspense>
+      {/*
+        Do not wrap the async page body in Suspense: client search/filter URL
+        updates would re-suspend and replace the orders UI with a loading
+        skeleton (lists looked “stuck” / empty after the search+filter update).
+      */}
+      <OrdersPageContent searchParams={searchParams} />
     </AdminShell>
   );
 }
@@ -84,7 +80,7 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
     range: searchParams.range,
   });
   const productCodeQuery = String(
-    Array.isArray(searchParams.q) ? searchParams.q[0] : (searchParams.q ?? ""),
+    Array.isArray(searchParams.q) ? searchParams.q[0] : searchParams.q ?? "",
   ).trim();
 
   const emptyList = {
@@ -152,19 +148,21 @@ async function OrdersPageContent({ searchParams }: AdminOrdersPageProps) {
         </Alert>
       ) : null}
 
-      <AdminOrdersSegmentTabs
-        key={segment}
-        segment={segment}
-        counts={counts}
-        paid={paid}
-        unpaid={unpaid}
-        paidPageParam={PAID_PAGE_PARAM}
-        unpaidPageParam={PENDING_PAGE_PARAM}
-        pageSizeParam={PAGE_SIZE_PARAM}
-        resetPageParams={resetPageParams}
-        paidDateFilter={paidDateFilter}
-        productCodeQuery={productCodeQuery}
-      />
+      <Suspense fallback={<OrdersListOnlySkeleton />}>
+        <AdminOrdersSegmentTabs
+          key={segment}
+          segment={segment}
+          counts={counts}
+          paid={paid}
+          unpaid={unpaid}
+          paidPageParam={PAID_PAGE_PARAM}
+          unpaidPageParam={PENDING_PAGE_PARAM}
+          pageSizeParam={PAGE_SIZE_PARAM}
+          resetPageParams={resetPageParams}
+          paidDateFilter={paidDateFilter}
+          productCodeQuery={productCodeQuery}
+        />
+      </Suspense>
     </div>
   );
 }
