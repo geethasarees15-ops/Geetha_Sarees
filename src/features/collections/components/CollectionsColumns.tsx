@@ -79,7 +79,9 @@ function CollectionRowActions({
           timeoutMs: CATEGORY_DELETE_BATCH_TIMEOUT_MS,
         });
 
-        const payload = (await res.json().catch(() => null)) as DeleteBatchResponse | null;
+        const payload = (await res
+          .json()
+          .catch(() => null)) as DeleteBatchResponse | null;
 
         if (!res.ok) {
           throw new Error(payload?.message || "Delete failed");
@@ -111,9 +113,7 @@ function CollectionRowActions({
 
         done = Boolean(payload?.done);
         if (!done && batchProcessed === 0 && remaining > 0) {
-          throw new Error(
-            "Delete made no progress. Please retry in a moment.",
-          );
+          throw new Error("Delete made no progress. Please retry in a moment.");
         }
       }
 
