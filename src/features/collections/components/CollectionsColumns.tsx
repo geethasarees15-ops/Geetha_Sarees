@@ -44,8 +44,7 @@ function CollectionRowActions({
   const [isDeleting, setIsDeleting] = useState(false);
   const [progress, setProgress] = useState({
     open: false,
-    step: 1,
-    totalSteps: 1,
+    percent: 0,
     message: "Preparing…",
   });
 
@@ -60,8 +59,7 @@ function CollectionRowActions({
 
     setProgress({
       open: true,
-      step: 1,
-      totalSteps: 1,
+      percent: 0,
       message: "Checking products in this category…",
     });
 
@@ -97,21 +95,26 @@ function CollectionRowActions({
         processed += batchProcessed;
 
         if (total === 0) {
-          total = Math.max(1, processed + remaining);
+          total = Math.max(processed + remaining, 1);
         }
 
-        const step = Math.min(total, Math.max(1, processed));
+        done = Boolean(payload?.done);
+
+        // Keep under 99% until the final done response so it never jumps to 100% early.
+        const rawPercent = done
+          ? 100
+          : Math.min(99, Math.round((processed / total) * 100));
+
         setProgress({
           open: true,
-          step,
-          totalSteps: total,
-          message:
-            remaining > 0
+          percent: rawPercent,
+          message: done
+            ? "Finishing category cleanup…"
+            : remaining > 0
               ? `Removing products & photos… ${processed} of ${total}`
               : "Finishing category cleanup…",
         });
 
-        done = Boolean(payload?.done);
         if (!done && batchProcessed === 0 && remaining > 0) {
           throw new Error("Delete made no progress. Please retry in a moment.");
         }
@@ -123,8 +126,7 @@ function CollectionRowActions({
 
       setProgress({
         open: true,
-        step: total,
-        totalSteps: total,
+        percent: 100,
         message: "Done. Refreshing list…",
       });
 
@@ -155,7 +157,7 @@ function CollectionRowActions({
       });
     } finally {
       setIsDeleting(false);
-      setProgress((prev) => ({ ...prev, open: false }));
+      setProgress((prev) => ({ ...prev, open: false, percent: 0 }));
     }
   };
 
@@ -165,8 +167,7 @@ function CollectionRowActions({
         open={progress.open}
         title={`Deleting “${name}”`}
         message={progress.message}
-        step={progress.step}
-        totalSteps={progress.totalSteps}
+        percent={progress.percent}
       />
       <Link href={`/admin/collections/${collectionId}`}>
         <Button
