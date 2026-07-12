@@ -43,6 +43,26 @@ export async function getProductIdsWithPaidOrders(
   );
 }
 
+/**
+ * Any order_lines row still pointing at the product blocks hard-delete
+ * (production FK `order_lines_product_id_products_id_fk` is not SET NULL).
+ * Unpaid/pending orders must archive too — not only paid.
+ */
+export async function getProductIdsReferencedByOrderLines(
+  productIds: string[],
+): Promise<Set<string>> {
+  if (productIds.length === 0) return new Set();
+
+  const rows = await db
+    .selectDistinct({ productId: orderLines.productId })
+    .from(orderLines)
+    .where(inArray(orderLines.productId, productIds));
+
+  return new Set(
+    rows.map((row) => row.productId).filter((id): id is string => Boolean(id)),
+  );
+}
+
 export async function backfillOrderLineSnapshotsForProduct(productId: string) {
   await db.execute(sql`
     UPDATE order_lines ol
@@ -160,7 +180,8 @@ export async function deleteOrArchiveProducts(
     .from(products)
     .where(inArray(products.id, uniqueIds));
   const existingIds = new Set(existingRows.map((row) => row.id));
-  const paidLinked = await getProductIdsWithPaidOrders(uniqueIds);
+  // Archive whenever order history exists — hard-delete fails on FK otherwise.
+  const orderLinked = await getProductIdsReferencedByOrderLines(uniqueIds);
 
   const deletedIds: string[] = [];
   const archivedIds: string[] = [];
@@ -173,7 +194,7 @@ export async function deleteOrArchiveProducts(
       blocked.push({ id, reason: "Product not found." });
       continue;
     }
-    if (paidLinked.has(id)) {
+    if (orderLinked.has(id)) {
       toArchive.push(id);
     } else {
       toDelete.push(id);

@@ -133,12 +133,12 @@ function CollectionRowActions({
       if (archivedCount > 0 && deletedCount > 0) {
         toast({
           title: `"${name}" deleted`,
-          description: `${deletedCount} product(s) removed. ${archivedCount} with paid orders hidden for 30 days.`,
+          description: `${deletedCount} product(s) removed. ${archivedCount} with order history hidden for 30 days.`,
         });
       } else if (archivedCount > 0) {
         toast({
           title: `"${name}" deleted`,
-          description: `${archivedCount} product(s) with paid orders hidden from shop (photos purge in 30 days).`,
+          description: `${archivedCount} product(s) with order history hidden from shop (photos purge in 30 days).`,
         });
       } else if (deletedCount > 0) {
         toast({
@@ -188,7 +188,7 @@ function CollectionRowActions({
         }}
         triggerLabel="Delete"
         title={`Delete "${name}"?`}
-        description="Deletes all products and images inside. Products with paid orders are hidden from shop instead; their photos are removed after 30 days. Large categories may take a minute — progress will be shown."
+        description="Deletes all products and images inside. Products linked to any order are hidden from the shop instead; their photos are removed after 30 days. Large categories may take a minute — progress will be shown."
         actionLabel="Delete"
       />
     </div>
