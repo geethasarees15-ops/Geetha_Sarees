@@ -95,9 +95,7 @@ export function expandCountryInToIndia(line: string): string {
 export function formatPdfFromAddress(text: string): string {
   const lines = splitNonEmptyLines(text)
     .filter((line) => !/^\s*GSTIN\s*:/i.test(line))
-    .map((line, index) =>
-      index === 0 ? stripRegisteredMarks(line) : line,
-    );
+    .map((line, index) => (index === 0 ? stripRegisteredMarks(line) : line));
   return lines.join("\n");
 }
 
