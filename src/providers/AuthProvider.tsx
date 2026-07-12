@@ -61,6 +61,7 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
   const [session, setSession] = useState<Session | null>(null);
   const removeAllCartStorage = useCartStore((s) => s.removeAllProducts);
   const setWishlist = useWishlistStore((s) => s.setWishlist);
+  const clearWishlist = useWishlistStore((s) => s.clearWishlist);
   const { toast } = useToast();
   const router = useRouter();
   const lastWelcomedUserId = useRef<string | null>(null);
@@ -85,6 +86,26 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
       });
   };
 
+  /** Merge device-local hearts into DB, then reload account wishlist. */
+  const syncLocalWishlistToAccount = async (userId: string) => {
+    const supabase = createClient();
+    const localIds = Object.keys(useWishlistStore.getState().wishlist);
+    if (localIds.length > 0) {
+      const rows = localIds.map((productId) => ({
+        user_id: userId,
+        product_id: productId,
+      }));
+      const { error } = await supabase.from("wishlist").upsert(rows, {
+        onConflict: "user_id,product_id",
+        ignoreDuplicates: true,
+      });
+      if (error) {
+        console.error("[wishlist] failed to sync local items:", error.message);
+      }
+    }
+    loadWishlistForUser(userId);
+  };
+
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
 
@@ -98,7 +119,9 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
             supabase.auth.getUser().then(({ data }) => {
               setUser(data.user);
               if (data.user?.id) {
-                loadWishlistForUser(data.user.id);
+                void syncLocalWishlistToAccount(data.user.id);
+              } else {
+                // Stay on device-local wishlist when signed out.
               }
             });
             break;
@@ -146,7 +169,7 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
             });
 
             if (session?.user?.id) {
-              loadWishlistForUser(session.user.id);
+              void syncLocalWishlistToAccount(session.user.id);
             }
 
             if (
@@ -167,6 +190,7 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
             lastWelcomedUserId.current = null;
             clearWelcomedInSession();
             removeAllCartStorage();
+            clearWishlist();
             break;
 
           case "TOKEN_REFRESHED":
@@ -187,7 +211,7 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
     }
 
     return () => subscription?.unsubscribe();
-  }, [removeAllCartStorage, router, setWishlist, toast]);
+  }, [clearWishlist, removeAllCartStorage, router, setWishlist, toast]);
 
   return (
     <SupabaseAuthContext.Provider value={{ user, session }}>
