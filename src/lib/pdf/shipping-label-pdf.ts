@@ -1,5 +1,9 @@
 import { jsPDF } from "jspdf";
 import { siteConfig } from "@/config/site";
+import {
+  formatPdfFromAddress,
+  formatPdfToAddress,
+} from "@/lib/pdf/pdf-label-text";
 
 /** Minimal order shape for shipping-label PDFs (matches Software-Saree-order). */
 export type PdfLabelOrder = {
@@ -397,13 +401,11 @@ function measureOrderSectionLayout(
   centerTextSizePt: number,
 ): { fits: boolean; layout: SectionVerticalLayout; centerBlockHalfH: number } {
   const shouldNormalize = options.settings?.normalize_addresses === true;
-  const fromSource = prepareAddressForPdf(
-    order.sender_details ?? "",
-    shouldNormalize,
+  const fromSource = formatPdfFromAddress(
+    prepareAddressForPdf(order.sender_details ?? "", shouldNormalize),
   );
-  const toSource = prepareAddressForPdf(
-    order.recipient_details ?? "",
-    shouldNormalize,
+  const toSource = formatPdfToAddress(
+    prepareAddressForPdf(order.recipient_details ?? "", shouldNormalize),
   );
 
   const maxWFrom = getLeftColumnMaxTextWidth();
@@ -742,7 +744,9 @@ function computeToShiftMm(
 ): number {
   const shouldNormalize = options.settings?.normalize_addresses === true;
   const rawTo = order.recipient_details ?? "";
-  const toSource = prepareAddressForPdf(rawTo, shouldNormalize);
+  const toSource = formatPdfToAddress(
+    prepareAddressForPdf(rawTo, shouldNormalize),
+  );
 
   let toShift = 0;
   let toLines: string[] = [];

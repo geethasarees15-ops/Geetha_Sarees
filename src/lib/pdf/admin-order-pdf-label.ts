@@ -1,27 +1,37 @@
 import { siteConfig } from "@/config/site";
 import type { AdminOrderListView } from "@/lib/admin/getAdminOrdersList";
+import {
+  formatPdfFromAddress,
+  formatPdfToAddress,
+  prepareValidatedPdfAddresses,
+  stripRegisteredMarks,
+} from "@/lib/pdf/pdf-label-text";
 import type { PdfLabelOrder } from "@/lib/pdf/shipping-label-pdf";
 
-/** Shop FROM block for parcel labels (matches Software-Saree-order sender_details). */
+/** Shop FROM block for parcel labels — PDF rules: no ®, no GSTIN. */
 export function buildAdminPdfSenderDetails(): string {
   const lines = [
-    siteConfig.name,
+    stripRegisteredMarks(siteConfig.name),
     ...siteConfig.addressLines,
     siteConfig.phone ? `Ph: ${siteConfig.phone}` : null,
-    siteConfig.gstin ? `GSTIN: ${siteConfig.gstin}` : null,
   ].filter((line): line is string => Boolean(line && line.trim()));
 
-  return lines.join("\n");
+  return formatPdfFromAddress(lines.join("\n"));
 }
 
 export function adminOrderToPdfLabel(
   order: Pick<AdminOrderListView, "id" | "copyAddressText">,
   senderDetails = buildAdminPdfSenderDetails(),
 ): PdfLabelOrder {
+  const { from, to } = prepareValidatedPdfAddresses({
+    from: senderDetails,
+    to: order.copyAddressText || "Address not available",
+  });
+
   return {
     id: order.id,
-    sender_details: senderDetails,
-    recipient_details: order.copyAddressText || "Address not available",
+    sender_details: from,
+    recipient_details: to || formatPdfToAddress("Address not available"),
   };
 }
 
