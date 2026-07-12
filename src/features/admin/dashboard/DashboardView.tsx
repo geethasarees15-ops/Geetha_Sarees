@@ -199,10 +199,19 @@ function SectionCard({
   );
 }
 
-/** Re-fetch server data when the admin returns to the tab (min 15s apart). */
-function useRevalidateOnFocus() {
+/**
+ * Keep dashboard live: remount (sidebar leave/return via admin template) and
+ * browser tab focus both re-fetch server stats. Soft nav alone can otherwise
+ * replay a stale Router Cache snapshot.
+ */
+function useDashboardLiveRefresh() {
   const router = useRouter();
-  const lastRefresh = useRef(Date.now());
+  const lastRefresh = useRef(0);
+
+  useEffect(() => {
+    lastRefresh.current = Date.now();
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     const REFRESH_MIN_INTERVAL_MS = 15_000;
@@ -223,7 +232,7 @@ function useRevalidateOnFocus() {
 }
 
 export function DashboardView({ stats, statsError }: Props) {
-  useRevalidateOnFocus();
+  useDashboardLiveRefresh();
 
   return (
     <div className="space-y-5">

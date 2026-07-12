@@ -9,6 +9,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Dashboard | SRI SAI RAGHAVENDRA TEX Admin",

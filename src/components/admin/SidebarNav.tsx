@@ -44,6 +44,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
           <Link
             key={index}
             href={item.href}
+            prefetch={false}
             target={item.external ? "_blank" : ""}
             rel={item.external ? "noreferrer" : ""}
           >

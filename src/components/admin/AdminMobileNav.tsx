@@ -73,6 +73,7 @@ export function AdminMobileBrand() {
   return (
     <Link
       href="/admin/dashboard"
+      prefetch={false}
       className="truncate text-sm font-semibold text-foreground"
     >
       {siteConfig.shortName} Admin

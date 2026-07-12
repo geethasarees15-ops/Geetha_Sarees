@@ -9,7 +9,7 @@ type AdminSidebarBrandProps = {
 
 export function AdminSidebarBrand({ className }: AdminSidebarBrandProps) {
   return (
-    <Link href="/admin/dashboard" className={className}>
+    <Link href="/admin/dashboard" prefetch={false} className={className}>
       <Image
         src="/images/ssr-tex-emblem.svg"
         alt=""
