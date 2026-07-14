@@ -15,6 +15,7 @@ import {
   productMedias,
   products,
 } from "@/lib/supabase/schema";
+import { resolveProductImageUrls } from "./velo-product-images";
 import { slugify } from "@/lib/utils";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import sharp from "sharp";
@@ -149,7 +150,12 @@ export type VeloProductsAction =
   | "upsert"
   | "bulk_upsert"
   | "delete"
-  | "meta";
+  | "meta"
+  | "resolveImages";
+
+const resolveImagesDataSchema = z.object({
+  productIds: z.array(z.string().trim().min(1)).min(1).max(100),
+});
 
 export type VeloProductsRequest = {
   action: VeloProductsAction;
@@ -540,6 +546,9 @@ export async function handleVeloProductsRequest(
       case "meta":
         response = await handleMeta(requestId, body.data);
         break;
+      case "resolveImages":
+        response = await handleResolveImages(requestId, body.data);
+        break;
       default:
         response = {
           ok: false,
@@ -561,7 +570,7 @@ export async function handleVeloProductsRequest(
     };
   }
 
-  if (response.ok) {
+  if (response.ok && body.action !== "resolveImages") {
     await saveIdempotentResponse(requestId, response);
   }
 
@@ -588,8 +597,16 @@ async function handleList(
 
   const filters = [];
   if (search.trim()) {
-    const q = `%${search.trim()}%`;
-    filters.push(or(ilike(products.name, q), ilike(products.productCode, q)));
+    const raw = search.trim();
+    const q = `%${raw}%`;
+    // Include product id so packing can resolve draft/archived items by id.
+    filters.push(
+      or(
+        ilike(products.name, q),
+        ilike(products.productCode, q),
+        eq(products.id, raw)
+      )
+    );
   }
   if (draft === "draft") filters.push(eq(products.isDraft, true));
   if (draft === "published") filters.push(eq(products.isDraft, false));
@@ -621,9 +638,10 @@ async function handleList(
       .where(whereClause),
   ]);
   const productIds = rows.map((row) => row.id);
-  const [externalByProductId, sizeConfigs] = await Promise.all([
+  const [externalByProductId, sizeConfigs, imageByProductId] = await Promise.all([
     getExternalIdsForProductIds(productIds),
     getProductSizeConfigsByProductIds(productIds),
+    resolveProductImageUrls(productIds),
   ]);
 
   return {
@@ -641,6 +659,7 @@ async function handleList(
       stock: row.stock,
       isDraft: row.isDraft,
       sizeConfig: sizeConfigs.get(row.id) ?? { enabled: false, options: [] },
+      imageUrl: imageByProductId.get(row.id) ?? null,
       updatedAt: row.createdAt,
     })),
     page,
@@ -894,5 +913,63 @@ async function handleMeta(
     collections: rows,
     badges: ["new_product", "best_sale", "featured"],
     defaultSizes: DEFAULT_SIZES,
+  };
+}
+
+/** Batch-resolve packing photos by shop product ids (draft + published + archived). */
+async function handleResolveImages(
+  requestId: string,
+  data: Record<string, unknown>,
+): Promise<VeloProductsResponse> {
+  const parsed = resolveImagesDataSchema.safeParse(data);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      requestId,
+      action: "resolveImages",
+      message: "Invalid resolveImages payload.",
+      errors: ["productIds (1–100) is required."],
+    };
+  }
+
+  const ids = [...new Set(parsed.data.productIds.map((id) => id.trim()).filter(Boolean))];
+  if (!ids.length) {
+    return {
+      ok: true,
+      requestId,
+      action: "resolveImages",
+      products: [],
+    };
+  }
+
+  const [rows, imageByProductId] = await Promise.all([
+    db
+      .select({
+        id: products.id,
+        productCode: products.productCode,
+        name: products.name,
+        isDraft: products.isDraft,
+      })
+      .from(products)
+      .where(inArray(products.id, ids)),
+    resolveProductImageUrls(ids),
+  ]);
+
+  return {
+    ok: true,
+    requestId,
+    action: "resolveImages",
+    products: rows.map((row) => ({
+      productId: row.id,
+      productCode: row.productCode,
+      name: row.name,
+      collectionId: null,
+      collectionName: null,
+      price: "0",
+      stock: null,
+      isDraft: row.isDraft,
+      updatedAt: "",
+      imageUrl: imageByProductId.get(row.id) ?? null,
+    })),
   };
 }

@@ -47,7 +47,13 @@ export const keytoUrl = (key?: string) => {
     return key;
   }
 
-  if (key.startsWith("sakthi/")) {
+  // Shop / Velo uploads live in Supabase media bucket (sakthi/… and similar).
+  if (
+    key.startsWith("sakthi/") ||
+    key.startsWith("velo-product/") ||
+    key.startsWith("products/") ||
+    key.startsWith("media/")
+  ) {
     return supabaseStoragePublicUrl(key);
   }
 
