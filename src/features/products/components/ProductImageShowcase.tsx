@@ -13,6 +13,7 @@ import {
   productImageTransitionName,
   viewTransitionStyle,
 } from "@/lib/view-transitions";
+import { dedupeProductShowcaseImages } from "@/features/products/dedupe-product-images";
 
 type ProductImageShowcaseProps = React.HTMLAttributes<HTMLDivElement> & {
   data: DocumentType<typeof ProductImageShowcaseFragment>;
@@ -49,10 +50,10 @@ function ProductImageShowcase({
   const transitionName = productImageTransitionName(
     viewTransitionKey ?? data.id,
   );
-  const allImages = [
+  const allImages = dedupeProductShowcaseImages(
     data.featuredImage,
-    ...(data.images?.edges.map(({ node }) => node.media) || []),
-  ];
+    data.images?.edges.map(({ node }) => node.media) || [],
+  );
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 

@@ -3,6 +3,10 @@ import {
   createDraftProductsFromMedia,
   type BulkDraftSharedData,
 } from "@/_actions/products";
+import {
+  getBulkDraftIdempotentResponse,
+  saveBulkDraftIdempotentResponse,
+} from "@/lib/admin/bulk-draft-idempotency";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import { parseBulkSharedInput } from "@/lib/admin/normalize-bulk-product-shared";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
@@ -45,6 +49,24 @@ export async function POST(request: NextRequest) {
       .filter((value): value is File => value instanceof File);
     const mediaIdsRaw = formData.get("mediaIds");
     const sharedRaw = formData.get("shared");
+    const idempotencyKeyRaw = formData.get("idempotencyKey");
+    const idempotencyKey =
+      typeof idempotencyKeyRaw === "string" ? idempotencyKeyRaw.trim() : "";
+
+    if (idempotencyKey) {
+      const cached = await getBulkDraftIdempotentResponse(idempotencyKey);
+      if (cached) {
+        return NextResponse.json(
+          {
+            message: cached.message,
+            created: cached.created,
+            errors: cached.errors,
+            idempotent: true,
+          },
+          { status: cached.status },
+        );
+      }
+    }
 
     let shared: BulkDraftSharedData | undefined;
     if (typeof sharedRaw === "string" && sharedRaw.trim().length > 0) {
@@ -177,6 +199,23 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      if (idempotencyKey) {
+        // Re-check after uploads — another retry may have finished create.
+        const cachedAfterUpload =
+          await getBulkDraftIdempotentResponse(idempotencyKey);
+        if (cachedAfterUpload) {
+          return NextResponse.json(
+            {
+              message: cachedAfterUpload.message,
+              created: cachedAfterUpload.created,
+              errors: cachedAfterUpload.errors,
+              idempotent: true,
+            },
+            { status: cachedAfterUpload.status },
+          );
+        }
+      }
+
       const createdProducts = await createDraftProductsFromMedia(
         uploadedMedias,
         shared,
@@ -184,25 +223,24 @@ export async function POST(request: NextRequest) {
 
       await invalidateStorefrontCache();
 
-      if (uploadErrors.length > 0) {
-        return NextResponse.json(
-          {
-            message: "Created with partial errors.",
-            created: createdProducts,
-            errors: uploadErrors,
-          },
-          { status: 207 },
-        );
+      const responseBody = {
+        message:
+          uploadErrors.length > 0
+            ? "Created with partial errors."
+            : "Draft products created.",
+        created: createdProducts,
+        errors: uploadErrors,
+      };
+      const status = uploadErrors.length > 0 ? 207 : 201;
+
+      if (idempotencyKey) {
+        await saveBulkDraftIdempotentResponse(idempotencyKey, {
+          ...responseBody,
+          status,
+        });
       }
 
-      return NextResponse.json(
-        {
-          message: "Draft products created.",
-          created: createdProducts,
-          errors: [],
-        },
-        { status: 201 },
-      );
+      return NextResponse.json(responseBody, { status });
     } catch (error) {
       console.error("[bulk-draft] create products failed:", error);
       const message = publicErrorMessage(

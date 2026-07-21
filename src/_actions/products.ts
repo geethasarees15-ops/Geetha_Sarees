@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/supabase/db";
-import { InsertProducts, productMedias, products } from "@/lib/supabase/schema";
+import { InsertProducts, products } from "@/lib/supabase/schema";
 import { requireAdminActionUser } from "@/lib/auth/require-admin";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import {
@@ -14,7 +14,7 @@ import {
   type NormalizedBulkDraftShared,
 } from "@/lib/admin/normalize-bulk-product-shared";
 import { normalizeProductFormPayload } from "@/lib/admin/normalize-product-form-payload";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { revalidatePath } from "next/cache";
 
@@ -141,6 +141,14 @@ export async function createDraftProductsFromMedia(
   if (mediaItems.length === 0) return [];
 
   const normalizedShared = shared ?? DEFAULT_BULK_SHARED;
+  // Preserve first-seen order while dropping duplicate media ids in one request.
+  const uniqueMediaItems: DraftSourceMedia[] = [];
+  const seenMediaIds = new Set<string>();
+  for (const item of mediaItems) {
+    if (seenMediaIds.has(item.mediaId)) continue;
+    seenMediaIds.add(item.mediaId);
+    uniqueMediaItems.push(item);
+  }
 
   return db.transaction(async (tx) => {
     await tx.execute(
@@ -162,11 +170,40 @@ export async function createDraftProductsFromMedia(
     const start = Number.isFinite(lastNumber) ? lastNumber : 0;
 
     const createdProducts: BulkDraftCreateResult[] = [];
+    let createdCount = 0;
 
-    for (let index = 0; index < mediaItems.length; index += 1) {
-      const currentNumber = start + index + 1;
+    for (const mediaItem of uniqueMediaItems) {
+      // Defense in depth: retries must not create another product for the same photo.
+      const [existing] = await tx
+        .select({
+          id: products.id,
+          name: products.name,
+          slug: products.slug,
+          productCode: products.productCode,
+        })
+        .from(products)
+        .where(
+          and(
+            eq(products.featuredImageId, mediaItem.mediaId),
+            isNull(products.archivedAt),
+          ),
+        )
+        .limit(1);
+
+      if (existing) {
+        createdProducts.push({
+          id: existing.id,
+          name: existing.name,
+          slug: existing.slug,
+          productCode: existing.productCode ?? "",
+        });
+        continue;
+      }
+
+      createdCount += 1;
+      const currentNumber = start + createdCount;
       const productCode = `ST${String(currentNumber).padStart(6, "0")}`;
-      const fileNameBase = getFileNameBase(mediaItems[index].originalFileName);
+      const fileNameBase = getFileNameBase(mediaItem.originalFileName);
       const nameBase = (normalizedShared.baseName || fileNameBase).trim();
       const productName = `${nameBase} ${productCode}`;
       const slug = await buildUniqueProductSlug(tx, productName, productCode);
@@ -176,7 +213,7 @@ export async function createDraftProductsFromMedia(
         productName,
         slug,
         productCode,
-        featuredImageId: mediaItems[index].mediaId,
+        featuredImageId: mediaItem.mediaId,
       });
 
       createInsertSchema(products).parse(insertValues);
@@ -191,12 +228,8 @@ export async function createDraftProductsFromMedia(
           productCode: products.productCode,
         });
 
-      await tx.insert(productMedias).values({
-        productId: created.id,
-        mediaId: mediaItems[index].mediaId,
-        priority: 1,
-      });
-
+      // Featured image alone is enough for single-photo bulk drafts.
+      // Dual-writing the same media into product_medias made the PDP show duplicates.
       createdProducts.push({
         id: created.id,
         name: created.name,

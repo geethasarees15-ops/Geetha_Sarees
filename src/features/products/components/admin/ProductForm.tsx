@@ -212,6 +212,7 @@ function ProductFrom({ product }: ProductsFormProps) {
     options: [{ size: "", qty: "" }],
   });
   const localFileInputRef = useRef<HTMLInputElement>(null);
+  const bulkSubmitLockRef = useRef(false);
 
   const [{ data }] = useQuery({
     query: ProductFormQuery,
@@ -488,6 +489,8 @@ function ProductFrom({ product }: ProductsFormProps) {
   };
 
   const onBulkSubmit = async () => {
+    if (bulkSubmitLockRef.current || isFormBusy) return;
+
     if (!canSubmitBulk) {
       toast({
         title: "Select images",
@@ -524,12 +527,14 @@ function ProductFrom({ product }: ProductsFormProps) {
       return;
     }
 
+    bulkSubmitLockRef.current = true;
+    setBulkPhase("uploading");
+
     startTransition(async () => {
       try {
         setBulkCreated([]);
         setBulkErrors([]);
         setBulkFailures([]);
-        setBulkPhase("uploading");
 
         const result = await runBulkDraftUpload({
           files: bulkFiles,
@@ -591,6 +596,7 @@ function ProductFrom({ product }: ProductsFormProps) {
       } finally {
         setBulkProgress(null);
         setBulkPhase("idle");
+        bulkSubmitLockRef.current = false;
       }
     });
   };

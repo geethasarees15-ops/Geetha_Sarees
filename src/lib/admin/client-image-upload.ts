@@ -83,6 +83,23 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function createClientKey(prefix: string): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
+  }
+  return `${prefix}_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}
+
+function stableClientToken(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (Math.imul(31, hash) + input.charCodeAt(i)) | 0;
+  }
+  return `h${Math.abs(hash).toString(36)}`;
+}
+
 function replaceExt(fileName: string, ext: string) {
   return fileName.replace(/\.[^/.]+$/, "") + ext;
 }
@@ -314,6 +331,8 @@ async function uploadViaDirectStorage(
   reason?: string;
 }> {
   let lastError = "Direct upload failed.";
+  // One key for the whole retry loop — retries must not create extra media rows.
+  const clientUploadKey = createClientKey("upl");
 
   for (let attempt = 0; attempt < MAX_UPLOAD_RETRIES; attempt += 1) {
     try {
@@ -374,6 +393,7 @@ async function uploadViaDirectStorage(
             storagePath: init.storagePath,
             fileName: displayName,
             purpose,
+            clientUploadKey,
           }),
           timeoutMs: DIRECT_UPLOAD_COMPLETE_TIMEOUT_MS,
         },
@@ -664,16 +684,21 @@ export async function submitBulkDraftRequest(params: {
   files: File[];
   mediaIds: string[];
   shared: Record<string, unknown>;
+  idempotencyKey?: string;
 }): Promise<BulkDraftRequestResult> {
-  const formData = new FormData();
-  params.files.forEach((file) => formData.append("files", file));
-  formData.append("mediaIds", JSON.stringify(params.mediaIds));
-  formData.append("shared", JSON.stringify(params.shared));
+  const idempotencyKey =
+    params.idempotencyKey?.trim() || createClientKey("bulk");
 
   let res: Response | null = null;
   let attempts = 0;
 
   while (attempts < MAX_UPLOAD_RETRIES) {
+    const formData = new FormData();
+    params.files.forEach((file) => formData.append("files", file));
+    formData.append("mediaIds", JSON.stringify(params.mediaIds));
+    formData.append("shared", JSON.stringify(params.shared));
+    formData.append("idempotencyKey", idempotencyKey);
+
     try {
       // eslint-disable-next-line no-await-in-loop
       res = await fetchWithTimeout("/api/admin/products/bulk-draft", {
@@ -683,7 +708,7 @@ export async function submitBulkDraftRequest(params: {
       });
       if (res.status < 500) break;
     } catch {
-      // retry
+      // retry with the same idempotency key
     }
     attempts += 1;
     if (attempts < MAX_UPLOAD_RETRIES) {
@@ -768,11 +793,15 @@ export async function runBulkDraftUpload(params: {
     );
 
     if (step.type === "media") {
+      const libraryKey = `lib_${stableClientToken(
+        params.selectedMediaIds.slice().sort().join(","),
+      )}`;
       // eslint-disable-next-line no-await-in-loop
       const result = await submitBulkDraftRequest({
         files: [],
         mediaIds: params.selectedMediaIds,
         shared: params.shared,
+        idempotencyKey: libraryKey,
       });
 
       if (result.payload.created?.length) {
@@ -803,6 +832,7 @@ export async function runBulkDraftUpload(params: {
           files: [step.file],
           mediaIds: [],
           shared: params.shared,
+          idempotencyKey: createClientKey("filefallback"),
         });
 
         if (fallback.isRequestTooLarge) {
@@ -849,6 +879,8 @@ export async function runBulkDraftUpload(params: {
       files: [],
       mediaIds: [directUpload.mediaId],
       shared: params.shared,
+      // Stable per media — retries of the same photo never create more products.
+      idempotencyKey: `media_${directUpload.mediaId}`.slice(0, 120),
     });
 
     if (result.payload.created?.length) {
