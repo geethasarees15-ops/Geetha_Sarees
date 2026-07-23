@@ -90,3 +90,5 @@ Hiyori is licensed under the MIT License. See the license file for more informat
 
 - Special thanks to all libraries and frameworks that made Hiyori possible.
 - Shoutout to the community for supporting and using Hiyori.
+
+<!-- deploy trigger 8379983 follow-up -->
