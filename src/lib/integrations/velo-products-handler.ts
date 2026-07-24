@@ -1,5 +1,8 @@
 import { publicErrorMessage } from "@/lib/api/public-error";
-import { deleteOrArchiveProducts } from "@/lib/admin/product-lifecycle";
+import {
+  deleteCategoryProductsBatch,
+  deleteOrArchiveProducts,
+} from "@/lib/admin/product-lifecycle";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import {
   getProductSizeConfigsByProductIds,
@@ -154,7 +157,8 @@ export type VeloProductsAction =
   | "delete"
   | "meta"
   | "resolveImages"
-  | "upsertCollection";
+  | "upsertCollection"
+  | "deleteCollection";
 
 const resolveImagesDataSchema = z.object({
   productIds: z.array(z.string().trim().min(1)).min(1).max(100),
@@ -167,6 +171,11 @@ const upsertCollectionDataSchema = z.object({
   featuredImageMediaId: z.string().trim().min(1).optional(),
   imageBase64: z.string().optional(),
   imageFileName: z.string().optional(),
+});
+
+const deleteCollectionDataSchema = z.object({
+  id: z.string().trim().min(1),
+  batchSize: z.number().int().min(1).max(10).optional(),
 });
 
 function collectionNameToSlug(name: string) {
@@ -642,6 +651,9 @@ export async function handleVeloProductsRequest(
       case "upsertCollection":
         response = await handleUpsertCollection(requestId, body.data);
         break;
+      case "deleteCollection":
+        response = await handleDeleteCollection(requestId, body.data);
+        break;
       default:
         response = {
           ok: false,
@@ -663,7 +675,7 @@ export async function handleVeloProductsRequest(
     };
   }
 
-  if (response.ok && body.action !== "resolveImages") {
+  if (response.ok && body.action !== "resolveImages" && body.action !== "deleteCollection") {
     await saveIdempotentResponse(requestId, response);
   }
 
@@ -1184,6 +1196,70 @@ async function handleUpsertCollection(
       imageUrl: media?.key ? keytoUrl(media.key) : null,
     },
   };
+}
+
+async function handleDeleteCollection(
+  requestId: string,
+  data: Record<string, unknown>,
+): Promise<VeloProductsResponse> {
+  const parsed = deleteCollectionDataSchema.safeParse(data);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      requestId,
+      action: "deleteCollection",
+      message: "Category id is required.",
+      errors: ["Category id is required."],
+    };
+  }
+
+  try {
+    const outcome = await deleteCategoryProductsBatch(
+      parsed.data.id,
+      parsed.data.batchSize,
+    );
+    if (!outcome) {
+      return {
+        ok: false,
+        requestId,
+        action: "deleteCollection",
+        message: "Category not found.",
+        errors: ["Category not found."],
+      };
+    }
+
+    if (outcome.done) {
+      await revalidateCollectionPages();
+    }
+
+    return {
+      ok: true,
+      requestId,
+      action: "deleteCollection",
+      message: outcome.done
+        ? "Category deleted."
+        : `Category delete in progress (${outcome.remaining} product(s) remaining).`,
+      deletedId: parsed.data.id,
+      deletedIds: outcome.deletedIds,
+      archivedIds: outcome.archivedIds,
+      blocked: outcome.blocked,
+      remaining: outcome.remaining,
+      done: outcome.done,
+      collectionDeleted: outcome.collectionDeleted,
+    };
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : "";
+    const message = /order_lines|23503|foreign key/i.test(raw)
+      ? "A product in this category is still linked to an order. Retry — products with order history are archived and the category is removed when clear."
+      : publicErrorMessage(error, "Failed to delete category.");
+    return {
+      ok: false,
+      requestId,
+      action: "deleteCollection",
+      message,
+      errors: [message],
+    };
+  }
 }
 
 /** Batch-resolve packing photos by shop product ids (draft + published + archived). */
