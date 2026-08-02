@@ -1,6 +1,7 @@
 import Header from "@/components/layouts/Header";
 import ProductCard from "./ProductCard";
-import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
+import { withFallback } from "@/lib/resilience";
+import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
 import { getRecommendationProductsCached } from "@/lib/storefront/recommendations";
 
 type Props = {
@@ -12,9 +13,16 @@ export default async function RecommendationProductsSection({
   first = 4,
 }: Props) {
   const [data, draftProductIds] = await Promise.all([
-    getRecommendationProductsCached(first),
-    getDraftProductIdsCached(),
+    withFallback(
+      "recommendations",
+      () => getRecommendationProductsCached(first),
+      null,
+    ),
+    getDraftProductIdsSafe(),
   ]);
+
+  // Recommendations are optional; hide the block rather than risk showing drafts.
+  if (draftProductIds === null) return null;
 
   const draftIds = new Set(draftProductIds);
   const edges =

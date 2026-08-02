@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { withRetry } from "@/lib/resilience";
 import { STOREFRONT_REVALIDATE_SECONDS } from "./constants";
 import { redisGet, redisSet } from "./redis";
 
@@ -23,7 +24,11 @@ export async function withStorefrontCache<T>(
     return redisHit;
   }
 
-  const cachedLoader = unstable_cache(loader, [key], { revalidate, tags });
+  const cachedLoader = unstable_cache(
+    () => withRetry(loader, { label: `cache:${key}` }),
+    [key],
+    { revalidate, tags },
+  );
   const value = await cachedLoader();
 
   void redisSet(key, value, revalidate);

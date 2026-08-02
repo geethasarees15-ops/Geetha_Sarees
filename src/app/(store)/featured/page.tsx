@@ -5,7 +5,8 @@ import { FeaturedProductsScroll } from "@/features/search";
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
-import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
+import { withFallback } from "@/lib/resilience";
+import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
 import { fetchFeaturedProductsCached } from "@/lib/storefront/product-queries";
 
 export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
@@ -30,8 +31,12 @@ const FEATURED_PAGE_SIZE = 12;
 async function FeaturedProductsPage() {
   const variables = { first: FEATURED_PAGE_SIZE, after: undefined };
   const [productsCollection, initialDraftIds] = await Promise.all([
-    fetchFeaturedProductsCached(variables),
-    getDraftProductIdsCached(),
+    withFallback(
+      "featured:products",
+      () => fetchFeaturedProductsCached(variables),
+      null,
+    ),
+    getDraftProductIdsSafe(),
   ]);
 
   return (
@@ -44,7 +49,7 @@ async function FeaturedProductsPage() {
       <Suspense fallback={<SearchProductsGridSkeleton />}>
         <FeaturedProductsScroll
           initialData={{ productsCollection }}
-          initialDraftIds={initialDraftIds}
+          initialDraftIds={initialDraftIds ?? undefined}
         />
       </Suspense>
     </Shell>

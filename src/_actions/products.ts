@@ -14,9 +14,40 @@ import {
   type NormalizedBulkDraftShared,
 } from "@/lib/admin/normalize-bulk-product-shared";
 import { normalizeProductFormPayload } from "@/lib/admin/normalize-product-form-payload";
+import {
+  normalizeProductImageMediaIds,
+  syncProductGalleryImages,
+} from "@/lib/admin/product-gallery";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { revalidatePath } from "next/cache";
+
+export type ProductImageOptions = {
+  /** Ordered media ids: first = featured/main, rest = gallery (max 5). */
+  imageMediaIds?: string[];
+};
+
+function resolveFeaturedAndGallery(
+  product: InsertProducts,
+  options?: ProductImageOptions,
+) {
+  const fromOptions = options?.imageMediaIds
+    ? normalizeProductImageMediaIds(options.imageMediaIds)
+    : [];
+
+  if (fromOptions.length > 0) {
+    return {
+      featuredImageId: fromOptions[0],
+      orderedMediaIds: fromOptions,
+    };
+  }
+
+  const featuredImageId = String(product.featuredImageId ?? "").trim() || null;
+  return {
+    featuredImageId,
+    orderedMediaIds: featuredImageId ? [featuredImageId] : [],
+  };
+}
 
 function revalidateProductCatalogPaths() {
   revalidatePath("/admin/products");
@@ -27,9 +58,19 @@ function revalidateProductCatalogPaths() {
   revalidatePath("/collections");
 }
 
-export const createProductAction = async (product: InsertProducts) => {
+export const createProductAction = async (
+  product: InsertProducts,
+  options?: ProductImageOptions,
+) => {
   await requireAdminActionUser();
-  const normalized = normalizeProductFormPayload(product);
+  const { featuredImageId, orderedMediaIds } = resolveFeaturedAndGallery(
+    product,
+    options,
+  );
+  const normalized = normalizeProductFormPayload({
+    ...product,
+    featuredImageId: featuredImageId ?? product.featuredImageId,
+  });
 
   const data = await db.transaction(async (tx) => {
     await tx.execute(
@@ -40,6 +81,7 @@ export const createProductAction = async (product: InsertProducts) => {
     const slug = await buildUniqueProductSlug(tx, normalized.name, productCode);
     const values = {
       ...normalized,
+      featuredImageId: featuredImageId ?? normalized.featuredImageId,
       productCode,
       slug,
       tags: [] as string[],
@@ -49,6 +91,15 @@ export const createProductAction = async (product: InsertProducts) => {
     return tx.insert(products).values(values).returning();
   });
 
+  const created = data[0];
+  if (created) {
+    try {
+      await syncProductGalleryImages(created.id, orderedMediaIds);
+    } catch (error) {
+      console.error("[products] gallery sync failed after create:", error);
+    }
+  }
+
   revalidateProductCatalogPaths();
   await invalidateStorefrontCache();
   return data;
@@ -57,6 +108,7 @@ export const createProductAction = async (product: InsertProducts) => {
 export const updateProductAction = async (
   productId: string,
   product: InsertProducts,
+  options?: ProductImageOptions,
 ) => {
   await requireAdminActionUser();
 
@@ -73,9 +125,17 @@ export const updateProductAction = async (
     throw new Error("Product not found.");
   }
 
-  const normalized = normalizeProductFormPayload(product);
+  const { featuredImageId, orderedMediaIds } = resolveFeaturedAndGallery(
+    product,
+    options,
+  );
+  const normalized = normalizeProductFormPayload({
+    ...product,
+    featuredImageId: featuredImageId ?? product.featuredImageId,
+  });
   const values = {
     ...normalized,
+    featuredImageId: featuredImageId ?? normalized.featuredImageId,
     slug: existing.slug,
     productCode: existing.productCode,
     tags: [] as string[],
@@ -88,6 +148,12 @@ export const updateProductAction = async (
     .set(values)
     .where(eq(products.id, productId))
     .returning();
+
+  try {
+    await syncProductGalleryImages(productId, orderedMediaIds);
+  } catch (error) {
+    console.error("[products] gallery sync failed after update:", error);
+  }
 
   revalidateProductCatalogPaths();
   await invalidateStorefrontCache();

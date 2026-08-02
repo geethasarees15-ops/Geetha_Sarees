@@ -10,7 +10,8 @@ import {
 } from "@/features/storefront/components";
 import { heroSlides } from "@/config/heroSlides";
 import { getHomeBannerSlides } from "@/lib/integrations/settings";
-import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
+import { withTimeoutFallback } from "@/lib/resilience";
+import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
 import { getLandingPageDataCached } from "@/lib/storefront/landing-data";
 import { getShopByPriceBucketsCached } from "@/lib/storefront/shop-by-price";
 import { resolveStorefrontContact } from "@/lib/integrations/settings";
@@ -33,17 +34,39 @@ export const metadata: Metadata = {
   },
 };
 
+const SECTION_TIMEOUT_MS = 5000;
+
 export default async function Home() {
   const [homeBannerSlides, data, draftProductIds, contact, priceBuckets] =
     await Promise.all([
-      getHomeBannerSlides(),
-      getLandingPageDataCached(),
-      getDraftProductIdsCached(),
+      withTimeoutFallback(
+        "home:banner",
+        getHomeBannerSlides(),
+        SECTION_TIMEOUT_MS,
+        null,
+      ),
+      withTimeoutFallback(
+        "home:landing",
+        getLandingPageDataCached(),
+        SECTION_TIMEOUT_MS,
+        null,
+      ),
+      withTimeoutFallback<string[] | null>(
+        "home:drafts",
+        getDraftProductIdsSafe(),
+        SECTION_TIMEOUT_MS,
+        null,
+      ),
       resolveStorefrontContact(),
-      getShopByPriceBucketsCached(),
+      withTimeoutFallback(
+        "home:price-buckets",
+        getShopByPriceBucketsCached(),
+        SECTION_TIMEOUT_MS,
+        [],
+      ),
     ]);
 
-  const draftIds = new Set(draftProductIds);
+  const draftIds = new Set(draftProductIds ?? []);
   const products = data?.products;
   const featuredProducts =
     products?.edges?.filter((edge) => !draftIds.has(edge.node.id)) ?? [];

@@ -31,6 +31,43 @@ type RateLimitResult = {
   remaining: number;
 };
 
+/**
+ * In-memory fallback counters, used only when Upstash is unreachable or not
+ * configured. Per-isolate (each Vercel instance counts separately), so it is
+ * an approximation — but strictly better than fail-open, where a Redis outage
+ * disabled rate limiting entirely.
+ *
+ * For cross-instance limits in production, set UPSTASH_REDIS_REST_URL / TOKEN.
+ */
+const MEMORY_MAX_KEYS = 5000;
+const memoryCounters = new Map<string, { count: number; resetAtMs: number }>();
+
+function memoryIncrement(key: string, windowSec: number): number {
+  const now = Date.now();
+  const existing = memoryCounters.get(key);
+
+  if (existing && existing.resetAtMs > now) {
+    existing.count += 1;
+    return existing.count;
+  }
+
+  if (memoryCounters.size >= MEMORY_MAX_KEYS) {
+    for (const [k, v] of memoryCounters) {
+      if (v.resetAtMs <= now) memoryCounters.delete(k);
+    }
+    // Still full after pruning expired entries: drop the oldest ones.
+    if (memoryCounters.size >= MEMORY_MAX_KEYS) {
+      for (const k of memoryCounters.keys()) {
+        memoryCounters.delete(k);
+        if (memoryCounters.size < MEMORY_MAX_KEYS / 2) break;
+      }
+    }
+  }
+
+  memoryCounters.set(key, { count: 1, resetAtMs: now + windowSec * 1000 });
+  return 1;
+}
+
 /** Edge-safe Upstash counter (fetch REST API, no Node Redis client). */
 async function upstashIncrement(
   key: string,
@@ -96,13 +133,12 @@ async function checkRateLimit(
   key: string,
   options: { limit: number; windowSec: number },
 ): Promise<RateLimitResult> {
-  const count = await upstashIncrement(key, options.windowSec);
-  if (count !== null) {
-    return {
-      limited: count > options.limit,
-      remaining: Math.max(0, options.limit - count),
-    };
-  }
+  const count =
+    (await upstashIncrement(key, options.windowSec)) ??
+    memoryIncrement(key, options.windowSec);
 
-  return { limited: false, remaining: options.limit };
+  return {
+    limited: count > options.limit,
+    remaining: Math.max(0, options.limit - count),
+  };
 }

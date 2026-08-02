@@ -7,9 +7,13 @@ import {
   SearchProductsInifiteScroll,
 } from "@/features/search";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
+import { withFallback } from "@/lib/resilience";
 import { getAllCollectionsCached } from "@/lib/storefront/collections-list";
-import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
-import { fetchProductSearchCached } from "@/lib/storefront/product-queries";
+import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
+import {
+  fetchProductSearchCached,
+  type StorefrontProductSearchResult,
+} from "@/lib/storefront/product-queries";
 import {
   buildShopSearchVariables,
   formatShopPriceRangeHeading,
@@ -43,12 +47,20 @@ interface ProductsPageProps {
 async function ProductsPage({ searchParams }: ProductsPageProps) {
   const variables = buildShopSearchVariables(searchParams);
   const priceHeading = formatShopPriceRangeHeading(searchParams);
-  const [initialSearchResult, initialDraftIds, collectionsData] =
-    await Promise.all([
-      fetchProductSearchCached(variables),
-      getDraftProductIdsCached(),
-      getAllCollectionsCached(),
-    ]);
+  const [searchResult, initialDraftIds, collectionsData] = await Promise.all([
+    withFallback<StorefrontProductSearchResult | null>(
+      "shop:search",
+      () => fetchProductSearchCached(variables),
+      null,
+    ),
+    getDraftProductIdsSafe(),
+    withFallback("shop:collections", () => getAllCollectionsCached(), null),
+  ]);
+
+  const initialSearchResult = searchResult ?? {
+    productsCollection: null,
+    matchingCollections: [],
+  };
 
   const collectionsSection =
     collectionsData?.edges?.map(({ node }) => ({
@@ -81,7 +93,7 @@ async function ProductsPage({ searchParams }: ProductsPageProps) {
       <Suspense fallback={<SearchProductsGridSkeleton />}>
         <SearchProductsInifiteScroll
           initialSearchResult={initialSearchResult}
-          initialDraftIds={initialDraftIds}
+          initialDraftIds={initialDraftIds ?? undefined}
         />
       </Suspense>
     </Shell>

@@ -11,6 +11,10 @@ import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import { parseBulkSharedInput } from "@/lib/admin/normalize-bulk-product-shared";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import { processUploadedImage } from "@/lib/image/processUpload";
+import {
+  toMediaAltText,
+  withSafeUploadFile,
+} from "@/lib/storage/safeUploadFileName";
 import { uploadMediaToSupabase } from "@/lib/storage/uploadMedia";
 import db from "@/lib/supabase/db";
 import { medias } from "@/lib/supabase/schema";
@@ -160,8 +164,10 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
+      const { file: safeFile, fileName, alt } = withSafeUploadFile(file);
+
       try {
-        const processed = await processUploadedImage(file);
+        const processed = await processUploadedImage(safeFile);
         const key = await uploadMediaToSupabase(
           processed.buffer,
           processed.contentType,
@@ -171,17 +177,17 @@ export async function POST(request: NextRequest) {
 
         const [insertedMedia] = await db
           .insert(medias)
-          .values({ alt: file.name, key })
+          .values({ alt: alt || toMediaAltText(fileName), key })
           .returning({ id: medias.id });
 
         uploadedMedias.push({
           mediaId: insertedMedia.id,
-          originalFileName: file.name,
+          originalFileName: fileName,
         });
       } catch (error) {
         console.error("[bulk-draft] file upload failed:", error);
         uploadErrors.push(
-          `${file.name}: ${publicErrorMessage(error, "Upload failed.")}`,
+          `${fileName}: ${publicErrorMessage(error, "Upload failed.")}`,
         );
       }
     }

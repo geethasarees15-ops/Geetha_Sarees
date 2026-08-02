@@ -8,8 +8,9 @@ import {
   SearchProductsInifiteScroll,
 } from "@/features/search";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
+import { withFallback } from "@/lib/resilience";
 import { getCollectionPageCached } from "@/lib/storefront/collection-detail";
-import { getDraftProductIdsCached } from "@/lib/storefront/draft-product-ids";
+import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
 import { fetchProductSearchCached } from "@/lib/storefront/product-queries";
 import { buildShopSearchVariables } from "@/lib/storefront/search-params";
 import { toTitleCase, unslugify } from "@/lib/utils";
@@ -58,8 +59,12 @@ async function CategoryPage({ params, searchParams }: CategoryPageProps) {
 
   const variables = buildShopSearchVariables(searchParams, collection.id);
   const [initialSearchResult, initialDraftIds] = await Promise.all([
-    fetchProductSearchCached(variables),
-    getDraftProductIdsCached(),
+    withFallback(
+      "collection:search",
+      () => fetchProductSearchCached(variables),
+      { productsCollection: null, matchingCollections: [] },
+    ),
+    getDraftProductIdsSafe(),
   ]);
 
   return (
@@ -85,7 +90,7 @@ async function CategoryPage({ params, searchParams }: CategoryPageProps) {
         <SearchProductsInifiteScroll
           collectionId={collection.id}
           initialSearchResult={initialSearchResult}
-          initialDraftIds={initialDraftIds}
+          initialDraftIds={initialDraftIds ?? undefined}
         />
       </Suspense>
     </Shell>

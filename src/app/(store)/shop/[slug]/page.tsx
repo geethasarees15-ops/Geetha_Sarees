@@ -18,6 +18,7 @@ import {
 import { AddToWishListButton } from "@/features/wishlists";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import { getProductSizeConfig } from "@/lib/products/sizeConfig";
+import { withFallback } from "@/lib/resilience";
 import { buildBreadcrumbJsonLd, buildProductJsonLd } from "@/lib/seo/json-ld";
 import { getPublishedProductDetailCached } from "@/lib/storefront/product-detail";
 import {
@@ -81,8 +82,10 @@ async function ProductDetailPage({ params }: Props) {
     featuredImage,
   } = productEdge.node;
   const productSlug = params.slug;
-  const sizeConfig = await getProductSizeConfig(id);
-  const livePricing = await getCartProductPricingByIds([id]);
+  const [sizeConfig, livePricing] = await Promise.all([
+    getProductSizeConfig(id),
+    withFallback("pdp:pricing", () => getCartProductPricingByIds([id]), {}),
+  ]);
   const resolvedPricing = livePricing[id];
   const pricingProduct = resolvedPricing
     ? toProductDiscountFields(resolvedPricing)
