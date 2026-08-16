@@ -46,6 +46,14 @@ const nextConfig = {
             },
           ]
         : []),
+      ...(process.env.NEXT_PUBLIC_CDN_URL
+        ? [
+            {
+              protocol: "https",
+              hostname: new URL(process.env.NEXT_PUBLIC_CDN_URL).hostname,
+            },
+          ]
+        : []),
       // Shop saree model photography (shared public storage)
       {
         protocol: "https",

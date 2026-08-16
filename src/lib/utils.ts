@@ -38,6 +38,16 @@ export function supabaseStoragePublicUrl(storagePath: string) {
   return `${base}/storage/v1/object/public/${SUPABASE_MEDIA_BUCKET}/${storagePath}`;
 }
 
+export function r2PublicUrl(key: string) {
+  const base = String(env.NEXT_PUBLIC_CDN_URL ?? "")
+    .trim()
+    .replace(/\/$/, "");
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_CDN_URL is required for R2 public URLs.");
+  }
+  return `${base}/${key.replace(/^\//, "")}`;
+}
+
 export const keytoUrl = (key?: string) => {
   if (!key) {
     return DEFAULT_SAREE_PLACEHOLDER;
@@ -47,7 +57,11 @@ export const keytoUrl = (key?: string) => {
     return key;
   }
 
-  // Shop / Velo uploads live in Supabase media bucket (sakthi/… and similar).
+  if (key.startsWith("/")) {
+    return key;
+  }
+
+  // Legacy / staging / fallback keys stay on Supabase Storage.
   if (
     key.startsWith("sakthi/") ||
     key.startsWith("velo-product/") ||
@@ -55,6 +69,11 @@ export const keytoUrl = (key?: string) => {
     key.startsWith("media/")
   ) {
     return supabaseStoragePublicUrl(key);
+  }
+
+  // New R2 uploads (`uploads/...`) when CDN is configured.
+  if (env.NEXT_PUBLIC_CDN_URL) {
+    return r2PublicUrl(key);
   }
 
   const bucket =

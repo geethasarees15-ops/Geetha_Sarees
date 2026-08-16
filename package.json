@@ -14,6 +14,7 @@
     "format": "prettier --ignore-path .gitignore --write \"**/*.{ts,tsx,css,scss}\"",
     "coverage": "npm test --coverage --watchAll --collectCoverageFrom='src/components'",
     "db:generate": "drizzle-kit generate:pg --config=drizzle.config.ts",
+    "db:bootstrap-new": "node --env-file=.env.local ./scripts/bootstrap-new-supabase.mjs",
     "db:push": "drizzle-kit push:pg --config=drizzle.config.ts",
     "db:setup": "npm run db:push && npm run db:seed",
     "supabase:graphql": "node scripts/setup-supabase.mjs",
