@@ -54,18 +54,6 @@ async function deleteStagingFile(
   await deleteObjects({ keys: [storagePath], auth });
 }
 
-async function hasMediaBucketBinding(): Promise<boolean> {
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const { env: cfEnv } = await getCloudflareContext({ async: true });
-    return Boolean(
-      (cfEnv as Record<string, unknown> | undefined)?.MEDIA_BUCKET,
-    );
-  } catch {
-    return false;
-  }
-}
-
 function assertUploadLimits(params: { fileSize: number; contentType: string }) {
   if (params.fileSize <= 0) {
     throw new Error("File is empty.");
@@ -109,7 +97,7 @@ export async function createDirectUploadSession(params: {
     }
   }
 
-  if ((await hasMediaBucketBinding()) || hasServerMediaWritePath()) {
+  if (hasServerMediaWritePath()) {
     return {
       storagePath,
       uploadMode: "worker" as DirectUploadMode,

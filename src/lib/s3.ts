@@ -18,37 +18,6 @@ async function assertMediaWriteAuth(auth: MediaWriteAuth = "admin-session") {
   await requireAdminActionUser();
 }
 
-type R2BucketLike = {
-  put: (
-    key: string,
-    value: ArrayBuffer | ArrayBufferView | string | null,
-    options?: {
-      httpMetadata?: { contentType?: string; cacheControl?: string };
-    },
-  ) => Promise<unknown>;
-  get: (key: string) => Promise<{
-    size: number;
-    arrayBuffer: () => Promise<ArrayBuffer>;
-  } | null>;
-  delete: (keys: string | string[]) => Promise<void>;
-};
-
-async function getCloudflareEnv(): Promise<Record<string, unknown> | null> {
-  try {
-    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const { env: cfEnv } = await getCloudflareContext({ async: true });
-    return (cfEnv as Record<string, unknown> | undefined) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function missingMediaBucketError() {
-  return new Error(
-    "Media storage is not bound (MEDIA_BUCKET missing). Enable R2 on this Cloudflare account, create bucket ssr-tex-media, add the R2 binding, and redeploy.",
-  );
-}
-
 function getAwsClient() {
   return new AwsClient({
     accessKeyId: env.S3_ACCESS_KEY_ID,
@@ -144,23 +113,6 @@ export async function putObject(
 ) {
   await assertMediaWriteAuth(options?.auth ?? "admin-session");
 
-  const cfEnv = await getCloudflareEnv();
-  const r2 = (cfEnv?.MEDIA_BUCKET as R2BucketLike | undefined) ?? null;
-  if (r2) {
-    await r2.put(params.Key, toArrayBuffer(params.Body), {
-      httpMetadata: {
-        contentType: params.ContentType,
-        cacheControl: params.CacheControl,
-      },
-    });
-    return { etag: null as string | null };
-  }
-
-  // Running on Cloudflare without MEDIA_BUCKET — S3 fallback returns 401 on Workers.
-  if (cfEnv) {
-    throw missingMediaBucketError();
-  }
-
   const headers: Record<string, string> = {};
   if (params.ContentType) headers["Content-Type"] = params.ContentType;
   if (params.CacheControl) headers["Cache-Control"] = params.CacheControl;
@@ -211,27 +163,6 @@ export async function getObjectBuffer(params: {
 }) {
   await assertMediaWriteAuth(params.auth ?? "admin-session");
 
-  const cfEnv = await getCloudflareEnv();
-  const r2 = (cfEnv?.MEDIA_BUCKET as R2BucketLike | undefined) ?? null;
-  if (r2) {
-    const obj = await r2.get(params.key);
-    if (!obj) {
-      throw new Error("Uploaded file not found. Try uploading again.");
-    }
-    if (params.maxBytes && obj.size > params.maxBytes) {
-      throw new Error("Image is too large after upload. Compress and retry.");
-    }
-    const bytes = new Uint8Array(await obj.arrayBuffer());
-    if (params.maxBytes && bytes.byteLength > params.maxBytes) {
-      throw new Error("Image is too large after upload. Compress and retry.");
-    }
-    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  }
-
-  if (cfEnv) {
-    throw missingMediaBucketError();
-  }
-
   const proxy = mediaProxyConfig();
   const res = proxy
     ? await proxyFetch(`/object?key=${encodeURIComponent(params.key)}`, {
@@ -272,17 +203,6 @@ export async function deleteObjects(params: {
   await assertMediaWriteAuth(params.auth ?? "admin-session");
   const keys = [...new Set(params.keys.map((k) => k.trim()).filter(Boolean))];
   if (keys.length === 0) return;
-
-  const cfEnv = await getCloudflareEnv();
-  const r2 = (cfEnv?.MEDIA_BUCKET as R2BucketLike | undefined) ?? null;
-  if (r2) {
-    await r2.delete(keys);
-    return;
-  }
-
-  if (cfEnv) {
-    throw missingMediaBucketError();
-  }
 
   const proxy = mediaProxyConfig();
   if (proxy) {
