@@ -4,7 +4,7 @@ import {
   UPLOAD_LIMIT_BYTES,
   UPLOAD_LIMIT_MB,
 } from "@/lib/image/uploadLimits";
-import { MAX_PROCESSED_IMAGE_BYTES } from "@/lib/image/processUpload";
+import { MAX_PROCESSED_IMAGE_BYTES } from "@/lib/image/uploadLimits";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 import {
   sanitizeUploadFileName,

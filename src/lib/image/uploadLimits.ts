@@ -13,3 +13,6 @@ export const STAGING_UPLOAD_LIMIT_BYTES = 1.5 * 1024 * 1024;
 export const STAGING_UPLOAD_LIMIT_MB = Math.round(
   STAGING_UPLOAD_LIMIT_BYTES / (1024 * 1024),
 );
+
+/** Max bytes after server/client image processing, before R2 put. */
+export const MAX_PROCESSED_IMAGE_BYTES = 2.75 * 1024 * 1024;

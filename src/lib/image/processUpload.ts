@@ -1,13 +1,12 @@
 import sharp from "sharp";
-import { UPLOAD_LIMIT_BYTES } from "./uploadLimits";
+import { MAX_PROCESSED_IMAGE_BYTES, UPLOAD_LIMIT_BYTES } from "./uploadLimits";
 
-export { UPLOAD_LIMIT_BYTES } from "./uploadLimits";
+export { MAX_PROCESSED_IMAGE_BYTES, UPLOAD_LIMIT_BYTES } from "./uploadLimits";
 
 /** Max width stored in S3 — detail/zoom; Next.js Image serves smaller sizes. */
 export const MAX_IMAGE_WIDTH = 2000;
 
 export const WEBP_QUALITY = 82;
-export const MAX_PROCESSED_IMAGE_BYTES = 2.75 * 1024 * 1024;
 
 export type ProcessedImage = {
   buffer: Buffer;
@@ -99,6 +98,8 @@ export async function processUploadedImageBuffer(
   input: Buffer,
   fileName = "image",
 ): Promise<ProcessedImage> {
-  const file = new File([input], fileName, { type: "application/octet-stream" });
+  const file = new File([input], fileName, {
+    type: "application/octet-stream",
+  });
   return processUploadedImage(file);
 }
