@@ -38,7 +38,9 @@ export async function getRecommendationProductsCached(first = 4) {
 
   if (!data?.recommendations) return data;
 
-  const filtered = await filterDraftProductsFromCollection(data.recommendations);
+  const filtered = await filterDraftProductsFromCollection(
+    data.recommendations,
+  );
   return {
     ...data,
     recommendations: filtered,

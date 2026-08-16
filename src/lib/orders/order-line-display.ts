@@ -10,7 +10,9 @@ export type OrderLineDisplayFields = {
   productImageKeySnapshot?: string | null;
 };
 
-export function resolveOrderLineProductName(row: OrderLineDisplayFields): string {
+export function resolveOrderLineProductName(
+  row: OrderLineDisplayFields,
+): string {
   return (
     String(row.productName ?? row.productNameSnapshot ?? "").trim() || "Product"
   );

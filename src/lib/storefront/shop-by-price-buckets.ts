@@ -1,4 +1,7 @@
-import { getEffectiveProductPrice, isEffectivePriceInDisplayRange } from "@/lib/products/discount";
+import {
+  getEffectiveProductPrice,
+  isEffectivePriceInDisplayRange,
+} from "@/lib/products/discount";
 import { formatPrice } from "@/lib/utils";
 
 /** Retail breakpoints; first tier covers budget items below ₹300. */

@@ -87,9 +87,8 @@ export async function fetchProductSearchCached(
   );
 
   return {
-    productsCollection: await filterDraftProductsFromCollection(
-      productsCollection,
-    ),
+    productsCollection:
+      await filterDraftProductsFromCollection(productsCollection),
     matchingCollections: searchTerm ? matchingCollections : [],
   };
 }

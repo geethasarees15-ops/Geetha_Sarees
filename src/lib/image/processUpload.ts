@@ -93,3 +93,12 @@ export async function processUploadedImage(
     extension: "webp",
   };
 }
+
+/** Direct-upload finalize / Velo: same sharp path without wrapping a File. */
+export async function processUploadedImageBuffer(
+  input: Buffer,
+  fileName = "image",
+): Promise<ProcessedImage> {
+  const file = new File([input], fileName, { type: "application/octet-stream" });
+  return processUploadedImage(file);
+}

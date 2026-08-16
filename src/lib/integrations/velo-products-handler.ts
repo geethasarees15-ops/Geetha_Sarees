@@ -9,7 +9,12 @@ import {
   normalizeProductSizeConfig,
   upsertProductSizeConfig,
 } from "@/lib/products/sizeConfig";
+import { processUploadedImageBuffer } from "@/lib/image/processUpload";
 import { uploadMediaToSupabase } from "@/lib/storage/uploadMedia";
+import {
+  sanitizeUploadFileName,
+  toMediaAltText,
+} from "@/lib/storage/safeUploadFileName";
 import db from "@/lib/supabase/db";
 import {
   apiSettings,
@@ -21,9 +26,19 @@ import {
 } from "@/lib/supabase/schema";
 import { resolveProductImageUrls } from "./velo-product-images";
 import { keytoUrl, slugify } from "@/lib/utils";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import sharp from "sharp";
 import { z } from "zod";
 
 const IDEM_PREFIX = "velo_idempotency_";
@@ -315,22 +330,14 @@ async function uploadBase64Image(
   const input = Buffer.from(raw, "base64");
   if (input.length === 0) throw new Error("Empty image data.");
 
+  const safeName = sanitizeUploadFileName(fileName || "image");
+  const alt = toMediaAltText(fileName || "velo-upload");
+
   let processed;
   try {
-    const meta = await sharp(input, { animated: true }).metadata();
-    if (!meta.width) throw new Error("Invalid image.");
-    const resized = await sharp(input, { animated: true })
-      .rotate()
-      .resize({ width: 2000, withoutEnlargement: true })
-      .webp({ quality: 82 })
-      .toBuffer();
-    processed = {
-      buffer: resized,
-      contentType: "image/webp",
-      extension: "webp",
-    };
+    processed = await processUploadedImageBuffer(input, safeName);
   } catch {
-    throw new Error(`Could not process image: ${fileName || "image"}`);
+    throw new Error(`Could not process image: ${safeName}`);
   }
 
   const key = await uploadMediaToSupabase(
@@ -338,11 +345,12 @@ async function uploadBase64Image(
     processed.contentType,
     processed.extension,
     "velo-product",
+    { auth: "trusted-server" },
   );
 
   const [inserted] = await db
     .insert(medias)
-    .values({ alt: fileName || "velo-upload", key })
+    .values({ alt, key })
     .returning({ id: medias.id });
 
   return inserted.id;
@@ -675,7 +683,11 @@ export async function handleVeloProductsRequest(
     };
   }
 
-  if (response.ok && body.action !== "resolveImages" && body.action !== "deleteCollection") {
+  if (
+    response.ok &&
+    body.action !== "resolveImages" &&
+    body.action !== "deleteCollection"
+  ) {
     await saveIdempotentResponse(requestId, response);
   }
 
@@ -709,8 +721,8 @@ async function handleList(
       or(
         ilike(products.name, q),
         ilike(products.productCode, q),
-        eq(products.id, raw)
-      )
+        eq(products.id, raw),
+      ),
     );
   }
   if (draft === "draft") filters.push(eq(products.isDraft, true));
@@ -743,11 +755,12 @@ async function handleList(
       .where(whereClause),
   ]);
   const productIds = rows.map((row) => row.id);
-  const [externalByProductId, sizeConfigs, imageByProductId] = await Promise.all([
-    getExternalIdsForProductIds(productIds),
-    getProductSizeConfigsByProductIds(productIds),
-    resolveProductImageUrls(productIds),
-  ]);
+  const [externalByProductId, sizeConfigs, imageByProductId] =
+    await Promise.all([
+      getExternalIdsForProductIds(productIds),
+      getProductSizeConfigsByProductIds(productIds),
+      resolveProductImageUrls(productIds),
+    ]);
 
   return {
     ok: true,
@@ -953,7 +966,10 @@ async function handleDelete(
       await db
         .delete(apiSettings)
         .where(
-          eq(apiSettings.key, externalProductKey(parsed.data.externalProductId)),
+          eq(
+            apiSettings.key,
+            externalProductKey(parsed.data.externalProductId),
+          ),
         );
     }
 
@@ -1083,7 +1099,10 @@ async function handleUpsertCollection(
     }
     // New category with no image: leave null; first product upload backfills it.
   } catch (error) {
-    const message = publicErrorMessage(error, "Could not process category image.");
+    const message = publicErrorMessage(
+      error,
+      "Could not process category image.",
+    );
     return {
       ok: false,
       requestId,
@@ -1278,7 +1297,9 @@ async function handleResolveImages(
     };
   }
 
-  const ids = [...new Set(parsed.data.productIds.map((id) => id.trim()).filter(Boolean))];
+  const ids = [
+    ...new Set(parsed.data.productIds.map((id) => id.trim()).filter(Boolean)),
+  ];
   if (!ids.length) {
     return {
       ok: true,

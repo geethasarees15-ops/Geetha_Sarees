@@ -30,7 +30,7 @@ function urlFromUnknownImage(value: unknown): string | null {
  * 4) products.images JSON (urls or storage keys)
  */
 export async function resolveProductImageUrls(
-  productIds: string[]
+  productIds: string[],
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const ids = [...new Set(productIds.map((id) => id.trim()).filter(Boolean))];
@@ -83,7 +83,7 @@ export async function resolveProductImageUrls(
       .where(inArray(productMedias.productId, missing))
       .orderBy(
         asc(sql`coalesce(${productMedias.priority}, 999999)`),
-        asc(productMedias.id)
+        asc(productMedias.id),
       );
 
     for (const row of galleryRows) {

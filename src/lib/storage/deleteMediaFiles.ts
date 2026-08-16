@@ -1,73 +1,39 @@
 import { logServerError } from "@/lib/api/public-error";
 import { env } from "@/env.mjs";
 import { deleteObjects } from "@/lib/s3";
-import { isR2MediaConfigured } from "@/lib/storage/media-backend";
-import { createServiceRoleClient } from "@/lib/supabase/service";
-import { SUPABASE_MEDIA_BUCKET } from "@/lib/utils";
 
-/** Best-effort delete of storage objects (never throws). */
+/** Best-effort delete of R2 objects (never throws). No Supabase Storage writes. */
 export async function deleteMediaStorageKeys(keys: string[]) {
   const uniqueKeys = [
     ...new Set(keys.map((key) => key.trim()).filter(Boolean)),
   ];
   if (uniqueKeys.length === 0) return;
 
-  const supabaseKeys: string[] = [];
   const r2Keys: string[] = [];
-
-  const supabaseUrlPrefix = `${env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/public/${SUPABASE_MEDIA_BUCKET}/`;
-  const cdnBase = String(env.NEXT_PUBLIC_CDN_URL ?? "")
-    .trim()
-    .replace(/\/$/, "");
+  const cdnBase = env.NEXT_PUBLIC_CDN_URL?.replace(/\/$/, "") || "";
 
   for (const raw of uniqueKeys) {
     if (!raw) continue;
 
     if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      if (raw.startsWith(supabaseUrlPrefix)) {
-        const extracted = raw.slice(supabaseUrlPrefix.length);
-        if (extracted) supabaseKeys.push(extracted);
-        continue;
-      }
-
       if (cdnBase && raw.startsWith(`${cdnBase}/`)) {
         const extracted = raw.slice(`${cdnBase}/`.length);
         if (extracted) r2Keys.push(extracted);
-        continue;
       }
-
       continue;
     }
 
-    if (
-      raw.startsWith("sakthi/") ||
-      raw.startsWith("velo-product/") ||
-      raw.startsWith("products/") ||
-      raw.startsWith("media/")
-    ) {
-      supabaseKeys.push(raw);
-      continue;
-    }
+    // Legacy sakthi/ objects were never on R2 — skip (no Supabase Storage API).
+    if (raw.startsWith("sakthi/")) continue;
 
     r2Keys.push(raw);
   }
 
-  if (r2Keys.length > 0 && isR2MediaConfigured()) {
-    try {
-      await deleteObjects({ keys: r2Keys });
-    } catch (error) {
-      logServerError("deleteMediaStorageKeys/r2", error);
-    }
-  }
+  if (r2Keys.length === 0) return;
 
-  if (supabaseKeys.length > 0) {
-    const supabase = createServiceRoleClient();
-    const { error } = await supabase.storage
-      .from(SUPABASE_MEDIA_BUCKET)
-      .remove(supabaseKeys);
-
-    if (error) {
-      logServerError("deleteMediaStorageKeys/supabase", error);
-    }
+  try {
+    await deleteObjects({ keys: r2Keys });
+  } catch (error) {
+    logServerError("deleteMediaStorageKeys/r2", error);
   }
 }

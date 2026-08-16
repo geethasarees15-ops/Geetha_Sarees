@@ -1,33 +1,41 @@
 import { logServerError } from "@/lib/api/public-error";
-import { UPLOAD_LIMIT_BYTES, UPLOAD_LIMIT_MB } from "@/lib/image/uploadLimits";
-import { processUploadedImage } from "@/lib/image/processUpload";
+import {
+  STAGING_UPLOAD_LIMIT_BYTES,
+  STAGING_UPLOAD_LIMIT_MB,
+} from "@/lib/image/uploadLimits";
+import {
+  MAX_PROCESSED_IMAGE_BYTES,
+  processUploadedImageBuffer,
+} from "@/lib/image/processUpload";
+import {
+  createPresignedPutUrl,
+  deleteObjects,
+  getObjectBuffer,
+  hasServerMediaWritePath,
+  putObject,
+  type MediaWriteAuth,
+} from "@/lib/s3";
 import db from "@/lib/supabase/db";
 import { medias } from "@/lib/supabase/schema";
-import { createServiceRoleClient } from "@/lib/supabase/service";
-import { SUPABASE_MEDIA_BUCKET } from "@/lib/utils";
+import { env } from "@/env.mjs";
 import { nanoid } from "nanoid";
-import { sanitizeUploadFileName, toMediaAltText } from "./safeUploadFileName";
-import { ensureMediaBucket, uploadMediaToSupabase } from "./uploadMedia";
+import {
+  sanitizeExtension,
+  sanitizeUploadFileName,
+  toMediaAltText,
+} from "./safeUploadFileName";
+import { uploadMediaToR2 } from "./uploadMedia";
+import {
+  createMediaProxyUploadToken,
+  mediaProxyUploadUrl,
+} from "./velo-upload-token";
 
-export type DirectUploadPurpose = "upload" | "product-draft";
+export type DirectUploadPurpose = "upload" | "product-draft" | "velo-product";
+export type DirectUploadMode = "worker" | "presigned" | "proxy";
 
-const STAGING_PREFIX = "sakthi/staging/";
+const STAGING_PREFIX = "uploads/staging/";
 
-export function sanitizeExtension(fileName: string): string {
-  const match = fileName.match(/\.([a-zA-Z0-9]+)$/);
-  const ext = match?.[1]?.toLowerCase() ?? "jpg";
-  const allowed = new Set([
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-    "gif",
-    "heic",
-    "heif",
-    "avif",
-  ]);
-  return allowed.has(ext) ? ext : "jpg";
-}
+export { sanitizeExtension } from "./safeUploadFileName";
 
 export function buildStagingPath(fileName: string): string {
   return `${STAGING_PREFIX}${nanoid()}.${sanitizeExtension(fileName)}`;
@@ -36,107 +44,218 @@ export function buildStagingPath(fileName: string): string {
 export function isValidStagingPath(path: string): boolean {
   if (!path.startsWith(STAGING_PREFIX)) return false;
   if (path.includes("..") || path.includes("\\")) return false;
-  return /^sakthi\/staging\/[A-Za-z0-9_-]+\.[a-z0-9]+$/i.test(path);
+  return /^uploads\/staging\/[A-Za-z0-9_-]+\.[a-z0-9]+$/i.test(path);
 }
 
-async function deleteStagingFile(storagePath: string) {
-  const supabase = createServiceRoleClient();
-  await supabase.storage.from(SUPABASE_MEDIA_BUCKET).remove([storagePath]);
+async function deleteStagingFile(
+  storagePath: string,
+  auth: MediaWriteAuth = "admin-session",
+) {
+  await deleteObjects({ keys: [storagePath], auth });
+}
+
+async function hasMediaBucketBinding(): Promise<boolean> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env: cfEnv } = await getCloudflareContext({ async: true });
+    return Boolean(
+      (cfEnv as Record<string, unknown> | undefined)?.MEDIA_BUCKET,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function assertUploadLimits(params: { fileSize: number; contentType: string }) {
+  if (params.fileSize <= 0) {
+    throw new Error("File is empty.");
+  }
+  if (params.fileSize > STAGING_UPLOAD_LIMIT_BYTES) {
+    throw new Error(
+      `Each image must be ${STAGING_UPLOAD_LIMIT_MB} MB or smaller after compression.`,
+    );
+  }
+  if (!params.contentType.startsWith("image/")) {
+    throw new Error("Only image files are allowed.");
+  }
 }
 
 export async function createDirectUploadSession(params: {
   fileName: string;
   contentType: string;
   fileSize: number;
+  auth?: MediaWriteAuth;
+  /** Prefer client→media-proxy PUT (skips Vercel Fluid for image bytes). */
+  preferProxyUpload?: boolean;
 }) {
-  if (params.fileSize <= 0) {
-    throw new Error("File is empty.");
-  }
-  if (params.fileSize > UPLOAD_LIMIT_BYTES) {
-    throw new Error(`Each image must be ${UPLOAD_LIMIT_MB} MB or smaller.`);
-  }
-  if (!params.contentType.startsWith("image/")) {
-    throw new Error("Only image files are allowed.");
-  }
+  const auth = params.auth ?? "admin-session";
+  assertUploadLimits(params);
 
-  await ensureMediaBucket();
   const storagePath = buildStagingPath(sanitizeUploadFileName(params.fileName));
-  const supabase = createServiceRoleClient();
 
-  const { data, error } = await supabase.storage
-    .from(SUPABASE_MEDIA_BUCKET)
-    .createSignedUploadUrl(storagePath);
+  if (params.preferProxyUpload && hasServerMediaWritePath()) {
+    try {
+      const { token, expiresAt } = createMediaProxyUploadToken(storagePath);
+      return {
+        storagePath,
+        uploadMode: "proxy" as DirectUploadMode,
+        signedUrl: null as string | null,
+        uploadUrl: mediaProxyUploadUrl(storagePath),
+        uploadToken: token,
+        uploadTokenExpiresAt: expiresAt,
+      };
+    } catch (error) {
+      logServerError("directUpload/proxySession", error);
+    }
+  }
 
-  if (error || !data?.signedUrl || !data.path) {
+  if ((await hasMediaBucketBinding()) || hasServerMediaWritePath()) {
+    return {
+      storagePath,
+      uploadMode: "worker" as DirectUploadMode,
+      signedUrl: null as string | null,
+      uploadUrl: null as string | null,
+      uploadToken: null as string | null,
+      uploadTokenExpiresAt: null as number | null,
+    };
+  }
+
+  let signedUrl: string | null = null;
+  let error: unknown = null;
+  try {
+    signedUrl = await createPresignedPutUrl({
+      key: storagePath,
+      contentType: params.contentType || "application/octet-stream",
+      expiresInSeconds: 60 * 10,
+      auth,
+    });
+  } catch (err) {
+    error = err;
+  }
+
+  if (!signedUrl) {
     logServerError("directUpload/createSession", error);
     throw new Error("Could not create upload session.");
   }
 
   return {
-    storagePath: data.path,
-    signedUrl: data.signedUrl,
-    token: data.token,
+    storagePath,
+    uploadMode: "presigned" as DirectUploadMode,
+    signedUrl,
+    uploadUrl: signedUrl,
+    uploadToken: null as string | null,
+    uploadTokenExpiresAt: null as number | null,
   };
+}
+
+export async function stageDirectUpload(params: {
+  storagePath: string;
+  body: ArrayBuffer | Uint8Array | Buffer;
+  contentType: string;
+  auth?: MediaWriteAuth;
+}) {
+  const auth = params.auth ?? "admin-session";
+  if (!isValidStagingPath(params.storagePath)) {
+    throw new Error("Invalid staging path.");
+  }
+  if (!params.contentType.startsWith("image/")) {
+    throw new Error("Only image files are allowed.");
+  }
+  const size =
+    params.body instanceof ArrayBuffer
+      ? params.body.byteLength
+      : params.body.byteLength;
+  if (size <= 0) {
+    throw new Error("File is empty.");
+  }
+  if (size > STAGING_UPLOAD_LIMIT_BYTES) {
+    throw new Error(
+      `Each image must be ${STAGING_UPLOAD_LIMIT_MB} MB or smaller after compression.`,
+    );
+  }
+
+  await putObject(
+    {
+      Bucket: env.NEXT_PUBLIC_S3_BUCKET,
+      Key: params.storagePath,
+      Body: params.body,
+      ContentType: params.contentType || "application/octet-stream",
+    },
+    { auth },
+  );
+
+  return { storagePath: params.storagePath };
 }
 
 export async function finalizeDirectUpload(params: {
   storagePath: string;
   originalFileName: string;
   purpose: DirectUploadPurpose;
+  auth?: MediaWriteAuth;
 }) {
+  const auth = params.auth ?? "admin-session";
   if (!isValidStagingPath(params.storagePath)) {
     throw new Error("Invalid staging path.");
   }
 
-  const supabase = createServiceRoleClient();
-  const { data: blob, error: downloadError } = await supabase.storage
-    .from(SUPABASE_MEDIA_BUCKET)
-    .download(params.storagePath);
-
-  if (downloadError || !blob) {
-    throw new Error("Uploaded file not found. Try uploading again.");
+  const stagingKey = params.storagePath;
+  let buffer: Buffer;
+  try {
+    buffer = await getObjectBuffer({
+      key: stagingKey,
+      maxBytes: MAX_PROCESSED_IMAGE_BYTES,
+      auth,
+    });
+  } catch (error) {
+    await deleteStagingFile(stagingKey, auth);
+    throw error instanceof Error
+      ? error
+      : new Error("Uploaded file not found. Try uploading again.");
   }
 
-  const buffer = Buffer.from(await blob.arrayBuffer());
   if (buffer.length === 0) {
-    await deleteStagingFile(params.storagePath);
+    await deleteStagingFile(stagingKey, auth);
     throw new Error("Empty file.");
   }
-  if (buffer.length > UPLOAD_LIMIT_BYTES) {
-    await deleteStagingFile(params.storagePath);
-    throw new Error(`Each image must be ${UPLOAD_LIMIT_MB} MB or smaller.`);
+  if (buffer.length > MAX_PROCESSED_IMAGE_BYTES) {
+    await deleteStagingFile(stagingKey, auth);
+    throw new Error(
+      "Image is too large after upload. Compress under 1 MB and retry.",
+    );
   }
 
-  const contentType = blob.type || "application/octet-stream";
   const safeName = sanitizeUploadFileName(params.originalFileName);
   const alt = toMediaAltText(params.originalFileName);
-  const uploadFile = new File([buffer], safeName, {
-    type: contentType,
-  });
 
   let processed;
   try {
-    processed = await processUploadedImage(uploadFile);
+    processed = await processUploadedImageBuffer(buffer, safeName);
   } catch (error) {
-    await deleteStagingFile(params.storagePath);
+    await deleteStagingFile(stagingKey, auth);
     throw error instanceof Error
       ? error
       : new Error("Image processing failed.");
   }
+  buffer = Buffer.alloc(0);
 
   const namePrefix =
-    params.purpose === "product-draft" ? "product-draft" : "upload";
+    params.purpose === "product-draft"
+      ? "product-draft"
+      : params.purpose === "velo-product"
+        ? "velo-product"
+        : "upload";
 
   let finalKey: string;
   try {
-    finalKey = await uploadMediaToSupabase(
+    finalKey = await uploadMediaToR2(
       processed.buffer,
       processed.contentType,
       processed.extension,
       namePrefix,
+      { auth },
     );
   } catch (error) {
-    await deleteStagingFile(params.storagePath);
+    await deleteStagingFile(stagingKey, auth);
     throw error instanceof Error ? error : new Error("Storage upload failed.");
   }
 
@@ -145,11 +264,11 @@ export async function finalizeDirectUpload(params: {
     .values({ alt, key: finalKey })
     .returning({ id: medias.id });
 
-  await deleteStagingFile(params.storagePath);
+  await deleteStagingFile(stagingKey, auth);
 
   return {
     mediaId: insertedMedia.id,
     key: finalKey,
-    fileName: safeName,
+    fileName: alt,
   };
 }

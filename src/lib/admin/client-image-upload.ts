@@ -1,28 +1,58 @@
-import { UPLOAD_LIMIT_BYTES, UPLOAD_LIMIT_MB } from "@/lib/image/uploadLimits";
+import {
+  STAGING_UPLOAD_LIMIT_BYTES,
+  STAGING_UPLOAD_LIMIT_MB,
+  UPLOAD_LIMIT_BYTES,
+  UPLOAD_LIMIT_MB,
+} from "@/lib/image/uploadLimits";
+import { MAX_PROCESSED_IMAGE_BYTES } from "@/lib/image/processUpload";
 import { fetchWithTimeout } from "@/lib/network/fetchWithTimeout";
 import {
   sanitizeUploadFileName,
   withSafeUploadFile,
 } from "@/lib/storage/safeUploadFileName";
 
-/** Vercel request body limit — one file per request must stay under this. */
-export const VERCEL_SAFE_REQUEST_BYTES = 3.5 * 1024 * 1024;
+/** Soft ceiling for FormData fallback through the Worker. */
+export const VERCEL_SAFE_REQUEST_BYTES = 1.25 * 1024 * 1024;
 
-export const CLIENT_PREPROCESS_MAX_EDGE = 2400;
-export const CLIENT_AGGRESSIVE_MAX_EDGE = 1600;
-export const CLIENT_MIN_EDGE = 1200;
-export const CLIENT_TARGET_IMAGE_BYTES = 2 * 1024 * 1024;
-export const CLIENT_QUALITY_STEPS = [0.9, 0.86, 0.82, 0.78, 0.74, 0.7] as const;
+/**
+ * Low-memory WebP/JPEG for Workers: try sharp settings first, then keep
+ * shrinking until the file fits MAX_PROCESSED_IMAGE_BYTES (never fail on
+ * normal phone / WhatsApp photos).
+ */
+export const CLIENT_PREPROCESS_MAX_EDGE = 1600;
+export const CLIENT_AGGRESSIVE_MAX_EDGE = 1280;
+export const CLIENT_MIN_EDGE = 1100;
+export const CLIENT_TARGET_IMAGE_BYTES = 650 * 1024;
+/** Prefer higher quality first so images stay sharp at ~650 KB. */
+export const CLIENT_QUALITY_STEPS = [0.84, 0.8, 0.76, 0.72, 0.68] as const;
+export const CLIENT_AGGRESSIVE_WEBP_QUALITY_STEPS = [
+  0.64, 0.58, 0.52, 0.46,
+] as const;
+export const CLIENT_JPEG_QUALITY_STEPS = [
+  0.82, 0.72, 0.62, 0.52, 0.42,
+] as const;
 export const CLIENT_EDGE_STEPS = [
   CLIENT_PREPROCESS_MAX_EDGE,
   CLIENT_AGGRESSIVE_MAX_EDGE,
   CLIENT_MIN_EDGE,
+  960,
+  800,
+  640,
+  512,
 ] as const;
+
+type EncodedImageCandidate = {
+  blob: Blob;
+  mime: string;
+  extension: string;
+};
 export const MAX_UPLOAD_RETRIES = 3;
 export const UPLOAD_RETRY_DELAY_MS = 400;
 export const UPLOAD_REQUEST_TIMEOUT_MS = 45000;
 export const DIRECT_UPLOAD_COMPLETE_TIMEOUT_MS = 90000;
 export const BETWEEN_UPLOAD_DELAY_MS = 120;
+/** Parallel R2 puts for admin multi-select; keep modest to avoid browser/network contention. */
+export const UPLOAD_CONCURRENCY = 3;
 
 export type DirectUploadPurpose = "upload" | "product-draft";
 
@@ -57,11 +87,19 @@ export type UploadProgressUpdate = {
 export type PreparedUploadItem = {
   sourceName: string;
   file: File;
+  /** Original picker file before client compression (for preview cleanup). */
+  sourceFile: File;
 };
+
+/** Stable key for matching a picker file to its upload preview tile. */
+export function uploadFileIdentityKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
 
 export type MediaUploadResult = {
   uploadedCount: number;
   uploadedNames: string[];
+  uploadedMediaIds: string[];
   failures: UploadFileFailure[];
   validationErrors: FileValidationError[];
 };
@@ -102,14 +140,6 @@ function createClientKey(prefix: string): string {
     .slice(2, 10)}`;
 }
 
-function stableClientToken(input: string): string {
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    hash = (Math.imul(31, hash) + input.charCodeAt(i)) | 0;
-  }
-  return `h${Math.abs(hash).toString(36)}`;
-}
-
 function replaceExt(fileName: string, ext: string) {
   return sanitizeUploadFileName(fileName.replace(/\.[^/.]+$/, "") + ext);
 }
@@ -128,7 +158,7 @@ export function validateImageFile(file: File): string | null {
     return "File is empty.";
   }
   if (file.size > UPLOAD_LIMIT_BYTES) {
-    return `File is ${formatFileSize(file.size)}. Maximum is ${UPLOAD_LIMIT_MB} MB per image. Resize on your computer and try again.`;
+    return `File is ${formatFileSize(file.size)}. Maximum is ${UPLOAD_LIMIT_MB} MB per image.`;
   }
   return null;
 }
@@ -156,10 +186,70 @@ export function validateImageFiles(files: File[]): {
   return { valid, rejected };
 }
 
-async function canvasCompress(
-  file: File,
+function mimeMeta(mime: string): { mime: string; extension: string } {
+  if (mime === "image/jpeg") {
+    return { mime, extension: ".jpg" };
+  }
+  return { mime: "image/webp", extension: ".webp" };
+}
+
+function trackCandidate(
+  current: EncodedImageCandidate | null,
+  next: EncodedImageCandidate,
+): EncodedImageCandidate {
+  if (!current || next.blob.size < current.blob.size) return next;
+  return current;
+}
+
+async function canvasEncodeAtEdge(
+  image: HTMLImageElement,
   maxEdge: number,
-): Promise<File | null> {
+  mime: string,
+  qualitySteps: readonly number[],
+  stopAtBytes: number,
+): Promise<EncodedImageCandidate | null> {
+  const originalWidth = image.naturalWidth || image.width;
+  const originalHeight = image.naturalHeight || image.height;
+  if (!originalWidth || !originalHeight) return null;
+
+  const scale = Math.min(1, maxEdge / Math.max(originalWidth, originalHeight));
+  const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+  const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+  const meta = mimeMeta(mime);
+  let best: EncodedImageCandidate | null = null;
+
+  for (const quality of qualitySteps) {
+    // eslint-disable-next-line no-await-in-loop
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, meta.mime, quality),
+    );
+    if (!blob) continue;
+
+    const candidate: EncodedImageCandidate = {
+      blob,
+      mime: meta.mime,
+      extension: meta.extension,
+    };
+    best = trackCandidate(best, candidate);
+    if (blob.size <= stopAtBytes) {
+      return candidate;
+    }
+  }
+
+  return best;
+}
+
+async function canvasCompress(file: File): Promise<File | null> {
   if (!file.type.startsWith("image/")) return null;
   if (file.type === "image/gif") return file;
 
@@ -172,42 +262,79 @@ async function canvasCompress(
       img.src = objectUrl;
     });
 
-    const originalWidth = image.naturalWidth || image.width;
-    const originalHeight = image.naturalHeight || image.height;
-    if (!originalWidth || !originalHeight) return null;
+    let bestUnderCap: EncodedImageCandidate | null = null;
+    let smallest: EncodedImageCandidate | null = null;
 
-    const scale = Math.min(
-      1,
-      maxEdge / Math.max(originalWidth, originalHeight),
-    );
-    const targetWidth = Math.max(1, Math.round(originalWidth * scale));
-    const targetHeight = Math.max(1, Math.round(originalHeight * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
-
-    let bestBlob: Blob | null = null;
-    for (const quality of CLIENT_QUALITY_STEPS) {
-      // eslint-disable-next-line no-await-in-loop
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/webp", quality),
-      );
-      if (!blob) continue;
-      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
-      if (blob.size <= CLIENT_TARGET_IMAGE_BYTES) {
-        bestBlob = blob;
-        break;
+    const remember = (candidate: EncodedImageCandidate | null) => {
+      if (!candidate) return;
+      smallest = trackCandidate(smallest, candidate);
+      if (
+        candidate.blob.size <= MAX_PROCESSED_IMAGE_BYTES &&
+        (!bestUnderCap || candidate.blob.size < bestUnderCap.blob.size)
+      ) {
+        bestUnderCap = candidate;
       }
+    };
+
+    const tryPass = async (
+      edges: readonly number[],
+      mime: string,
+      qualities: readonly number[],
+      stopAtBytes: number,
+    ) => {
+      for (const maxEdge of edges) {
+        // eslint-disable-next-line no-await-in-loop
+        const candidate = await canvasEncodeAtEdge(
+          image,
+          maxEdge,
+          mime,
+          qualities,
+          stopAtBytes,
+        );
+        remember(candidate);
+        if (
+          bestUnderCap &&
+          bestUnderCap.blob.size <= CLIENT_TARGET_IMAGE_BYTES
+        ) {
+          return true;
+        }
+      }
+      return Boolean(bestUnderCap);
+    };
+
+    // Pass 1: sharp WebP near the industry target (~650 KB).
+    let fitsCap = await tryPass(
+      CLIENT_EDGE_STEPS.slice(0, 3),
+      "image/webp",
+      CLIENT_QUALITY_STEPS,
+      CLIENT_TARGET_IMAGE_BYTES,
+    );
+
+    // Pass 2: smaller WebP until the Worker cap (1 MB).
+    if (!fitsCap) {
+      fitsCap = await tryPass(
+        CLIENT_EDGE_STEPS,
+        "image/webp",
+        [...CLIENT_QUALITY_STEPS, ...CLIENT_AGGRESSIVE_WEBP_QUALITY_STEPS],
+        MAX_PROCESSED_IMAGE_BYTES,
+      );
     }
 
-    if (!bestBlob) return null;
+    // Pass 3: JPEG often wins on noisy WhatsApp / craft detail photos.
+    if (!fitsCap) {
+      await tryPass(
+        CLIENT_EDGE_STEPS,
+        "image/jpeg",
+        CLIENT_JPEG_QUALITY_STEPS,
+        MAX_PROCESSED_IMAGE_BYTES,
+      );
+    }
 
-    return new File([bestBlob], replaceExt(file.name, ".webp"), {
-      type: "image/webp",
+    const chosen = bestUnderCap ?? smallest;
+    if (!chosen) return null;
+
+    return new File([chosen.blob], replaceExt(file.name, chosen.extension), {
+      type: chosen.mime,
       lastModified: file.lastModified,
     });
   } catch {
@@ -218,20 +345,14 @@ async function canvasCompress(
 }
 
 export async function compressImageForUpload(file: File): Promise<File> {
-  let best: File | null = null;
+  if (file.type === "image/gif") return file;
 
-  for (const edge of CLIENT_EDGE_STEPS) {
-    // eslint-disable-next-line no-await-in-loop
-    const candidate = await canvasCompress(file, edge);
-    if (!candidate) continue;
-    if (!best || candidate.size < best.size) best = candidate;
-    if (candidate.size <= VERCEL_SAFE_REQUEST_BYTES) {
-      return candidate.size < file.size ? candidate : file;
-    }
-  }
+  const compressed = await canvasCompress(file);
+  if (!compressed) return file;
 
-  if (best && best.size < file.size) return best;
-  return file;
+  if (compressed.size <= MAX_PROCESSED_IMAGE_BYTES) return compressed;
+  if (compressed.size < file.size) return compressed;
+  return compressed;
 }
 
 function postCompressRejectReason(
@@ -239,10 +360,13 @@ function postCompressRejectReason(
   sourceName: string,
 ): string | null {
   if (file.size > UPLOAD_LIMIT_BYTES) {
-    return `${sourceName}: still ${formatFileSize(file.size)} after compression. Resize to 2000px and under ${UPLOAD_LIMIT_MB} MB on your computer.`;
+    return `${sourceName}: still ${formatFileSize(file.size)} after optimization. Maximum is ${UPLOAD_LIMIT_MB} MB per image.`;
   }
-  if (file.size > VERCEL_SAFE_REQUEST_BYTES) {
-    return `${sourceName}: ${formatFileSize(file.size)} is too large to upload (${formatFileSize(VERCEL_SAFE_REQUEST_BYTES)} limit per request). Compress on your computer and retry.`;
+  if (file.size > MAX_PROCESSED_IMAGE_BYTES) {
+    return `${sourceName}: could not optimize below ${formatFileSize(MAX_PROCESSED_IMAGE_BYTES)}. Try a different photo or crop closer to the product.`;
+  }
+  if (file.size > STAGING_UPLOAD_LIMIT_BYTES) {
+    return `${sourceName}: ${formatFileSize(file.size)} exceeds the ${STAGING_UPLOAD_LIMIT_MB} MB upload limit.`;
   }
   return null;
 }
@@ -276,13 +400,14 @@ export async function prepareImageFiles(
     prepared.push({
       sourceName: sanitizeUploadFileName(source.name),
       file: withSafeUploadFile(compressed).file,
+      sourceFile: source,
     });
   }
 
   return { prepared, rejected };
 }
 
-/** Validate only — originals up to 15 MB go straight to Supabase (Phase 2). */
+/** Validate + compress for Cloudflare Workers (no server-side sharp). */
 export async function prepareImageFilesForDirect(
   files: File[],
   onProgress?: (current: number, total: number, fileName: string) => void,
@@ -290,16 +415,9 @@ export async function prepareImageFilesForDirect(
   prepared: PreparedUploadItem[];
   rejected: FileValidationError[];
 }> {
-  const { valid, rejected } = validateImageFiles(files);
-  const prepared: PreparedUploadItem[] = [];
-
-  valid.forEach((file, index) => {
-    const { file: safeFile, fileName } = withSafeUploadFile(file);
-    onProgress?.(index + 1, valid.length, fileName);
-    prepared.push({ sourceName: fileName, file: safeFile });
-  });
-
-  return { prepared, rejected };
+  // Direct R2 staging finalizes on the Worker — aim for ~650 KB, never fail
+  // normal phone photos (aggressive WebP/JPEG fallback in-browser).
+  return prepareImageFiles(files, onProgress);
 }
 
 function buildProgress(
@@ -349,8 +467,15 @@ async function uploadViaDirectStorage(
   mediaId?: string;
   reason?: string;
 }> {
+  const safeDisplayName = sanitizeUploadFileName(displayName || file.name);
+  const safeFile =
+    file.name === safeDisplayName
+      ? file
+      : new File([file], safeDisplayName, {
+          type: file.type,
+          lastModified: file.lastModified,
+        });
   let lastError = "Direct upload failed.";
-  // One key for the whole retry loop — retries must not create extra media rows.
   const clientUploadKey = createClientKey("upl");
 
   for (let attempt = 0; attempt < MAX_UPLOAD_RETRIES; attempt += 1) {
@@ -362,9 +487,9 @@ async function uploadViaDirectStorage(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            fileName: displayName,
-            contentType: file.type || "application/octet-stream",
-            fileSize: file.size,
+            fileName: safeDisplayName,
+            contentType: safeFile.type || "application/octet-stream",
+            fileSize: safeFile.size,
             purpose,
           }),
           timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
@@ -383,21 +508,68 @@ async function uploadViaDirectStorage(
 
       const init = (await initRes.json()) as {
         storagePath: string;
-        signedUrl: string;
+        signedUrl?: string | null;
+        uploadMode?: "worker" | "presigned" | "proxy";
+        uploadUrl?: string | null;
+        uploadToken?: string | null;
       };
 
-      // eslint-disable-next-line no-await-in-loop
-      const putRes = await fetch(init.signedUrl, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-          "x-upsert": "false",
-        },
-      });
+      let putOk = false;
+      // Prefer media-proxy PUT (same path as Velo) so image bytes skip Vercel.
+      if (init.uploadMode === "proxy" && init.uploadUrl && init.uploadToken) {
+        // eslint-disable-next-line no-await-in-loop
+        const putRes = await fetchWithTimeout(init.uploadUrl, {
+          method: "PUT",
+          body: safeFile,
+          headers: {
+            Authorization: `Bearer ${init.uploadToken}`,
+            "Content-Type": safeFile.type || "application/octet-stream",
+          },
+          timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
+        });
+        putOk = putRes.ok;
+        if (!putOk) {
+          lastError = `Media proxy upload failed (${putRes.status}).`;
+        }
+      } else if (init.signedUrl && init.uploadMode !== "worker") {
+        // eslint-disable-next-line no-await-in-loop
+        const putRes = await fetch(init.signedUrl, {
+          method: "PUT",
+          body: safeFile,
+          headers: {
+            // Signed without Content-Type; still send length — R2 returns 411 otherwise.
+            "Content-Length": String(safeFile.size),
+          },
+        });
+        putOk = putRes.ok;
+        if (!putOk) {
+          lastError = `Storage upload failed (${putRes.status}).`;
+        }
+      } else {
+        // Fallback: stage through Vercel when proxy/presigned unavailable.
+        const stageData = new FormData();
+        stageData.append("storagePath", init.storagePath);
+        stageData.append("file", safeFile);
+        // eslint-disable-next-line no-await-in-loop
+        const stageRes = await fetchWithTimeout(
+          "/api/admin/medias/direct-upload/stage",
+          {
+            method: "POST",
+            body: stageData,
+            timeoutMs: UPLOAD_REQUEST_TIMEOUT_MS,
+          },
+        );
+        putOk = stageRes.ok;
+        if (!putOk) {
+          const payload = (await stageRes.json().catch(() => ({}))) as {
+            message?: string;
+          };
+          lastError =
+            payload.message ?? `Storage upload failed (${stageRes.status}).`;
+        }
+      }
 
-      if (!putRes.ok) {
-        lastError = `Storage upload failed (${putRes.status}).`;
+      if (!putOk) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -410,7 +582,7 @@ async function uploadViaDirectStorage(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             storagePath: init.storagePath,
-            fileName: displayName,
+            fileName: safeDisplayName,
             purpose,
             clientUploadKey,
           }),
@@ -449,7 +621,7 @@ async function uploadViaDirectStorage(
     }
   }
 
-  return { ok: false, reason: `${displayName}: ${lastError}` };
+  return { ok: false, reason: `${safeDisplayName}: ${lastError}` };
 }
 
 async function postMediaOnce(file: File): Promise<MediaApiResponse> {
@@ -536,29 +708,29 @@ export async function uploadSingleMediaFile(
 }> {
   const purpose = options?.purpose ?? "upload";
   const preferDirect = options?.preferDirect ?? true;
-  const safeDisplayName = sanitizeUploadFileName(displayName || file.name);
+  const { file: safeFile, fileName: safeName } = withSafeUploadFile(file);
+  const label = sanitizeUploadFileName(displayName || safeName);
 
   if (preferDirect) {
-    const direct = await uploadViaDirectStorage(file, safeDisplayName, purpose);
+    const direct = await uploadViaDirectStorage(safeFile, label, purpose);
     if (direct.ok) return direct;
 
-    if (file.size > VERCEL_SAFE_REQUEST_BYTES) {
+    if (safeFile.size > VERCEL_SAFE_REQUEST_BYTES) {
       return {
         ok: false,
         reason:
           direct.reason ??
-          `${safeDisplayName}: file is too large for fallback upload. Compress to under ${formatFileSize(VERCEL_SAFE_REQUEST_BYTES)} and retry.`,
+          `${label}: file is too large for fallback upload. Compress to under ${formatFileSize(VERCEL_SAFE_REQUEST_BYTES)} and retry.`,
       };
     }
   }
 
-  const { file: safeFile, fileName } = withSafeUploadFile(file);
   const result = await postMediaOnce(safeFile);
 
   if (result.isRequestTooLarge) {
     return {
       ok: false,
-      reason: `${safeDisplayName}: file is too large for upload. Compress to under ${formatFileSize(VERCEL_SAFE_REQUEST_BYTES)} and retry.`,
+      reason: `${label}: file is too large for upload. Compress to under ${formatFileSize(VERCEL_SAFE_REQUEST_BYTES)} and retry.`,
     };
   }
 
@@ -568,8 +740,8 @@ export async function uploadSingleMediaFile(
 
   const fileError = result.errors.find(
     (entry) =>
-      entry.startsWith(`${fileName}:`) ||
-      entry.startsWith(`${safeDisplayName}:`) ||
+      entry.startsWith(`${safeFile.name}:`) ||
+      entry.startsWith(`${label}:`) ||
       entry.startsWith(`${file.name}:`),
   );
   return {
@@ -578,7 +750,7 @@ export async function uploadSingleMediaFile(
       fileError ??
       result.errors[0] ??
       result.message ??
-      `${safeDisplayName}: upload failed.`,
+      `${label}: upload failed.`,
   };
 }
 
@@ -586,6 +758,8 @@ export async function uploadMediaFilesQueue(
   files: File[],
   callbacks?: {
     onProgress?: (update: UploadProgressUpdate) => void;
+    /** Called after each file finishes; use source file to clear preview tiles. */
+    onFileUploaded?: (sourceFile: File, ok: boolean) => void;
     skipPrepare?: boolean;
     preparedItems?: PreparedUploadItem[];
     preferDirectUpload?: boolean;
@@ -597,6 +771,7 @@ export async function uploadMediaFilesQueue(
     return {
       uploadedCount: 0,
       uploadedNames: [],
+      uploadedMediaIds: [],
       failures: [],
       validationErrors: [],
     };
@@ -610,7 +785,14 @@ export async function uploadMediaFilesQueue(
   let validationErrors: FileValidationError[];
 
   if (callbacks?.skipPrepare && callbacks.preparedItems) {
-    prepared = callbacks.preparedItems;
+    prepared = callbacks.preparedItems.map((item) => {
+      const { file, fileName } = withSafeUploadFile(item.file);
+      return {
+        sourceName: fileName,
+        file,
+        sourceFile: item.sourceFile ?? item.file,
+      };
+    });
     validationErrors = [];
   } else {
     callbacks?.onProgress?.(
@@ -619,7 +801,7 @@ export async function uploadMediaFilesQueue(
         0,
         total,
         preferDirect
-          ? `Checking images 0/${total}`
+          ? `Optimizing photos 0/${total}`
           : `Preparing images 0/${total}`,
       ),
     );
@@ -631,7 +813,7 @@ export async function uploadMediaFilesQueue(
               "preparing",
               current,
               prepTotal,
-              `Checking ${name} (${current}/${prepTotal})`,
+              `Optimizing ${name} (${current}/${prepTotal})`,
             ),
           );
         })
@@ -650,42 +832,75 @@ export async function uploadMediaFilesQueue(
   }
 
   const uploadedNames: string[] = [];
+  const uploadedMediaIds: string[] = [];
   const failures: UploadFileFailure[] = [];
   const uploadTotal = prepared.length;
+  let completed = 0;
+  let inFlight = 0;
 
-  for (let index = 0; index < prepared.length; index += 1) {
-    const item = prepared[index];
+  const reportUploadProgress = (currentFileName?: string) => {
+    const done = completed;
+    const active = inFlight;
+    const message =
+      active > 0
+        ? `Uploading ${done + active}/${uploadTotal} (${done} done${
+            currentFileName ? ` · ${currentFileName}` : ""
+          })`
+        : `Uploaded ${done}/${uploadTotal}`;
     callbacks?.onProgress?.(
       buildProgress(
         "uploading",
-        index + 1,
+        Math.min(done + active, uploadTotal),
         uploadTotal,
-        preferDirect
-          ? `Uploading ${index + 1}/${uploadTotal}: ${item.sourceName}`
-          : `Uploading ${index + 1}/${uploadTotal}: ${item.sourceName}`,
+        message,
       ),
     );
+  };
 
-    // eslint-disable-next-line no-await-in-loop
-    const result = await uploadSingleMediaFile(item.file, item.sourceName, {
-      purpose: "upload",
-      preferDirect,
-    });
-    if (result.ok && result.uploadedName) {
-      uploadedNames.push(result.uploadedName);
-    } else {
-      failures.push({
-        fileName: item.sourceName,
-        reason: result.reason ?? `${item.sourceName}: upload failed.`,
-        file: item.file,
+  const runOne = async (item: PreparedUploadItem) => {
+    inFlight += 1;
+    reportUploadProgress(item.sourceName);
+    try {
+      const result = await uploadSingleMediaFile(item.file, item.sourceName, {
+        purpose: "upload",
+        preferDirect,
       });
+      callbacks?.onFileUploaded?.(item.sourceFile, result.ok);
+      if (result.ok && result.uploadedName) {
+        uploadedNames.push(result.uploadedName);
+        if (result.mediaId) uploadedMediaIds.push(result.mediaId);
+      } else {
+        failures.push({
+          fileName: item.sourceName,
+          reason: result.reason ?? `${item.sourceName}: upload failed.`,
+          file: item.sourceFile,
+        });
+      }
+    } finally {
+      inFlight -= 1;
+      completed += 1;
+      reportUploadProgress();
     }
+  };
 
-    if (index < prepared.length - 1) {
-      // eslint-disable-next-line no-await-in-loop
-      await delay(BETWEEN_UPLOAD_DELAY_MS);
+  // R2 handles concurrent writes fine for small admin batches; parallelize
+  // to cut wall-clock time without flooding the browser.
+  const concurrency = Math.min(
+    UPLOAD_CONCURRENCY,
+    Math.max(1, prepared.length),
+  );
+  let nextIndex = 0;
+  const workers = Array.from({ length: concurrency }, async () => {
+    while (nextIndex < prepared.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      await runOne(prepared[index]);
+      if (nextIndex < prepared.length) {
+        await delay(BETWEEN_UPLOAD_DELAY_MS);
+      }
     }
-  }
+  });
+  await Promise.all(workers);
 
   callbacks?.onProgress?.(
     buildProgress(
@@ -699,6 +914,7 @@ export async function uploadMediaFilesQueue(
   return {
     uploadedCount: uploadedNames.length,
     uploadedNames,
+    uploadedMediaIds,
     failures,
     validationErrors,
   };
@@ -708,21 +924,16 @@ export async function submitBulkDraftRequest(params: {
   files: File[];
   mediaIds: string[];
   shared: Record<string, unknown>;
-  idempotencyKey?: string;
 }): Promise<BulkDraftRequestResult> {
-  const idempotencyKey =
-    params.idempotencyKey?.trim() || createClientKey("bulk");
+  const formData = new FormData();
+  params.files.forEach((file) => formData.append("files", file));
+  formData.append("mediaIds", JSON.stringify(params.mediaIds));
+  formData.append("shared", JSON.stringify(params.shared));
 
   let res: Response | null = null;
   let attempts = 0;
 
   while (attempts < MAX_UPLOAD_RETRIES) {
-    const formData = new FormData();
-    params.files.forEach((file) => formData.append("files", file));
-    formData.append("mediaIds", JSON.stringify(params.mediaIds));
-    formData.append("shared", JSON.stringify(params.shared));
-    formData.append("idempotencyKey", idempotencyKey);
-
     try {
       // eslint-disable-next-line no-await-in-loop
       res = await fetchWithTimeout("/api/admin/products/bulk-draft", {
@@ -732,7 +943,7 @@ export async function submitBulkDraftRequest(params: {
       });
       if (res.status < 500) break;
     } catch {
-      // retry with the same idempotency key
+      // retry
     }
     attempts += 1;
     if (attempts < MAX_UPLOAD_RETRIES) {
@@ -817,15 +1028,11 @@ export async function runBulkDraftUpload(params: {
     );
 
     if (step.type === "media") {
-      const libraryKey = `lib_${stableClientToken(
-        params.selectedMediaIds.slice().sort().join(","),
-      )}`;
       // eslint-disable-next-line no-await-in-loop
       const result = await submitBulkDraftRequest({
         files: [],
         mediaIds: params.selectedMediaIds,
         shared: params.shared,
-        idempotencyKey: libraryKey,
       });
 
       if (result.payload.created?.length) {
@@ -856,7 +1063,6 @@ export async function runBulkDraftUpload(params: {
           files: [step.file],
           mediaIds: [],
           shared: params.shared,
-          idempotencyKey: createClientKey("filefallback"),
         });
 
         if (fallback.isRequestTooLarge) {
@@ -903,8 +1109,6 @@ export async function runBulkDraftUpload(params: {
       files: [],
       mediaIds: [directUpload.mediaId],
       shared: params.shared,
-      // Stable per media — retries of the same photo never create more products.
-      idempotencyKey: `media_${directUpload.mediaId}`.slice(0, 120),
     });
 
     if (result.payload.created?.length) {
@@ -943,8 +1147,7 @@ export async function runBulkDraftUpload(params: {
 export function mergeUniqueFiles(prev: File[], next: File[]): File[] {
   const map = new Map<string, File>();
   [...prev, ...next].forEach((file) => {
-    const key = `${file.name}:${file.size}:${file.lastModified}`;
-    map.set(key, file);
+    map.set(uploadFileIdentityKey(file), file);
   });
   return Array.from(map.values());
 }

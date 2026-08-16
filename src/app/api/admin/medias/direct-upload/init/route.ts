@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       fileName: parsed.data.fileName,
       contentType: parsed.data.contentType,
       fileSize: parsed.data.fileSize,
+      preferProxyUpload: true,
     });
 
     return NextResponse.json(

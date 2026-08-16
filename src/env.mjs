@@ -10,8 +10,8 @@ export const env = createEnv({
     DATABASE_SERVICE_ROLE: z.string(),
     S3_ACCESS_KEY_ID: z.string(),
     S3_SECRET_ACCESS_KEY: z.string(),
-    /** Cloudflare R2 S3 API endpoint — optional until R2 cutover. */
-    S3_ENDPOINT: z.string().url().optional(),
+    S3_ENDPOINT: z.string().url(),
+    /** Optional Worker R2 proxy so browser/Vercel bytes skip S3 API keys. */
     R2_MEDIA_PROXY_URL: z.string().url().optional(),
     R2_MEDIA_PROXY_SECRET: z.string().min(16).optional(),
   },
@@ -24,8 +24,7 @@ export const env = createEnv({
     NEXT_PUBLIC_S3_REGION: z.string(),
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_SUPABASE_URL: z.string(),
-    /** Public CDN base for R2 objects — optional until R2 cutover. */
-    NEXT_PUBLIC_CDN_URL: z.string().url().optional(),
+    NEXT_PUBLIC_CDN_URL: z.string().url(),
   },
 
   runtimeEnv: {

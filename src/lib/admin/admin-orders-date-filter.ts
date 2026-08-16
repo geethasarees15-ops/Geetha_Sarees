@@ -116,7 +116,11 @@ export function startOfMonth(iso: string): string {
 export function endOfMonth(iso: string): string {
   const { y, m } = parseIsoParts(iso);
   const last = new Date(Date.UTC(y, m, 0));
-  return toIso(last.getUTCFullYear(), last.getUTCMonth() + 1, last.getUTCDate());
+  return toIso(
+    last.getUTCFullYear(),
+    last.getUTCMonth() + 1,
+    last.getUTCDate(),
+  );
 }
 
 export function startOfQuarter(iso: string): string {
@@ -171,7 +175,7 @@ export function defaultPaidOrdersDateFilter(
 function parseRangeParam(
   raw: string | string[] | undefined,
 ): PaidDateRangePreset | null {
-  const value = String(Array.isArray(raw) ? raw[0] : (raw ?? ""))
+  const value = String(Array.isArray(raw) ? raw[0] : raw ?? "")
     .trim()
     .toLowerCase()
     .replace(/-/g, "_");
@@ -205,7 +209,7 @@ export function resolvePaidOrdersDateFilter(params: {
 }): PaidOrdersDateFilter {
   const now = params.now ?? new Date();
   const allRaw = String(
-    Array.isArray(params.all) ? params.all[0] : (params.all ?? ""),
+    Array.isArray(params.all) ? params.all[0] : params.all ?? "",
   )
     .trim()
     .toLowerCase();
@@ -225,10 +229,10 @@ export function resolvePaidOrdersDateFilter(params: {
   }
 
   const fromRaw = String(
-    Array.isArray(params.from) ? params.from[0] : (params.from ?? ""),
+    Array.isArray(params.from) ? params.from[0] : params.from ?? "",
   ).trim();
   const toRaw = String(
-    Array.isArray(params.to) ? params.to[0] : (params.to ?? ""),
+    Array.isArray(params.to) ? params.to[0] : params.to ?? "",
   ).trim();
 
   const fromDate = ISO_DATE.test(fromRaw) ? fromRaw : "";

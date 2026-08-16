@@ -212,10 +212,9 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("[admin/collections] DELETE failed:", error);
     const raw = error instanceof Error ? error.message : "";
-    const adminHint =
-      /order_lines|23503|foreign key/i.test(raw)
-        ? "A product in this category is still linked to an order, so it cannot be removed yet. Retry — products with order history are archived and the category is removed when clear."
-        : publicErrorMessage(error, "Failed to delete category.");
+    const adminHint = /order_lines|23503|foreign key/i.test(raw)
+      ? "A product in this category is still linked to an order, so it cannot be removed yet. Retry — products with order history are archived and the category is removed when clear."
+      : publicErrorMessage(error, "Failed to delete category.");
     return NextResponse.json({ message: adminHint }, { status: 400 });
   }
 }

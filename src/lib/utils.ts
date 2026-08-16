@@ -39,12 +39,7 @@ export function supabaseStoragePublicUrl(storagePath: string) {
 }
 
 export function r2PublicUrl(key: string) {
-  const base = String(env.NEXT_PUBLIC_CDN_URL ?? "")
-    .trim()
-    .replace(/\/$/, "");
-  if (!base) {
-    throw new Error("NEXT_PUBLIC_CDN_URL is required for R2 public URLs.");
-  }
+  const base = env.NEXT_PUBLIC_CDN_URL.replace(/\/$/, "");
   return `${base}/${key.replace(/^\//, "")}`;
 }
 
@@ -61,17 +56,8 @@ export const keytoUrl = (key?: string) => {
     return key;
   }
 
-  // Legacy / staging / fallback keys stay on Supabase Storage.
-  if (
-    key.startsWith("sakthi/") ||
-    key.startsWith("velo-product/") ||
-    key.startsWith("products/") ||
-    key.startsWith("media/")
-  ) {
-    return supabaseStoragePublicUrl(key);
-  }
+  // Catalog keys (including legacy sakthi/) are served from R2 CDN.
 
-  // New R2 uploads (`uploads/...`) when CDN is configured.
   if (env.NEXT_PUBLIC_CDN_URL) {
     return r2PublicUrl(key);
   }

@@ -9,11 +9,7 @@ import {
 } from "@/lib/admin/media-library";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import db from "@/lib/supabase/db";
-import {
-  apiSettings,
-  medias,
-  products,
-} from "@/lib/supabase/schema";
+import { apiSettings, medias, products } from "@/lib/supabase/schema";
 import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";

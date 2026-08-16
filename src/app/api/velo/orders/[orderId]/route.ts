@@ -91,7 +91,11 @@ export async function GET(
     .where(
       and(
         eq(orders.id, trimmedId),
-        inArray(orders.payment_status, ["paid", "unpaid", "no_payment_required"]),
+        inArray(orders.payment_status, [
+          "paid",
+          "unpaid",
+          "no_payment_required",
+        ]),
         ne(orders.order_status, "cancelled"),
       ),
     )

@@ -40,7 +40,7 @@ function urlFromStorageKey(key: string | null | undefined): string | null {
 }
 
 export async function fetchVeloOrderLineRows(
-  orderIds: string[]
+  orderIds: string[],
 ): Promise<(LineRow & { imageUrl: string })[]> {
   if (!orderIds.length) return [];
 
@@ -84,7 +84,7 @@ export async function fetchVeloOrderLineRows(
 }
 
 export function mapVeloOrderLineItem(
-  row: LineRow & { imageUrl: string }
+  row: LineRow & { imageUrl: string },
 ): VeloOrderLineItem {
   return {
     productId: row.productId,
@@ -97,7 +97,7 @@ export function mapVeloOrderLineItem(
 }
 
 export function groupVeloOrderLines(
-  rows: (LineRow & { imageUrl: string })[]
+  rows: (LineRow & { imageUrl: string })[],
 ): Map<string, VeloOrderLineItem[]> {
   const map = new Map<string, VeloOrderLineItem[]>();
   for (const row of rows) {

@@ -77,7 +77,10 @@ export async function GET(request: NextRequest) {
     ? Math.min(Math.max(limitRaw, 1), MAX_LIMIT)
     : DEFAULT_LIMIT;
 
-  const paymentStatusRaw = searchParams.get("paymentStatus")?.trim().toLowerCase();
+  const paymentStatusRaw = searchParams
+    .get("paymentStatus")
+    ?.trim()
+    .toLowerCase();
   let paymentStatuses: PaymentStatusFilter[] = [...ALLOWED_PAYMENT_STATUSES];
   if (paymentStatusRaw) {
     if (
@@ -129,16 +132,13 @@ export async function GET(request: NextRequest) {
   const activeOrderFilter = ne(orders.order_status, "cancelled");
 
   const timeFilters: SQL[] = [];
-  if (createdAfterDate) timeFilters.push(gt(orders.createdAt, createdAfterDate));
+  if (createdAfterDate)
+    timeFilters.push(gt(orders.createdAt, createdAfterDate));
   if (createdBeforeDate) {
     timeFilters.push(lt(orders.createdAt, createdBeforeDate));
   }
 
-  const whereClause = and(
-    paymentFilter,
-    activeOrderFilter,
-    ...timeFilters,
-  );
+  const whereClause = and(paymentFilter, activeOrderFilter, ...timeFilters);
 
   const orderRows = await db
     .select({
@@ -236,9 +236,7 @@ export async function GET(request: NextRequest) {
       // Asc sync cursor: newest row in this page.
       nextSince: orderRows[orderRows.length - 1].createdAt,
       // Desc unpaid cursor: oldest row in this page (continue with before=).
-      nextBefore: sortDesc
-        ? orderRows[orderRows.length - 1].createdAt
-        : null,
+      nextBefore: sortDesc ? orderRows[orderRows.length - 1].createdAt : null,
       sort: sortDesc ? "desc" : "asc",
     },
     { headers: veloCorsHeaders(request) },
