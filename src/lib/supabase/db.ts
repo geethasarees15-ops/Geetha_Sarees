@@ -10,10 +10,12 @@ if (!connectionString) {
   console.log("🔴 no database URL");
 }
 
-/** Serverless: small pool; admin pages run a few reads in parallel. */
+/** Serverless: one connection per instance; transaction pooler (6543) handles concurrency. */
+const isServerless = process.env.VERCEL === "1";
+
 const client = postgres(connectionString, {
   prepare: false,
-  max: 3,
+  max: isServerless ? 1 : 3,
   idle_timeout: 20,
   connect_timeout: 15,
 });

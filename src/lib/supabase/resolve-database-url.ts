@@ -1,9 +1,11 @@
 /**
  * Direct host db.<ref>.supabase.co is unreliable from Vercel.
- * Prefer the session/transaction pooler for this project's region.
+ * SSR Tex shop uses aws-0-ap-south-1 transaction pooler (port 6543) for serverless.
  */
 const DEFAULT_REGION = "ap-south-1";
 const DEFAULT_AWS_PREFIX = "aws-0";
+export const TRANSACTION_POOLER_PORT = 6543;
+export const SESSION_POOLER_PORT = 5432;
 
 export type PoolerUrlOptions = {
   projectRef: string;
@@ -12,6 +14,23 @@ export type PoolerUrlOptions = {
   awsPrefix?: string;
   port?: number;
 };
+
+export type DatabaseUrlResolution = {
+  url: string;
+  rewrites: string[];
+};
+
+function toHttpUrl(url: string): string {
+  return url.replace(/^postgresql:/i, "http:");
+}
+
+function fromHttpUrl(url: string): string {
+  return url.replace(/^http:/i, "postgresql:");
+}
+
+function shouldUseSessionPooler(): boolean {
+  return process.env.SUPABASE_DB_SESSION_POOLER?.trim() === "true";
+}
 
 export function buildSupabasePoolerUrl(options: PoolerUrlOptions): string {
   const region =
@@ -23,7 +42,9 @@ export function buildSupabasePoolerUrl(options: PoolerUrlOptions): string {
     process.env.SUPABASE_DB_AWS_PREFIX?.trim() ||
     DEFAULT_AWS_PREFIX;
   const encoded = encodeURIComponent(options.password);
-  const port = options.port ?? 5432;
+  const port =
+    options.port ??
+    (shouldUseSessionPooler() ? SESSION_POOLER_PORT : TRANSACTION_POOLER_PORT);
 
   return `postgresql://postgres.${options.projectRef}:${encoded}@${awsPrefix}-${region}.pooler.supabase.com:${port}/postgres`;
 }
@@ -32,7 +53,7 @@ function parseLegacyDirectUrl(
   url: string,
 ): { ref: string; password: string } | null {
   try {
-    const parsed = new URL(url.replace(/^postgresql:/i, "http:"));
+    const parsed = new URL(toHttpUrl(url));
     const match = parsed.hostname.match(/^db\.([a-z0-9]+)\.supabase\.co$/i);
     if (!match) return null;
     const password = decodeURIComponent(parsed.password);
@@ -43,9 +64,55 @@ function parseLegacyDirectUrl(
   }
 }
 
+/**
+ * Normalize Supabase pooler URLs for serverless:
+ * - aws-1 → aws-0 (this shop only uses aws-0)
+ * - session :5432 → transaction :6543 (unless session explicitly requested)
+ */
+export function normalizePoolerDatabaseUrl(
+  url: string,
+  opts?: { forceTransactionPooler?: boolean },
+): DatabaseUrlResolution {
+  const rewrites: string[] = [];
+
+  try {
+    const parsed = new URL(toHttpUrl(url));
+    if (!/\.pooler\.supabase\.com$/i.test(parsed.hostname)) {
+      return { url, rewrites };
+    }
+
+    if (/^aws-1-/i.test(parsed.hostname)) {
+      parsed.hostname = parsed.hostname.replace(/^aws-1-/i, "aws-0-");
+      rewrites.push("aws-1 host → aws-0");
+    }
+
+    const port = Number(parsed.port || SESSION_POOLER_PORT);
+    const wantsSession = shouldUseSessionPooler();
+
+    if (!wantsSession && port === SESSION_POOLER_PORT) {
+      parsed.port = String(TRANSACTION_POOLER_PORT);
+      rewrites.push(
+        `:${SESSION_POOLER_PORT} session → :${TRANSACTION_POOLER_PORT} transaction`,
+      );
+    }
+
+    return { url: fromHttpUrl(parsed.toString()), rewrites };
+  } catch {
+    return { url, rewrites };
+  }
+}
+
 export function resolveDatabaseUrl(raw?: string): string {
   const poolerOverride = process.env.SUPABASE_DB_POOLER_URL?.trim();
-  if (poolerOverride) return poolerOverride;
+  if (poolerOverride) {
+    const normalized = normalizePoolerDatabaseUrl(poolerOverride);
+    if (normalized.rewrites.length) {
+      console.warn(
+        `[db] Pooler override normalized (${normalized.rewrites.join(", ")}).`,
+      );
+    }
+    return normalized.url;
+  }
 
   const url = (raw ?? process.env.DATABASE_URL ?? "").trim();
 
@@ -59,7 +126,13 @@ export function resolveDatabaseUrl(raw?: string): string {
   }
 
   if (/pooler\.supabase\.com/i.test(url)) {
-    return url;
+    const normalized = normalizePoolerDatabaseUrl(url);
+    if (normalized.rewrites.length) {
+      console.warn(
+        `[db] DATABASE_URL normalized (${normalized.rewrites.join(", ")}).`,
+      );
+    }
+    return normalized.url;
   }
 
   const legacy = parseLegacyDirectUrl(url);
@@ -74,10 +147,32 @@ export function resolveDatabaseUrl(raw?: string): string {
       awsPrefix,
     });
     console.warn(
-      `[db] Rewrote deprecated db.${legacy.ref}.supabase.co to ${awsPrefix}-${region} pooler.`,
+      `[db] Rewrote deprecated db.${legacy.ref}.supabase.co to ${awsPrefix}-${region} transaction pooler.`,
     );
     return fixed;
   }
 
   return url;
+}
+
+/** For diagnostics (health scripts) without logging secrets. */
+export function describeDatabaseUrl(raw?: string): {
+  host: string;
+  port: string;
+  pooler: boolean;
+  rewrites: string[];
+} {
+  const resolved = resolveDatabaseUrl(raw);
+  try {
+    const parsed = new URL(toHttpUrl(resolved));
+    const normalized = normalizePoolerDatabaseUrl(raw ?? process.env.DATABASE_URL ?? "");
+    return {
+      host: parsed.hostname,
+      port: parsed.port || String(TRANSACTION_POOLER_PORT),
+      pooler: /\.pooler\.supabase\.com$/i.test(parsed.hostname),
+      rewrites: normalized.rewrites,
+    };
+  } catch {
+    return { host: "", port: "", pooler: false, rewrites: [] };
+  }
 }
