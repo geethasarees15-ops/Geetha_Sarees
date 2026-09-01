@@ -29,7 +29,9 @@ function fromHttpUrl(url: string): string {
 }
 
 function shouldUseSessionPooler(): boolean {
-  return process.env.SUPABASE_DB_SESSION_POOLER?.trim() === "true";
+  // Session pooler (5432) is reserved for explicit runSessionTransaction() only.
+  // Never route the shared app pool through session mode — Supabase caps it at ~15 clients.
+  return false;
 }
 
 export function buildSupabasePoolerUrl(options: PoolerUrlOptions): string {

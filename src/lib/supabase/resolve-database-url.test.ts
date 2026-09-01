@@ -37,11 +37,11 @@ describe("resolve-database-url", () => {
     expect(url).toContain("aws-0-ap-south-1.pooler.supabase.com");
   });
 
-  it("builds session pooler when explicitly requested", () => {
-    process.env.SUPABASE_DB_SESSION_POOLER = "true";
+  it("builds session pooler only when buildSupabasePoolerUrl port is set", () => {
     const url = buildSupabasePoolerUrl({
       projectRef: "cpqcndouxlqutlmvowiy",
       password: "p@ss",
+      port: SESSION_POOLER_PORT,
     });
     expect(url).toContain(`:${SESSION_POOLER_PORT}/postgres`);
   });
@@ -54,11 +54,13 @@ describe("resolve-database-url", () => {
     );
   });
 
-  it("keeps session pooler when SUPABASE_DB_SESSION_POOLER=true", () => {
+  it("always rewrites session pooler to transaction for shared app pool", () => {
     process.env.SUPABASE_DB_SESSION_POOLER = "true";
     const result = normalizePoolerDatabaseUrl(SESSION_URL);
-    expect(result.url).toContain(`:${SESSION_POOLER_PORT}/`);
-    expect(result.rewrites).toHaveLength(0);
+    expect(result.url).toContain(`:${TRANSACTION_POOLER_PORT}/`);
+    expect(result.rewrites).toContain(
+      `:${SESSION_POOLER_PORT} session → :${TRANSACTION_POOLER_PORT} transaction`,
+    );
   });
 
   it("keeps transaction pooler unchanged", () => {
