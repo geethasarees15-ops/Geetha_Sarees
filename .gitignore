@@ -30,6 +30,10 @@ yarn-error.log*
 .env.vercel*
 .env
 
+# local identity/secrets (never push)
+.cursor/*.local.md
+.cursor/ssr-tex-secrets.local.md
+
 # vercel
 .vercel
 

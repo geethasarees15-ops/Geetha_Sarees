@@ -70,14 +70,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       </Suspense>
 
       <div className="flex flex-col gap-3 border-t border-primary/10 pt-4 text-sm">
-        <p className="text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/sign-up"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Create account
-          </Link>
+        <Link
+          href="/sign-up"
+          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-[#55104A]"
+        >
+          Create account
+        </Link>
+        <p className="text-center text-muted-foreground">
+          New here? Use Create account above — password needs at least 8 characters.
         </p>
         <Link
           href="/"

@@ -41,7 +41,7 @@ export function MobileBottomNav() {
   const { onNavigateClick } = useRobustNavigate();
   const { isOpen: isSearchOpen, openSearch } = useMobileSearch();
   const { user } = useAuth();
-  const accountHref = user ? "/orders" : "/sign-in";
+  const accountHref = user ? "/orders" : "/sign-up";
 
   const itemClass = (active: boolean) =>
     cn(

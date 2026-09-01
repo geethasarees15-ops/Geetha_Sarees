@@ -10,9 +10,7 @@ export const revalidate = 0;
 
 export default async function WishListPage() {
   const user = await getSessionUser();
-  const initialProducts = user
-    ? await getWishlistProductsForUser(user.id)
-    : [];
+  const initialProducts = user ? await getWishlistProductsForUser(user.id) : [];
 
   return (
     <Shell>

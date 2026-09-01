@@ -14,6 +14,10 @@ import {
   validateCashfreeRuntimeConfig,
 } from "@/lib/payments/cashfree-standards";
 import { getCanonicalSiteOrigin } from "@/lib/auth/site-urls";
+import {
+  parseCashfreeWebhookTimestampMs,
+  resolveCashfreeWebhookSecrets,
+} from "@/lib/payments/cashfree-webhook";
 import { getURL } from "@/lib/utils";
 import { normalizeIndianMobile } from "@/lib/payments/phonepe";
 
@@ -40,6 +44,7 @@ type CashfreeFetchOrderResponse = {
   cf_order_id?: string | number;
   order_id?: string;
   order_status?: string;
+  order_amount?: number | string;
   payment_session_id?: string;
   message?: string;
   code?: string;
@@ -85,7 +90,13 @@ export async function createCashfreePayment(
     throw new Error(amountError);
   }
 
-  const phone = normalizeIndianMobile(params.customerMobile).replace(/^91/, "");
+  const normalized = normalizeIndianMobile(params.customerMobile);
+  if (!normalized) {
+    throw new Error(
+      "Valid 10-digit Indian mobile number is required for Cashfree checkout",
+    );
+  }
+  const phone = normalized.replace(/^91/, "");
   const customerEmail = String(params.customerEmail ?? "").trim() || undefined;
   const customerName = String(params.customerName ?? "").trim() || undefined;
   const customerId =
@@ -112,7 +123,7 @@ export async function createCashfreePayment(
         customer_id: customerId,
         customer_name: customerName,
         customer_email: customerEmail,
-        customer_phone: phone || undefined,
+        customer_phone: phone,
       },
       order_meta: {
         return_url: returnUrl,
@@ -230,26 +241,32 @@ export async function verifyCashfreeWebhookSignature(params: {
     throw new Error("Cashfree config is not enabled");
   }
 
-  const ts = Number.parseInt(params.timestamp.trim(), 10);
-  if (!Number.isFinite(ts)) return false;
+  const tsMs = parseCashfreeWebhookTimestampMs(params.timestamp);
+  if (tsMs === null) return false;
 
   const now = Date.now();
-  if (Math.abs(now - ts) > CASHFREE_WEBHOOK_MAX_DRIFT_MS) {
+  if (Math.abs(now - tsMs) > CASHFREE_WEBHOOK_MAX_DRIFT_MS) {
     return false;
   }
 
-  const computed = signCashfreeWebhookPayload(
-    params.rawBody,
-    params.timestamp,
-    config.clientSecret,
-  );
+  const secrets = resolveCashfreeWebhookSecrets(config.clientSecret);
   const provided = params.signature.trim();
 
-  const computedBuffer = Buffer.from(computed);
-  const providedBuffer = Buffer.from(provided);
-  if (computedBuffer.length !== providedBuffer.length) {
-    return false;
+  for (const secret of secrets) {
+    const computed = signCashfreeWebhookPayload(
+      params.rawBody,
+      params.timestamp,
+      secret,
+    );
+    const computedBuffer = Buffer.from(computed);
+    const providedBuffer = Buffer.from(provided);
+    if (
+      computedBuffer.length === providedBuffer.length &&
+      crypto.timingSafeEqual(computedBuffer, providedBuffer)
+    ) {
+      return true;
+    }
   }
 
-  return crypto.timingSafeEqual(computedBuffer, providedBuffer);
+  return false;
 }

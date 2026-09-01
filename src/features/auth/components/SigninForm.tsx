@@ -36,6 +36,7 @@ export function SignInForm() {
   const { toast } = useToast();
   const supabase = createClient();
   const [isPending, startTransition] = React.useTransition();
+  const [showCreateAccount, setShowCreateAccount] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(authSchema),
@@ -66,6 +67,7 @@ export function SignInForm() {
       });
 
       if (error) {
+        setShowCreateAccount(true);
         toast({
           title: "Error",
           description: safeAuthErrorMessage(
@@ -135,6 +137,17 @@ export function SignInForm() {
           Sign in
           <span className="sr-only">Sign in</span>
         </Button>
+        {showCreateAccount ? (
+          <p className="text-center text-sm text-muted-foreground">
+            No account yet?{" "}
+            <Link
+              href={`/sign-up?email=${encodeURIComponent(form.getValues("email") || "")}`}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Create account
+            </Link>
+          </p>
+        ) : null}
       </form>
     </Form>
   );

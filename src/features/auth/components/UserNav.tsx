@@ -126,7 +126,7 @@ function UserNav() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <Link href="/sign-in" className="flex items-center text-foreground">
+        <Link href="/sign-up" className="flex items-center text-foreground">
           <Icons.user className="h-4 w-4 mr-3" />
           <p className="text-sm">Sign in or Sign up</p>
         </Link>

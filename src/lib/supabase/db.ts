@@ -3,6 +3,7 @@ import postgres from "postgres";
 import { env } from "@/env.mjs";
 import * as schema from "./schema";
 import { resolveDatabaseUrl } from "./resolve-database-url";
+import { buildPostgresClientOptions } from "./postgres-client-options";
 
 const connectionString = resolveDatabaseUrl(env.DATABASE_URL);
 
@@ -13,12 +14,10 @@ if (!connectionString) {
 /** Serverless: one connection per instance; transaction pooler (6543) handles concurrency. */
 const isServerless = process.env.VERCEL === "1";
 
-const client = postgres(connectionString, {
-  prepare: false,
-  max: isServerless ? 1 : 3,
-  idle_timeout: 20,
-  connect_timeout: 15,
-});
+const client = postgres(
+  connectionString,
+  buildPostgresClientOptions(isServerless ? 1 : 3),
+);
 
 const db = drizzle(client, { schema });
 

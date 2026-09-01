@@ -4,42 +4,45 @@ import {
   isBlockedSignupEmail,
 } from "@/lib/auth/email-policy";
 
-const emailField = z
+const signInEmailField = z
   .string()
-  .email({ message: "Please enter a valid email address" })
-  .refine((value) => !isBlockedSignupEmail(value), {
+  .email({ message: "Please enter a valid email address" });
+
+const signupEmailField = signInEmailField.refine(
+  (value) => !isBlockedSignupEmail(value),
+  {
     message: blockedSignupEmailMessage,
-  });
+  },
+);
+
+export const passwordMin8 = z
+  .string()
+  .min(8, {
+    message: "Password must be at least 8 characters long",
+  })
+  .max(100);
 
 export const authSchema = z.object({
-  email: emailField,
-  password: z
-    .string()
-    .min(8, {
-      message: "Password must be at least 8 characters long",
-    })
-    .max(100)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/, {
-      message:
-        "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character",
-    }),
+  email: signInEmailField,
+  password: z.string().min(1, { message: "Password is required" }).max(100),
 });
 
 export const signupSchema = z.object({
-  email: emailField,
+  email: signupEmailField,
   name: z.string(),
-  password: z
-    .string()
-    .min(8, {
-      message: "Password must be at least 8 characters long",
-    })
-    .max(100)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/, {
-      message:
-        "Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character",
-    }),
+  password: passwordMin8,
 });
 
 export const forgotPasswordEmailSchema = z.object({
-  email: emailField,
+  email: signInEmailField,
 });
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordMin8,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });

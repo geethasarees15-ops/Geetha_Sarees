@@ -26,10 +26,11 @@ const mockFetchWithTimeout = fetchWithTimeout as jest.MockedFunction<
 >;
 
 const baseConfig = {
+  enabled: true,
   clientId: "client_id",
   clientSecret: "client_secret",
   baseUrl: "https://api.cashfree.com/pg",
-  apiVersion: "2023-08-01",
+  apiVersion: "2026-01-01",
   environment: "production" as const,
 };
 

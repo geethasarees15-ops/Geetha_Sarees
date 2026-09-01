@@ -18,15 +18,7 @@ export function resolveCheckoutPaymentEnvironment(params: {
   }
 
   if (params.preferPhonePe && params.phonePeConfig) {
-    const baseUrl = params.phonePeConfig.baseUrl.toLowerCase();
-    if (
-      baseUrl.includes("sandbox") ||
-      baseUrl.includes("preprod") ||
-      baseUrl.includes("uat")
-    ) {
-      return "sandbox";
-    }
-    return "production";
+    return params.phonePeConfig.environment;
   }
 
   return isProductionStripeKey(process.env.STRIPE_SECRET_KEY)

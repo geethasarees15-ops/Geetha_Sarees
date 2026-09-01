@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   CASHFREE_PRODUCTION_BASE_URL,
   CASHFREE_SANDBOX_BASE_URL,
@@ -41,22 +40,22 @@ describe("payment-settings", () => {
     expect(normalized.environment).toBe("production");
   });
 
-  it("allows saving disabled PhonePe without merchant credentials", () => {
+  it("allows saving disabled PhonePe without OAuth credentials", () => {
     const normalized = normalizePhonePeIncoming({
-      merchantId: "",
-      saltKey: "",
-      saltIndex: "",
+      clientId: "",
+      clientSecret: "",
+      clientVersion: "",
     });
 
-    expect(normalized.merchantId).toBe("");
+    expect(normalized.clientId).toBe("");
     expect(parseEnabledPhonePeValue(normalized).success).toBe(false);
   });
 
   it("requires complete PhonePe credentials when enabling", () => {
     const parsed = parseIncomingPhonePeForEnable({
-      merchantId: "PGTEST",
-      saltIndex: "1",
-      saltKey: "secret",
+      clientId: "PGTEST",
+      clientVersion: "1",
+      clientSecret: "secret",
     });
 
     expect(parsed.success).toBe(true);

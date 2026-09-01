@@ -242,3 +242,38 @@ export async function notifyOrderWhatsAppTargets(order: SelectOrders) {
 
   return result;
 }
+
+/**
+ * Best-effort operational alert to seller mobiles. Never throws.
+ */
+export async function sendSellerOpsAlert(message: string) {
+  try {
+    const config = await getWhatsAppConfig();
+    if (!config || !config.notifySeller || config.sellerMobiles.length === 0) {
+      return { sent: false as const, reason: "seller_alerts_not_configured" };
+    }
+
+    let sentCount = 0;
+    for (const mobile of config.sellerMobiles) {
+      const to = normalizeIndianMobile(mobile);
+      if (!to) continue;
+
+      const res = await postWhatsAppMessage(
+        config.phoneNumberId,
+        config.accessToken,
+        {
+          messaging_product: "whatsapp",
+          to,
+          type: "text",
+          text: { body: `[SSR Tex ALERT]\n${message}` },
+        },
+      );
+      if (res.sent) sentCount += 1;
+    }
+
+    return { sent: sentCount > 0, sentCount };
+  } catch (error) {
+    console.error("[whatsapp] seller ops alert failed:", error);
+    return { sent: false as const, reason: "error" };
+  }
+}

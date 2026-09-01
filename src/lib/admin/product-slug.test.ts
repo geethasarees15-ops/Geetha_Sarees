@@ -23,7 +23,7 @@ describe("buildUniqueProductSlug", () => {
         }),
       }),
       execute: async () => [],
-    };
+    } as unknown as Parameters<typeof buildUniqueProductSlug>[0];
 
     await expect(
       buildUniqueProductSlug(executor, "Silk Saree", "ST000001"),

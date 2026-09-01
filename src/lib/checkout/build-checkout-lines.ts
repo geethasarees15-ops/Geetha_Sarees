@@ -50,9 +50,7 @@ export async function buildCheckoutLineItems(
 
   const unpublishedIds = await findUnpublishedProductIds(productIds);
   assertProductsArePublished(
-    new Map(
-      products.map((product) => [product.id, product.name] as const),
-    ),
+    new Map(products.map((product) => [product.id, product.name] as const)),
     unpublishedIds,
   );
 

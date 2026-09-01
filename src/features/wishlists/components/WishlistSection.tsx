@@ -147,8 +147,8 @@ export default function WishlistSection({
       ) : (
         <p className="text-sm text-muted-foreground">
           {products.length} saved{" "}
-          {products.length === 1 ? "product" : "products"} — add to cart whenever
-          you&apos;re ready.
+          {products.length === 1 ? "product" : "products"} — add to cart
+          whenever you&apos;re ready.
         </p>
       )}
 
