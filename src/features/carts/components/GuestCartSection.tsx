@@ -38,6 +38,7 @@ import {
   loadCheckoutAddressDraft,
   saveCheckoutAddressDraft,
 } from "@/features/addresses/lib/checkoutAddressDraft";
+import { usePincodeLookup } from "@/features/addresses/hooks/usePincodeLookup";
 import { isBulkOrderQuantity } from "../constants/bulkOrder";
 import {
   calcLiveCartSubtotal,
@@ -71,6 +72,7 @@ function GuestCartSection({
   const offerCodesConfig = useOfferCodesConfig();
   const stockControl = useStockControlConfig();
   const [bulkGuardOpen, setBulkGuardOpen] = useState(false);
+  const [deliveryPincode, setDeliveryPincode] = useState("");
   const [deliveryState, setDeliveryState] = useState("");
   const [promoInput, setPromoInput] = useState("");
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
@@ -113,15 +115,7 @@ function GuestCartSection({
     () => calcProductCountStorage(cartItems),
     [cartItems],
   );
-  const courierBreakdown = useMemo(() => {
-    if (!courierConfig.enabled || !deliveryState) return null;
-    return calculateCourierCharge({
-      state: deliveryState,
-      quantity: productCount,
-      config: courierConfig,
-    });
-  }, [courierConfig, deliveryState, productCount]);
-  const courierCharge = courierBreakdown?.charge ?? 0;
+  const pincodeLookup = usePincodeLookup(deliveryPincode);
   const activeOfferCodes = useMemo(() => {
     const map = new Map<string, number>();
     if (!offerCodesConfig.enabled) return map;
@@ -136,10 +130,22 @@ function GuestCartSection({
     : 0;
   const discountAmount = Math.round(subtotal * promoPercentage * 100) / 10000;
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-  const hasDeliveryStateSelected = deliveryState.trim().length > 0;
+  const courierBreakdown = useMemo(() => {
+    if (!courierConfig.enabled || !deliveryState) return null;
+    return calculateCourierCharge({
+      state: deliveryState,
+      quantity: productCount,
+      config: courierConfig,
+    });
+  }, [courierConfig, deliveryState, productCount]);
+  const courierCharge = courierBreakdown?.charge ?? 0;
   const courierEnabled = courierConfig.enabled;
   const offerCodesEnabled = offerCodesConfig.enabled;
-  const checkoutTotalReady = !courierEnabled || Boolean(courierBreakdown);
+  const pricingReady =
+    !courierEnabled ||
+    (pincodeLookup.status === "ready" && Boolean(courierBreakdown));
+  const hasDeliveryStateSelected = pricingReady;
+  const checkoutTotalReady = pricingReady;
   const gstAmount = calculateGstAmount({
     taxableAmount: discountedSubtotal + courierCharge,
     config: courierConfig,
@@ -148,13 +154,44 @@ function GuestCartSection({
 
   useEffect(() => {
     const draft = loadCheckoutAddressDraft();
-    if (draft?.state) setDeliveryState(draft.state);
+    if (draft?.postal_code) setDeliveryPincode(draft.postal_code);
+    else if (draft?.state) setDeliveryState(draft.state);
   }, []);
 
-  const onStateChange = (state: string) => {
-    setDeliveryState(state);
-    saveCheckoutAddressDraft({ state });
+  useEffect(() => {
+    if (pincodeLookup.status !== "ready" || !pincodeLookup.result) {
+      if (pincodeLookup.status === "idle" || pincodeLookup.status === "error") {
+        setDeliveryState("");
+      }
+      return;
+    }
+    setDeliveryState(pincodeLookup.result.state);
+    saveCheckoutAddressDraft({
+      postal_code: pincodeLookup.result.pin,
+      state: pincodeLookup.result.state,
+      city: pincodeLookup.result.city,
+    });
+  }, [pincodeLookup.result, pincodeLookup.status]);
+
+  const onPincodeChange = (pincode: string) => {
+    setDeliveryPincode(pincode);
+    if (pincode.length < 6) {
+      setDeliveryState("");
+      saveCheckoutAddressDraft({ postal_code: pincode, state: "", city: "" });
+    } else {
+      saveCheckoutAddressDraft({ postal_code: pincode });
+    }
   };
+
+  const pincodeLocalityLabel =
+    pincodeLookup.status === "ready" && pincodeLookup.result
+      ? [
+          pincodeLookup.result.areas[0] || pincodeLookup.result.district,
+          pincodeLookup.result.state,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : null;
 
   const onApplyPromo = () => {
     const normalized = promoInput.toUpperCase().replace(/\s+/g, "");
@@ -306,9 +343,12 @@ function GuestCartSection({
     productCount,
     courierEnabled,
     offerCodesEnabled,
-    deliveryState,
-    onStateChange,
-    hasDeliveryStateSelected,
+    deliveryPincode,
+    onPincodeChange,
+    pincodeStatus: pincodeLookup.status,
+    pincodeLocalityLabel,
+    pincodeError: pincodeLookup.message,
+    pricingReady,
     promoInput,
     onPromoInputChange: setPromoInput,
     onApplyPromo,

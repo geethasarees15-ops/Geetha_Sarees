@@ -25,7 +25,6 @@ import { resolveCheckoutPaymentProvider } from "@/lib/payments/resolve-checkout-
 import { stripe } from "@/lib/stripe";
 import { getProductSizeConfigsByProductIds } from "@/lib/products/sizeConfig";
 import db from "@/lib/supabase/db";
-import { runSessionTransaction } from "@/lib/supabase/transactional-db";
 import { address, medias, orderLines, orders } from "@/lib/supabase/schema";
 import {
   calculateCourierCharge,
@@ -389,18 +388,17 @@ export async function POST(request: Request) {
           );
 
           if (reserveStock) {
-            const reservationMeta = await runSessionTransaction(async (tx) =>
-              reserveStockInTransaction(tx, {
-                lines: productsQuantity.map((product) => ({
-                  productId: product.id,
-                  quantity: product.quantity,
-                  size: selectedSizes[product.id] || undefined,
-                })),
-                selectedSizes,
-                sizeConfigs,
-                productNames,
-              }),
-            );
+            // Atomic stock updates on shared pooler — avoid drizzle.transaction() (onclose on 6543).
+            const reservationMeta = await reserveStockInTransaction(db, {
+              lines: productsQuantity.map((product) => ({
+                productId: product.id,
+                quantity: product.quantity,
+                size: selectedSizes[product.id] || undefined,
+              })),
+              selectedSizes,
+              sizeConfigs,
+              productNames,
+            });
             stockHeld = true;
 
             const [updatedOrder] = await db
