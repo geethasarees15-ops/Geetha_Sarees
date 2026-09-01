@@ -106,7 +106,9 @@ async function getPhonePeAccessToken(): Promise<string> {
     timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
   });
 
-  const data = (await res.json().catch(() => null)) as PhonePeTokenResponse | null;
+  const data = (await res
+    .json()
+    .catch(() => null)) as PhonePeTokenResponse | null;
   const token = String(data?.access_token ?? "").trim();
   if (!res.ok || !token) {
     const reason = String(data?.message || data?.code || `HTTP_${res.status}`);
@@ -144,8 +146,12 @@ export async function createPhonePePayment(params: CreatePhonePePaymentParams) {
     expireAfter: 1200,
     metaInfo: {
       udf1: params.orderId,
-      udf2: normalizeIndianMobile(params.customerMobile).slice(0, 50) || undefined,
-      udf3: String(params.customerEmail ?? "").trim().slice(0, 50) || undefined,
+      udf2:
+        normalizeIndianMobile(params.customerMobile).slice(0, 50) || undefined,
+      udf3:
+        String(params.customerEmail ?? "")
+          .trim()
+          .slice(0, 50) || undefined,
     },
     paymentFlow: {
       type: "PG_CHECKOUT",
@@ -166,7 +172,9 @@ export async function createPhonePePayment(params: CreatePhonePePaymentParams) {
     timeoutMs: PHONEPE_HTTP_TIMEOUT_MS,
   });
 
-  const data = (await res.json().catch(() => null)) as PhonePePayResponse | null;
+  const data = (await res
+    .json()
+    .catch(() => null)) as PhonePePayResponse | null;
   const checkoutUrl = String(data?.redirectUrl ?? "").trim();
   if (!res.ok || !checkoutUrl) {
     const reason = String(data?.message || data?.code || `HTTP_${res.status}`);
@@ -212,9 +220,7 @@ export async function fetchPhonePePaymentStatus(merchantOrderId: string) {
     amount: data.amount,
     transactionId: latest?.transactionId ?? data.orderId ?? null,
     responseCode: data.code ?? null,
-    paymentInstrument: latest
-      ? { type: latest.paymentMode ?? null }
-      : null,
+    paymentInstrument: latest ? { type: latest.paymentMode ?? null } : null,
   };
 }
 

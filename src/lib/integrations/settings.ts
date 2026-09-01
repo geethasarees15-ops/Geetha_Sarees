@@ -646,9 +646,7 @@ export async function getPhonePeConfig(): Promise<PhonePeConfig | null> {
 
   const value = setting.value as Record<string, unknown>;
   const clientId = String(value.clientId ?? value.merchantId ?? "").trim();
-  const clientSecret = String(
-    value.clientSecret ?? value.saltKey ?? "",
-  ).trim();
+  const clientSecret = String(value.clientSecret ?? value.saltKey ?? "").trim();
   const clientVersion = String(
     value.clientVersion ?? value.saltIndex ?? "",
   ).trim();

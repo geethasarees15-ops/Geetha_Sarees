@@ -77,7 +77,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           Create account
         </Link>
         <p className="text-center text-muted-foreground">
-          New here? Use Create account above — password needs at least 8 characters.
+          New here? Use Create account above — password needs at least 8
+          characters.
         </p>
         <Link
           href="/"

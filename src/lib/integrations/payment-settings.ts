@@ -51,7 +51,12 @@ export function resolvePhonePeEnvironment(
   if (env === "production" || env === "prod" || env === "live") {
     return "production";
   }
-  if (env === "sandbox" || env === "uat" || env === "test" || env === "preprod") {
+  if (
+    env === "sandbox" ||
+    env === "uat" ||
+    env === "test" ||
+    env === "preprod"
+  ) {
     return "sandbox";
   }
   const hint = String(baseUrlHint ?? "").toLowerCase();

@@ -406,7 +406,10 @@ export async function POST(request: Request) {
             const [updatedOrder] = await db
               .update(orders)
               .set({
-                payment_meta: mergePaymentMeta(basePaymentMeta, reservationMeta),
+                payment_meta: mergePaymentMeta(
+                  basePaymentMeta,
+                  reservationMeta,
+                ),
               })
               .where(eq(orders.id, created[0].id))
               .returning();
@@ -417,9 +420,13 @@ export async function POST(request: Request) {
           return created;
         } catch (persistError) {
           if (stockHeld) {
-            await releaseStockReservation(created[0].id, "checkout_persist_failed", {
-              allowOrphanFallback: true,
-            }).catch(() => undefined);
+            await releaseStockReservation(
+              created[0].id,
+              "checkout_persist_failed",
+              {
+                allowOrphanFallback: true,
+              },
+            ).catch(() => undefined);
           }
           await db
             .delete(orderLines)
