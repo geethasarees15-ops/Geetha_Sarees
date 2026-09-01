@@ -65,6 +65,8 @@ const TRANSIENT_PATTERNS = [
   "fetch failed",
   "network error",
   "too many connections",
+  "emaxconnsession",
+  "max clients reached",
   "remaining connection slots",
   "server closed the connection",
   "terminating connection",

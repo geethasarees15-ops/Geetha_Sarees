@@ -1,163 +1,66 @@
 "use server";
 
 import db from "@/lib/supabase/db";
-import { InsertProducts, products } from "@/lib/supabase/schema";
+import { products } from "@/lib/supabase/schema";
 import { requireAdminActionUser } from "@/lib/auth/require-admin";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
-import {
-  buildUniqueProductSlug,
-  createNextProductCode,
-  PRODUCT_CODE_LOCK_ID,
-} from "@/lib/admin/product-slug";
 import {
   buildBulkProductInsertValues,
   type NormalizedBulkDraftShared,
 } from "@/lib/admin/normalize-bulk-product-shared";
-import { normalizeProductFormPayload } from "@/lib/admin/normalize-product-form-payload";
+import { insertProductWithoutTransaction } from "@/lib/admin/product-insert";
 import {
-  normalizeProductImageMediaIds,
-  syncProductGalleryImages,
-} from "@/lib/admin/product-gallery";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-import { createInsertSchema } from "drizzle-zod";
+  createProductRecord,
+  updateProductRecord,
+  type ProductImageOptions,
+} from "@/lib/admin/save-product";
+import { mapProductSaveError } from "@/lib/supabase/pooler-errors";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-export type ProductImageOptions = {
-  /** Ordered media ids: first = featured/main, rest = gallery (max 5). */
-  imageMediaIds?: string[];
-};
-
-function resolveFeaturedAndGallery(
-  product: InsertProducts,
-  options?: ProductImageOptions,
-) {
-  const fromOptions = options?.imageMediaIds
-    ? normalizeProductImageMediaIds(options.imageMediaIds)
-    : [];
-
-  if (fromOptions.length > 0) {
-    return {
-      featuredImageId: fromOptions[0],
-      orderedMediaIds: fromOptions,
-    };
-  }
-
-  const featuredImageId = String(product.featuredImageId ?? "").trim() || null;
-  return {
-    featuredImageId,
-    orderedMediaIds: featuredImageId ? [featuredImageId] : [],
-  };
-}
+export type { ProductImageOptions };
 
 function revalidateProductCatalogPaths() {
-  revalidatePath("/admin/products");
-  revalidatePath("/", "layout");
-  revalidatePath("/");
-  revalidatePath("/featured");
-  revalidatePath("/shop");
-  revalidatePath("/collections");
+  // Keep this light — broad layout revalidation after admin saves can surface
+  // as a vague "Server Components" error on serverless.
+  try {
+    revalidatePath("/admin/products");
+    revalidatePath("/shop");
+    revalidatePath("/featured");
+  } catch (error) {
+    console.error("[products] revalidatePath failed:", error);
+  }
+}
+
+async function softInvalidateStorefrontCache() {
+  try {
+    await invalidateStorefrontCache();
+  } catch (error) {
+    console.error("[products] invalidateStorefrontCache failed:", error);
+  }
 }
 
 export const createProductAction = async (
-  product: InsertProducts,
+  product: Parameters<typeof createProductRecord>[0],
   options?: ProductImageOptions,
 ) => {
   await requireAdminActionUser();
-  const { featuredImageId, orderedMediaIds } = resolveFeaturedAndGallery(
-    product,
-    options,
-  );
-  const normalized = normalizeProductFormPayload({
-    ...product,
-    featuredImageId: featuredImageId ?? product.featuredImageId,
-  });
-
-  const data = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(${PRODUCT_CODE_LOCK_ID})`,
-    );
-
-    const productCode = await createNextProductCode(tx);
-    const slug = await buildUniqueProductSlug(tx, normalized.name, productCode);
-    const values = {
-      ...normalized,
-      featuredImageId: featuredImageId ?? normalized.featuredImageId,
-      productCode,
-      slug,
-      tags: [] as string[],
-    };
-
-    createInsertSchema(products).parse(values);
-    return tx.insert(products).values(values).returning();
-  });
-
-  const created = data[0];
-  if (created) {
-    try {
-      await syncProductGalleryImages(created.id, orderedMediaIds);
-    } catch (error) {
-      console.error("[products] gallery sync failed after create:", error);
-    }
-  }
-
+  const created = await createProductRecord(product, options);
   revalidateProductCatalogPaths();
-  await invalidateStorefrontCache();
-  return data;
+  void softInvalidateStorefrontCache();
+  return [created];
 };
 
 export const updateProductAction = async (
   productId: string,
-  product: InsertProducts,
+  product: Parameters<typeof updateProductRecord>[1],
   options?: ProductImageOptions,
 ) => {
   await requireAdminActionUser();
-
-  const [existing] = await db
-    .select({
-      slug: products.slug,
-      productCode: products.productCode,
-    })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  if (!existing) {
-    throw new Error("Product not found.");
-  }
-
-  const { featuredImageId, orderedMediaIds } = resolveFeaturedAndGallery(
-    product,
-    options,
-  );
-  const normalized = normalizeProductFormPayload({
-    ...product,
-    featuredImageId: featuredImageId ?? product.featuredImageId,
-  });
-  const values = {
-    ...normalized,
-    featuredImageId: featuredImageId ?? normalized.featuredImageId,
-    slug: existing.slug,
-    productCode: existing.productCode,
-    tags: [] as string[],
-  };
-
-  createInsertSchema(products).parse(values);
-
-  const insertedProduct = await db
-    .update(products)
-    .set(values)
-    .where(eq(products.id, productId))
-    .returning();
-
-  try {
-    await syncProductGalleryImages(productId, orderedMediaIds);
-  } catch (error) {
-    console.error("[products] gallery sync failed after update:", error);
-  }
-
+  const updated = await updateProductRecord(productId, product, options);
   revalidateProductCatalogPaths();
-  await invalidateStorefrontCache();
-  return insertedProduct;
+  void softInvalidateStorefrontCache();
+  return [updated];
 };
 
 export const getProductsByIds = async (productIds: string[]) => {
@@ -207,7 +110,7 @@ export async function createDraftProductsFromMedia(
   if (mediaItems.length === 0) return [];
 
   const normalizedShared = shared ?? DEFAULT_BULK_SHARED;
-  // Preserve first-seen order while dropping duplicate media ids in one request.
+
   const uniqueMediaItems: DraftSourceMedia[] = [];
   const seenMediaIds = new Set<string>();
   for (const item of mediaItems) {
@@ -216,31 +119,11 @@ export async function createDraftProductsFromMedia(
     uniqueMediaItems.push(item);
   }
 
-  return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(${PRODUCT_CODE_LOCK_ID})`,
-    );
-
-    const lastCodeRows = await tx.execute<{ product_code: string | null }>(
-      sql`select product_code
-          from products
-          where product_code like 'ST%'
-          order by product_code desc
-          limit 1`,
-    );
-    const lastCode = lastCodeRows[0]?.product_code ?? null;
-    const lastNumber = Number.parseInt(
-      lastCode?.replace(/^ST/i, "") ?? "0",
-      10,
-    );
-    const start = Number.isFinite(lastNumber) ? lastNumber : 0;
-
+  try {
     const createdProducts: BulkDraftCreateResult[] = [];
-    let createdCount = 0;
 
     for (const mediaItem of uniqueMediaItems) {
-      // Defense in depth: retries must not create another product for the same photo.
-      const [existing] = await tx
+      const [existing] = await db
         .select({
           id: products.id,
           name: products.name,
@@ -266,46 +149,33 @@ export async function createDraftProductsFromMedia(
         continue;
       }
 
-      createdCount += 1;
-      const currentNumber = start + createdCount;
-      const productCode = `ST${String(currentNumber).padStart(6, "0")}`;
       const fileNameBase = getFileNameBase(mediaItem.originalFileName);
       const nameBase = (normalizedShared.baseName || fileNameBase).trim();
-      const productName = `${nameBase} ${productCode}`;
-      const slug = await buildUniqueProductSlug(tx, productName, productCode);
 
-      const insertValues = buildBulkProductInsertValues({
-        shared: normalizedShared,
-        productName,
-        slug,
-        productCode,
-        featuredImageId: mediaItem.mediaId,
-      });
+      const row = await insertProductWithoutTransaction(
+        (productCode) => `${nameBase} ${productCode}`,
+        (identity) =>
+          buildBulkProductInsertValues({
+            shared: normalizedShared,
+            productName: identity.name,
+            slug: identity.slug,
+            productCode: identity.productCode,
+            featuredImageId: mediaItem.mediaId,
+          }),
+      );
 
-      createInsertSchema(products).parse(insertValues);
-
-      const [created] = await tx
-        .insert(products)
-        .values(insertValues)
-        .returning({
-          id: products.id,
-          name: products.name,
-          slug: products.slug,
-          productCode: products.productCode,
-        });
-
-      // Featured image alone is enough for single-photo bulk drafts.
-      // Dual-writing the same media into product_medias made the PDP show duplicates.
       createdProducts.push({
-        id: created.id,
-        name: created.name,
-        slug: created.slug,
-        productCode: created.productCode ?? productCode,
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        productCode: row.productCode ?? "",
       });
     }
 
     revalidateProductCatalogPaths();
     await invalidateStorefrontCache();
     return createdProducts;
-  });
+  } catch (error) {
+    throw mapProductSaveError(error);
+  }
 }

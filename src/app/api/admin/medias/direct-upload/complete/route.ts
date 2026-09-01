@@ -6,11 +6,11 @@ import {
 import { invalidateAdminMediaCache } from "@/lib/admin/media-library";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
-import db from "@/lib/supabase/db";
 import {
   finalizeDirectUpload,
   type DirectUploadPurpose,
 } from "@/lib/storage/directUpload";
+import { runSessionTransaction } from "@/lib/supabase/transactional-db";
 import { sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -75,12 +75,12 @@ export async function POST(request: NextRequest) {
     };
 
     const outcome = parsed.data.clientUploadKey
-      ? await db.transaction(async (tx) => {
+      ? await runSessionTransaction(async (tx) => {
           await tx.execute(
             sql`select pg_advisory_xact_lock(hashtext(${`direct_upload:${parsed.data.clientUploadKey}`}))`,
           );
           return runFinalize();
-        })
+        }, "direct-upload-complete")
       : await runFinalize();
 
     invalidateAdminMediaCache();
