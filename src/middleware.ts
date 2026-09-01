@@ -236,6 +236,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    /*
+     * Skip API routes (auth handled in route handlers), static assets, and
+     * crawlers files — industry standard to keep edge middleware off webhooks,
+     * health checks, and JSON APIs to save Fluid CPU / edge requests.
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 };

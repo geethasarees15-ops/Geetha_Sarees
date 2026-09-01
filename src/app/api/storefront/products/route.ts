@@ -12,7 +12,6 @@ import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import type { SearchQueryVariables } from "@/gql/graphql";
 import { NextRequest, NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
 export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
 const CACHE_HEADERS = {

@@ -9,7 +9,7 @@ import { StoreFloatingActions } from "@/components/layouts/StoreFloatingActions"
 import { MobileBottomNav } from "@/components/layouts/MobileBottomNav";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { resolveStorefrontRuntimeBundle } from "@/lib/integrations/settings";
-import { sweepExpiredStockReservationsIfEnabled } from "@/lib/orders/lazy-stock-reservation-sweep";
+import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import {
   buildOrganizationJsonLd,
   buildSiteNavigationJsonLd,
@@ -27,7 +27,7 @@ import { ReactNode } from "react";
 
 type Props = { children: ReactNode };
 
-export const revalidate = 60;
+export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
 async function StoreLayout({ children }: Props) {
   const {
@@ -39,14 +39,6 @@ async function StoreLayout({ children }: Props) {
     courierCharges,
     offerCodes,
   } = await resolveStorefrontRuntimeBundle();
-
-  if (stockControl.enabled) {
-    await sweepExpiredStockReservationsIfEnabled({
-      stockControlEnabled: true,
-    }).catch((error) => {
-      console.error("[store] stock reservation sweep failed:", error);
-    });
-  }
 
   return (
     <SocialLinksProvider social={social}>

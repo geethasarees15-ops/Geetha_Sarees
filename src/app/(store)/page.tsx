@@ -15,9 +15,10 @@ import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
 import { getLandingPageDataCached } from "@/lib/storefront/landing-data";
 import { getShopByPriceBucketsCached } from "@/lib/storefront/shop-by-price";
 import { resolveStorefrontContact } from "@/lib/integrations/settings";
+import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import type { Metadata } from "next";
 
-export const revalidate = 300;
+export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
   title: "SRI SAI RAGHAVENDRA TEX | Premium Silk & Cotton Sarees Online",
