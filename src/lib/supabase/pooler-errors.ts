@@ -59,7 +59,21 @@ export function isUniqueViolation(error: unknown): boolean {
 }
 
 /** Map pooler/socket crashes to a retryable admin message. Do not hide validation errors. */
+function isInvalidNumericInput(error: unknown): boolean {
+  const haystack = collectErrorText(error).toLowerCase();
+  return (
+    postgresCode(error) === "22P02" ||
+    haystack.includes("invalid input syntax for type numeric")
+  );
+}
+
 export function mapProductSaveError(error: unknown): Error {
+  if (isInvalidNumericInput(error)) {
+    return new Error(
+      "Enter a valid price and rating (numbers only). Price can be 0 if not set yet.",
+    );
+  }
+
   if (postgresCode(error) === "23505") {
     return new Error(PRODUCT_SAVE_MAY_EXIST_MESSAGE);
   }

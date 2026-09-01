@@ -3,6 +3,14 @@ import { normalizeDiscountPercent } from "@/lib/products/discount";
 
 const BADGE_VALUES = new Set(["new_product", "best_sale", "featured"]);
 
+function normalizeDecimalField(raw: unknown, fallback: string): string {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return fallback;
+  const value = Number(trimmed);
+  if (!Number.isFinite(value) || value < 0) return fallback;
+  return trimmed;
+}
+
 export function normalizeProductFormPayload(
   data: InsertProducts,
   options?: { stockFallback?: number },
@@ -23,8 +31,8 @@ export function normalizeProductFormPayload(
     name: String(data.name ?? "").trim(),
     slug: String(data.slug ?? "").trim(),
     description: String(data.description ?? ""),
-    rating: String(data.rating ?? "4"),
-    price: String(data.price ?? "0"),
+    rating: normalizeDecimalField(data.rating, "4"),
+    price: normalizeDecimalField(data.price, "0"),
     isDraft: Boolean(data.isDraft),
     featured: Boolean(data.featured),
     badge,

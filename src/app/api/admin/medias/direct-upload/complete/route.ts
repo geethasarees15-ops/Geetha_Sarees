@@ -10,8 +10,6 @@ import {
   finalizeDirectUpload,
   type DirectUploadPurpose,
 } from "@/lib/storage/directUpload";
-import { runSessionTransaction } from "@/lib/supabase/transactional-db";
-import { sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -45,50 +43,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const runFinalize = async () => {
-      if (parsed.data.clientUploadKey) {
-        const cached = await getDirectUploadIdempotentResponse(
-          parsed.data.clientUploadKey,
+    if (parsed.data.clientUploadKey) {
+      const cached = await getDirectUploadIdempotentResponse(
+        parsed.data.clientUploadKey,
+      );
+      if (cached) {
+        return NextResponse.json(
+          { ...cached, idempotent: true as const },
+          { status: 200 },
         );
-        if (cached) {
-          return {
-            body: { ...cached, idempotent: true as const },
-            status: 200,
-          };
-        }
       }
+    }
 
-      const result = await finalizeDirectUpload({
-        storagePath: parsed.data.storagePath,
-        originalFileName: parsed.data.fileName,
-        purpose: parsed.data.purpose as DirectUploadPurpose,
+    const result = await finalizeDirectUpload({
+      storagePath: parsed.data.storagePath,
+      originalFileName: parsed.data.fileName,
+      purpose: parsed.data.purpose as DirectUploadPurpose,
+    });
+
+    if (parsed.data.clientUploadKey) {
+      await saveDirectUploadIdempotentResponse(parsed.data.clientUploadKey, {
+        mediaId: result.mediaId,
+        fileName: result.fileName,
       });
-
-      if (parsed.data.clientUploadKey) {
-        await saveDirectUploadIdempotentResponse(parsed.data.clientUploadKey, {
-          mediaId: result.mediaId,
-          fileName: result.fileName,
-        });
-      }
-
-      return { body: result, status: 201 };
-    };
-
-    const outcome = parsed.data.clientUploadKey
-      ? await runSessionTransaction(async (tx) => {
-          await tx.execute(
-            sql`select pg_advisory_xact_lock(hashtext(${`direct_upload:${parsed.data.clientUploadKey}`}))`,
-          );
-          return runFinalize();
-        }, "direct-upload-complete")
-      : await runFinalize();
+    }
 
     invalidateAdminMediaCache();
     if (parsed.data.purpose === "product-draft") {
       await invalidateStorefrontCache();
     }
 
-    return NextResponse.json(outcome.body, { status: outcome.status });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error("[direct-upload/complete] failed:", error);
     return NextResponse.json(

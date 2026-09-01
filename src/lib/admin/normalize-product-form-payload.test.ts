@@ -26,6 +26,23 @@ describe("normalizeProductFormPayload", () => {
     expect(payload.badge).toBe("best_sale");
   });
 
+  it("defaults empty price and rating to safe numeric strings", () => {
+    const payload = normalizeProductFormPayload({
+      name: "Test",
+      slug: "test",
+      description: "",
+      rating: "",
+      price: "",
+      stock: 1,
+      tags: [],
+      collectionId: null,
+      featuredImageId: "img-1",
+    });
+
+    expect(payload.price).toBe("0");
+    expect(payload.rating).toBe("4");
+  });
+
   it("clears invalid badge values", () => {
     const payload = normalizeProductFormPayload({
       name: "Test",
