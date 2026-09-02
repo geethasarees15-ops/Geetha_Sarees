@@ -10,6 +10,7 @@ import {
   sanitizeUploadFileName,
   withSafeUploadFile,
 } from "@/lib/storage/safeUploadFileName";
+import { mapWithConcurrency } from "@/lib/admin/upload-concurrency";
 
 /** Soft ceiling for FormData fallback through the Worker. */
 export const VERCEL_SAFE_REQUEST_BYTES = 1.25 * 1024 * 1024;
@@ -50,7 +51,9 @@ export const MAX_UPLOAD_RETRIES = 3;
 export const UPLOAD_RETRY_DELAY_MS = 400;
 export const UPLOAD_REQUEST_TIMEOUT_MS = 45000;
 export const DIRECT_UPLOAD_COMPLETE_TIMEOUT_MS = 90000;
-export const BETWEEN_UPLOAD_DELAY_MS = 120;
+export const BETWEEN_UPLOAD_DELAY_MS = 50;
+/** Parallel browser compression; matches upload concurrency. */
+export const PREPARE_CONCURRENCY = 3;
 /** Parallel R2 puts for admin multi-select; keep modest to avoid browser/network contention. */
 export const UPLOAD_CONCURRENCY = 3;
 
@@ -96,10 +99,18 @@ export function uploadFileIdentityKey(file: File) {
   return `${file.name}:${file.size}:${file.lastModified}`;
 }
 
+export type UploadedMediaItem = {
+  mediaId: string;
+  key: string;
+  fileName: string;
+  promoted?: boolean;
+};
+
 export type MediaUploadResult = {
   uploadedCount: number;
   uploadedNames: string[];
   uploadedMediaIds: string[];
+  uploadedMediaItems: UploadedMediaItem[];
   failures: UploadFileFailure[];
   validationErrors: FileValidationError[];
 };
@@ -380,28 +391,51 @@ export async function prepareImageFiles(
 }> {
   const { valid, rejected } = validateImageFiles(files);
   const prepared: PreparedUploadItem[] = [];
+  if (valid.length === 0) {
+    return { prepared, rejected };
+  }
 
-  for (let index = 0; index < valid.length; index += 1) {
-    const source = valid[index];
-    onProgress?.(index + 1, valid.length, source.name);
+  let completed = 0;
+  const concurrency = Math.min(
+    PREPARE_CONCURRENCY,
+    Math.max(1, valid.length),
+  );
 
-    // eslint-disable-next-line no-await-in-loop
-    const compressed = await compressImageForUpload(source);
-    const rejectReason = postCompressRejectReason(compressed, source.name);
-    if (rejectReason) {
-      rejected.push({
-        fileName: source.name,
-        reason: rejectReason,
-        file: source,
-      });
-      continue;
+  const outcomes = await mapWithConcurrency(
+    valid,
+    concurrency,
+    async (source) => {
+      const compressed = await compressImageForUpload(source);
+      completed += 1;
+      onProgress?.(completed, valid.length, source.name);
+      const rejectReason = postCompressRejectReason(compressed, source.name);
+      if (rejectReason) {
+        return {
+          ok: false as const,
+          error: {
+            fileName: source.name,
+            reason: rejectReason,
+            file: source,
+          },
+        };
+      }
+      return {
+        ok: true as const,
+        item: {
+          sourceName: sanitizeUploadFileName(source.name),
+          file: withSafeUploadFile(compressed).file,
+          sourceFile: source,
+        },
+      };
+    },
+  );
+
+  for (const outcome of outcomes) {
+    if (outcome.ok) {
+      prepared.push(outcome.item);
+    } else {
+      rejected.push(outcome.error);
     }
-
-    prepared.push({
-      sourceName: sanitizeUploadFileName(source.name),
-      file: withSafeUploadFile(compressed).file,
-      sourceFile: source,
-    });
   }
 
   return { prepared, rejected };
@@ -465,6 +499,8 @@ async function uploadViaDirectStorage(
   ok: boolean;
   uploadedName?: string;
   mediaId?: string;
+  key?: string;
+  promoted?: boolean;
   reason?: string;
 }> {
   const safeDisplayName = sanitizeUploadFileName(displayName || file.name);
@@ -604,12 +640,16 @@ async function uploadViaDirectStorage(
       const completed = (await completeRes.json()) as {
         fileName: string;
         mediaId: string;
+        key: string;
+        promoted?: boolean;
       };
 
       return {
         ok: true,
         uploadedName: completed.fileName,
         mediaId: completed.mediaId,
+        key: completed.key,
+        promoted: completed.promoted,
       };
     } catch (error) {
       lastError = error instanceof Error ? error.message : lastError;
@@ -704,6 +744,8 @@ export async function uploadSingleMediaFile(
   ok: boolean;
   uploadedName?: string;
   mediaId?: string;
+  key?: string;
+  promoted?: boolean;
   reason?: string;
 }> {
   const purpose = options?.purpose ?? "upload";
@@ -772,6 +814,7 @@ export async function uploadMediaFilesQueue(
       uploadedCount: 0,
       uploadedNames: [],
       uploadedMediaIds: [],
+      uploadedMediaItems: [],
       failures: [],
       validationErrors: [],
     };
@@ -833,6 +876,7 @@ export async function uploadMediaFilesQueue(
 
   const uploadedNames: string[] = [];
   const uploadedMediaIds: string[] = [];
+  const uploadedMediaItems: UploadedMediaItem[] = [];
   const failures: UploadFileFailure[] = [];
   const uploadTotal = prepared.length;
   let completed = 0;
@@ -868,7 +912,17 @@ export async function uploadMediaFilesQueue(
       callbacks?.onFileUploaded?.(item.sourceFile, result.ok);
       if (result.ok && result.uploadedName) {
         uploadedNames.push(result.uploadedName);
-        if (result.mediaId) uploadedMediaIds.push(result.mediaId);
+        if (result.mediaId) {
+          uploadedMediaIds.push(result.mediaId);
+          if (result.key) {
+            uploadedMediaItems.push({
+              mediaId: result.mediaId,
+              key: result.key,
+              fileName: result.uploadedName,
+              promoted: result.promoted,
+            });
+          }
+        }
       } else {
         failures.push({
           fileName: item.sourceName,
@@ -915,6 +969,7 @@ export async function uploadMediaFilesQueue(
     uploadedCount: uploadedNames.length,
     uploadedNames,
     uploadedMediaIds,
+    uploadedMediaItems,
     failures,
     validationErrors,
   };

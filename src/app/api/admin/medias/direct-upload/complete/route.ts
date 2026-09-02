@@ -26,6 +26,12 @@ const completeSchema = z.object({
     .optional(),
 });
 
+function deferUploadSideEffects(task: () => Promise<void>) {
+  void task().catch((error) => {
+    console.error("[direct-upload/complete] deferred task failed:", error);
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser();
@@ -61,16 +67,19 @@ export async function POST(request: NextRequest) {
       purpose: parsed.data.purpose as DirectUploadPurpose,
     });
 
+    invalidateAdminMediaCache();
+
     if (parsed.data.clientUploadKey) {
-      await saveDirectUploadIdempotentResponse(parsed.data.clientUploadKey, {
-        mediaId: result.mediaId,
-        fileName: result.fileName,
-      });
+      deferUploadSideEffects(() =>
+        saveDirectUploadIdempotentResponse(parsed.data.clientUploadKey!, {
+          mediaId: result.mediaId,
+          fileName: result.fileName,
+        }),
+      );
     }
 
-    invalidateAdminMediaCache();
     if (parsed.data.purpose === "product-draft") {
-      await invalidateStorefrontCache();
+      deferUploadSideEffects(() => invalidateStorefrontCache());
     }
 
     return NextResponse.json(result, { status: 201 });

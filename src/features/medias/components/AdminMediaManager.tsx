@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/AdminLoadingState";
 import {
   type UploadFileFailure,
+  type UploadedMediaItem,
   type UploadProgressUpdate,
   uploadMediaFilesQueue,
 } from "@/lib/admin/client-image-upload";
@@ -95,15 +96,18 @@ export function AdminMediaManager() {
     reset?: boolean;
     page?: number;
     section?: MediaSection;
+    /** Refresh without full-page loading skeleton (e.g. after upload). */
+    soft?: boolean;
   }) => {
     const section = options?.section ?? activeSection;
     const targetPage = options?.page ?? 1;
     const reset = options?.reset ?? targetPage === 1;
+    const soft = Boolean(options?.soft);
 
-    if (reset) {
+    if (reset && !soft) {
       setIsLoading(true);
       setLoadError(null);
-    } else {
+    } else if (!reset) {
       setIsLoadingMore(true);
     }
 
@@ -212,6 +216,33 @@ export function AdminMediaManager() {
     setSelectedIds([...merged]);
   }, [drag, sectionItems]);
 
+  const prependUploadedMedia = (items: UploadedMediaItem[]) => {
+    if (items.length === 0) return;
+    setMedias((prev) => {
+      const existing = new Set(prev.map((item) => item.id));
+      const placeholders: MediaLibraryItem[] = items
+        .filter((item) => !existing.has(item.mediaId))
+        .map((item) => ({
+          id: item.mediaId,
+          key: item.key,
+          alt: item.fileName,
+          createdAt: new Date().toISOString(),
+          section: "product" as const,
+          usage: {
+            bannerSlideCount: 0,
+            productCount: 0,
+            collectionCount: 0,
+            testimonialCount: 0,
+          },
+        }));
+      return [...placeholders, ...prev];
+    });
+    setCounts((prev) => ({
+      ...prev,
+      product: prev.product + items.length,
+    }));
+  };
+
   const runUpload = async (files: File[], options?: { retry?: boolean }) => {
     if (files.length === 0) return;
 
@@ -223,7 +254,7 @@ export function AdminMediaManager() {
       percent: 1,
       message: options?.retry
         ? `Retrying ${files.length} failed image(s)...`
-        : `Checking ${files.length} image(s)...`,
+        : `Optimizing ${files.length} photo(s)...`,
     });
 
     try {
@@ -237,16 +268,26 @@ export function AdminMediaManager() {
               sourceFile: file,
             }))
           : undefined,
+        preferDirectUpload: true,
       });
+
+      if (result.uploadedMediaItems.length > 0) {
+        prependUploadedMedia(result.uploadedMediaItems);
+      }
 
       setUploadProgress({
         phase: "complete",
         current: files.length,
         total: files.length,
-        percent: 98,
-        message: "Refreshing media library...",
+        percent: 99,
+        message: "Upload complete",
       });
-      await loadLibrary({ reset: true, section: activeSection });
+
+      void loadLibrary({
+        reset: true,
+        section: activeSection,
+        soft: true,
+      });
 
       const validationMessages = result.validationErrors.map(
         (entry) => entry.reason,

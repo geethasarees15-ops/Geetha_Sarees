@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { gql } from "@/gql";
 import {
   UPLOAD_LIMIT_BYTES,
+  uploadFileIdentityKey,
   uploadMediaFilesQueue,
 } from "@/lib/admin/client-image-upload";
 import { FileWithPreview } from "@/types";
@@ -130,6 +131,25 @@ function UploadMediaContainer({
     return () => observer.disconnect();
   }, [hasNextPage, loadMore, accumulatedEdges.length]);
 
+  const removeUploadingPreviews = useCallback((files: File[]) => {
+    if (files.length === 0) return;
+    const keys = new Set(files.map(uploadFileIdentityKey));
+    setUploadingImages((prev) => {
+      const kept: FileWithPreview[] = [];
+      for (const item of prev) {
+        if (keys.has(uploadFileIdentityKey(item))) {
+          URL.revokeObjectURL(item.preview);
+          previewUrlsRef.current = previewUrlsRef.current.filter(
+            (url) => url !== item.preview,
+          );
+        } else {
+          kept.push(item);
+        }
+      }
+      return kept;
+    });
+  }, []);
+
   const onDrop = async (acceptedFiles: FileWithPath[]) => {
     if (acceptedFiles.length === 0 || isUploading) return;
 
@@ -149,15 +169,28 @@ function UploadMediaContainer({
         onProgress: (update) => {
           setUploadMessage(update.message);
         },
+        onFileUploaded: (sourceFile, ok) => {
+          if (ok) removeUploadingPreviews([sourceFile]);
+        },
+        preferDirectUpload: true,
       });
 
-      const uploadedNames = new Set(result.uploadedNames);
-      if (uploadedNames.size > 0) {
-        resetGallery();
-        refetch({ requestPolicy: "network-only" });
-        setUploadingImages((prev) =>
-          prev.filter((item) => !uploadedNames.has(item.name)),
-        );
+      removeUploadingPreviews(acceptedFiles);
+
+      if (result.uploadedMediaItems.length > 0) {
+        setAccumulatedEdges((prev) => {
+          const existing = new Set(prev.map((edge) => edge.node.id));
+          const incoming: MediaEdge[] = result.uploadedMediaItems
+            .filter((item) => !existing.has(item.mediaId))
+            .map((item) => ({
+              node: {
+                id: item.mediaId,
+                key: item.key,
+                alt: item.fileName,
+              },
+            }));
+          return [...incoming, ...prev];
+        });
       }
 
       const issueCount =
