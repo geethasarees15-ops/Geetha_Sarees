@@ -156,6 +156,114 @@ export async function putObject(
   return { etag: res.headers.get("etag") };
 }
 
+export type ObjectMeta = {
+  size: number;
+  contentType: string | null;
+};
+
+/** Metadata only — no image bytes through the host. */
+export async function headObjectMeta(params: {
+  key: string;
+  auth?: MediaWriteAuth;
+}): Promise<ObjectMeta> {
+  await assertMediaWriteAuth(params.auth ?? "admin-session");
+
+  const proxy = mediaProxyConfig();
+  const res = proxy
+    ? await proxyFetch(`/object?key=${encodeURIComponent(params.key)}`, {
+        method: "HEAD",
+      })
+    : await getAwsClient().fetch(objectUrl(params.key), { method: "HEAD" });
+
+  if (!res.ok) {
+    throw new Error(
+      res.status === 404
+        ? "Uploaded file not found. Try uploading again."
+        : `R2 head failed (${res.status}).`,
+    );
+  }
+
+  return {
+    size: Number(res.headers.get("content-length") || 0),
+    contentType: res.headers.get("content-type"),
+  };
+}
+
+/**
+ * Copy staging → final inside R2 (Worker promote or S3 CopyObject).
+ * Keeps Vercel CPU low: only JSON keys cross the wire on the happy path.
+ */
+export async function promoteObject(params: {
+  fromKey: string;
+  toKey: string;
+  contentType?: string;
+  cacheControl?: string;
+  deleteSource?: boolean;
+  auth?: MediaWriteAuth;
+}): Promise<ObjectMeta> {
+  await assertMediaWriteAuth(params.auth ?? "admin-session");
+  const deleteSource = params.deleteSource !== false;
+
+  const proxy = mediaProxyConfig();
+  if (proxy) {
+    const res = await proxyFetch("/promote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fromKey: params.fromKey,
+        toKey: params.toKey,
+        contentType: params.contentType,
+        cacheControl:
+          params.cacheControl || "public, max-age=31536000, immutable",
+        deleteSource,
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        res.status === 404
+          ? "Uploaded file not found. Try uploading again."
+          : `R2 promote failed (${res.status})${text ? `: ${text.slice(0, 200)}` : ""}`,
+      );
+    }
+    const json = (await res.json().catch(() => ({}))) as {
+      size?: number;
+      contentType?: string;
+    };
+    return {
+      size: Number(json.size ?? 0),
+      contentType: json.contentType ?? params.contentType ?? null,
+    };
+  }
+
+  const copySource = `/${env.NEXT_PUBLIC_S3_BUCKET}/${params.fromKey}`;
+  const headers: Record<string, string> = {
+    "x-amz-copy-source": copySource,
+    "x-amz-metadata-directive": "REPLACE",
+    "Cache-Control":
+      params.cacheControl || "public, max-age=31536000, immutable",
+  };
+  if (params.contentType) headers["Content-Type"] = params.contentType;
+
+  const copyRes = await getAwsClient().fetch(objectUrl(params.toKey), {
+    method: "PUT",
+    headers,
+  });
+  if (!copyRes.ok) {
+    const text = await copyRes.text().catch(() => "");
+    throw new Error(
+      `R2 copy failed (${copyRes.status})${text ? `: ${text.slice(0, 200)}` : ""}`,
+    );
+  }
+  if (deleteSource) {
+    await deleteObjects({ keys: [params.fromKey], auth: params.auth });
+  }
+  return {
+    size: 0,
+    contentType: params.contentType ?? null,
+  };
+}
+
 export async function getObjectBuffer(params: {
   key: string;
   maxBytes?: number;
