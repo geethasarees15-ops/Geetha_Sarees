@@ -31,7 +31,7 @@ export const siteConfig = {
   description:
     "Geetha Sarees — silk and cotton sarees for weddings, festivals, wholesale and retail",
   searchPlaceholder: "Search silk & cotton sarees, collections…",
-  url: "https://geethasarees.vercel.app",
+  url: "https://geethasaress.com",
   addressLines: ADDRESS_LINES,
   /** Single-line address for compact UI */
   address: ADDRESS_LINES.join(", "),

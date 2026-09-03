@@ -42,7 +42,8 @@ function loadVars() {
     const value = t.slice(eq + 1).trim();
     if (key) vars[key] = value;
   }
-  vars.NEXT_PUBLIC_SITE_URL = "https://geethasarees.vercel.app";
+  vars.NEXT_PUBLIC_SITE_URL =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://geethasaress.com";
   vars.SKIP_ENV_VALIDATION = "true";
   if (!vars.S3_ACCESS_KEY_ID) vars.S3_ACCESS_KEY_ID = "unused-proxy-only";
   if (!vars.S3_SECRET_ACCESS_KEY) vars.S3_SECRET_ACCESS_KEY = "unused-proxy-only";
@@ -129,7 +130,11 @@ async function main() {
     await pushEnv(token, project, vars);
   }
 
-  await triggerDeploy(token, DEPLOY_PROJECT);
+  if (!process.argv.includes("--no-deploy")) {
+    await triggerDeploy(token, DEPLOY_PROJECT);
+  } else {
+    console.log("Skipped deploy (--no-deploy). Redeploy from Vercel dashboard if env changed.");
+  }
 }
 
 main().catch((err) => {

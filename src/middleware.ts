@@ -67,16 +67,11 @@ function redirectStrayOAuthToCallback(
   return NextResponse.redirect(callback);
 }
 
-/** Keep storefront on the canonical custom domain (www) for Cashfree whitelisting. */
+/** Keep storefront on the canonical custom domain (not *.vercel.app). */
 function redirectToCanonicalHost(request: NextRequest): NextResponse | null {
   const hostHeader = request.headers.get("host") ?? "";
   const host = hostHeader.split(":")[0]?.toLowerCase() ?? "";
-  if (
-    !host ||
-    host === "localhost" ||
-    host === "127.0.0.1" ||
-    host.endsWith(".vercel.app")
-  ) {
+  if (!host || host === "localhost" || host === "127.0.0.1") {
     return null;
   }
 
@@ -88,7 +83,23 @@ function redirectToCanonicalHost(request: NextRequest): NextResponse | null {
   }
 
   const canonicalHost = canonical.host.toLowerCase();
+  const isVercelHost = host.endsWith(".vercel.app");
+  const canonicalIsCustom =
+    !canonicalHost.endsWith(".vercel.app") && canonicalHost.includes(".");
+
   if (host === canonicalHost) {
+    return null;
+  }
+
+  // Production custom domain is set — send *.vercel.app traffic to it.
+  if (isVercelHost && canonicalIsCustom) {
+    const redirect = new URL(request.url);
+    redirect.protocol = canonical.protocol;
+    redirect.host = canonicalHost;
+    return NextResponse.redirect(redirect, 308);
+  }
+
+  if (isVercelHost) {
     return null;
   }
 

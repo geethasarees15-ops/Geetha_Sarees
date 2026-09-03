@@ -1,5 +1,5 @@
 /** Canonical storefront origin(s) used for auth redirects and SEO. */
-const DEFAULT_PRODUCTION_ORIGIN = "https://geethasarees.vercel.app";
+const DEFAULT_PRODUCTION_ORIGIN = "https://geethasaress.com";
 
 function normalizeOrigin(value: string): string {
   const trimmed = value.trim().replace(/\/$/, "");

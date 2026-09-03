@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/carousel";
 import { heroSlides, type HeroSlide } from "@/config/heroSlides";
 import { useCarouselAutoAdvance } from "@/features/storefront/hooks/useCarouselAutoAdvance";
-import { cn } from "@/lib/utils";
+import { cn, keytoUrl } from "@/lib/utils";
 
 const HERO_AUTOPLAY_MS = 5500;
 
@@ -87,7 +87,7 @@ export function HomeHeroCarousel({ slides }: Props) {
                     aria-label={`${slide.title} — ${slide.cta}`}
                   />
                   <Image
-                    src={slide.image}
+                    src={keytoUrl(slide.image)}
                     alt={slide.imageAlt}
                     fill
                     priority={isFirstSlide}

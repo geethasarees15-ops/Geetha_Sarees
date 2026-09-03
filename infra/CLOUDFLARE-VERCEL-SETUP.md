@@ -17,7 +17,19 @@ Do **not** point this shop at SSR Tex, Hub, or Thryco Cloudflare / R2 / Redis / 
 
 1. Import [geethasarees15-ops/Geetha_Sarees](https://github.com/geethasarees15-ops/Geetha_Sarees).
 2. Set env vars from `.env.example` with Geetha Sarees values.
-3. Set `NEXT_PUBLIC_SITE_URL` to the Vercel URL (or custom domain later).
+3. Set `NEXT_PUBLIC_SITE_URL` to your live domain (e.g. `https://geethasaress.com`).
+
+## Custom domain (Cloudflare DNS → Vercel)
+
+| Step | Where | What |
+|------|--------|------|
+| 1 | Vercel → project **geethasarees** → Domains | Add `geethasaress.com` and `www.geethasaress.com` |
+| 2 | Cloudflare → zone **geethasaress.com** → DNS | `A` `@` → `76.76.21.21` (proxied); `CNAME` `www` → `cname.vercel-dns.com` (proxied) |
+| 3 | Cloudflare → SSL/TLS | **Full** (not Flexible) |
+| 4 | Vercel env | `NEXT_PUBLIC_SITE_URL=https://geethasaress.com` then redeploy once |
+| 5 | Supabase Auth | Run `node scripts/setup-auth-config.mjs` after `SUPABASE_ACCESS_TOKEN` is set |
+
+Cloudflare on this account is also used for **R2 media** and the media worker — that is separate from the shop domain.
 
 ## Health checks
 

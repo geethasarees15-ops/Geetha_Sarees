@@ -227,10 +227,10 @@ GRANT SELECT ON address TO anon;
 -- 5. SEED DATA – Geetha Sarees (saree categories + sample products)
 -- -----------------------------------------------------------------------------
 INSERT INTO medias (id, key, alt) VALUES
-  ('m1', 'public/silk-sarees.jpg', 'Silk Sarees'),
-  ('m2', 'public/cotton-sarees.jpg', 'Cotton Sarees'),
-  ('m3', 'public/kanchi-sarees.jpg', 'Kanchi Sarees'),
-  ('m4', 'public/designer-sarees.jpg', 'Designer Sarees');
+  ('m1', 'catalog/silk-sarees.webp', 'Silk Sarees'),
+  ('m2', 'catalog/cotton-sarees.webp', 'Cotton Sarees'),
+  ('m3', 'catalog/kanchi-sarees.webp', 'Kanchi Sarees'),
+  ('m4', 'catalog/designer-sarees.webp', 'Designer Sarees');
 
 INSERT INTO collections (id, label, slug, title, description, featured_image_id, "order") VALUES
   ('c1', 'Silk Sarees', 'silk-sarees', 'Premium Silk Sarees', 'Traditional and soft silk sarees for festivals and weddings.', 'm1', 1),
@@ -240,13 +240,13 @@ INSERT INTO collections (id, label, slug, title, description, featured_image_id,
 
 INSERT INTO products (id, name, slug, description, featured, badge, rating, price, stock, collection_id, featured_image_id, images) VALUES
   ('p1', 'Kanchi Semi Silk – Maroon', 'kanchi-semi-silk-maroon',
-   'Elegant semi silk saree with rich border.', true, 'new_product', 4.8, 1299.00, 15, 'c3', 'm3', '["https://placehold.co/600x800/maroon/white?text=Saree+1"]'::jsonb),
+   'Elegant semi silk saree with rich border.', true, 'new_product', 4.8, 1299.00, 15, 'c3', 'm3', '[]'::jsonb),
   ('p2', 'Soft Silk – Gold', 'soft-silk-gold',
-   'Lightweight soft silk for occasions.', true, 'featured', 4.6, 999.00, 20, 'c1', 'm1', '["https://placehold.co/600x800/gold/black?text=Saree+2"]'::jsonb),
+   'Lightweight soft silk for occasions.', true, 'featured', 4.6, 999.00, 20, 'c1', 'm1', '[]'::jsonb),
   ('p3', 'Kerala Cotton – Cream', 'kerala-cotton-cream',
-   'Breathable Kerala cotton saree.', true, 'best_sale', 4.5, 750.00, 25, 'c2', 'm2', '["https://placehold.co/600x800/ivory/black?text=Saree+3"]'::jsonb),
+   'Breathable Kerala cotton saree.', true, 'best_sale', 4.5, 750.00, 25, 'c2', 'm2', '[]'::jsonb),
   ('p4', 'Georgette – Navy Blue', 'georgette-navy',
-   'Flowing georgette saree with blouse piece.', false, NULL, 4.2, 899.00, 10, 'c4', 'm4', '["https://placehold.co/600x800/navy/white?text=Saree+4"]'::jsonb);
+   'Flowing georgette saree with blouse piece.', false, NULL, 4.2, 899.00, 10, 'c4', 'm4', '[]'::jsonb);
 
 -- -----------------------------------------------------------------------------
 -- Done. Next: create admin user in Authentication, then run npm run dev
