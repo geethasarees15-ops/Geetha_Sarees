@@ -11,18 +11,16 @@ import {
 import { cacheExchange } from "@urql/exchange-graphcache";
 import { useMemo, useRef } from "react";
 import { useAuth } from "./AuthProvider";
+import {
+  createSupabaseGraphqlFetch,
+  resolveSupabaseUrl,
+} from "@/lib/supabase/graphql-fetch";
 
-const graphqlUrl = () => {
-  const fromUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (fromUrl) return `${fromUrl.replace(/\/$/, "")}/graphql/v1`;
-
-  const projectRef = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF?.trim();
-  if (projectRef) return `https://${projectRef}.supabase.co/graphql/v1`;
-
-  throw new Error(
-    "Missing Supabase GraphQL env (NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PROJECT_REF).",
+const supabaseUrl = () =>
+  resolveSupabaseUrl(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF,
   );
-};
 
 const anonKey = () => {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -35,10 +33,20 @@ const anonKey = () => {
 export default function Provider({ children }: React.PropsWithChildren) {
   const { session } = useAuth();
   const ssrRef = useRef(ssrExchange());
+  const baseUrl = supabaseUrl();
 
   const client = useMemo(() => {
     return createClient({
-      url: graphqlUrl(),
+      url: `${baseUrl}/graphql/v1`,
+      fetch: createSupabaseGraphqlFetch(baseUrl, () => {
+        const headers: Record<string, string> = {
+          apikey: anonKey(),
+        };
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        return headers;
+      }),
       exchanges: [
         cacheExchange({
           resolvers: {
@@ -53,20 +61,9 @@ export default function Provider({ children }: React.PropsWithChildren) {
         ssrRef.current,
         fetchExchange,
       ],
-      fetchOptions: () => {
-        const headers: Record<string, string> = {
-          apikey: anonKey(),
-        };
-
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`;
-        }
-
-        return { headers };
-      },
       suspense: false,
     });
-  }, [session?.access_token]);
+  }, [baseUrl, session?.access_token]);
 
   return (
     <UrqlProvider client={client} ssr={ssrRef.current}>

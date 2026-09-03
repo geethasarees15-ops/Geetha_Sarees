@@ -34,6 +34,7 @@ const ORDER = [
   "10-admin-products-performance.sql",
   "10-product-lifecycle-cleanup.sql",
   "11-collections-featured-image-nullable.sql",
+  "12-fix-graphql-search-path.sql",
 ];
 
 const url = process.env.DATABASE_URL?.trim();
