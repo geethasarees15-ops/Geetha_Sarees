@@ -19,4 +19,4 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.storefront_graphql(text, jsonb) TO anon, authenticated, service_role;
 
-COMMENT ON SCHEMA public IS E'@graphql({"inflect_names": true, "introspection": true})';
+COMMENT ON SCHEMA public IS E'@graphql({"inflect_names": false, "introspection": true})';
