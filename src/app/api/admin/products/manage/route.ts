@@ -2,10 +2,13 @@ import { deleteOrArchiveProducts } from "@/lib/admin/product-lifecycle";
 import { publicValidationPayload } from "@/lib/api/public-error";
 import { getSessionUser, isAdminUser } from "@/lib/auth/admin";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
+import {
+  revalidateAfterCatalogBulkChange,
+  revalidateAfterProductMutation,
+} from "@/lib/cache/revalidate-product-catalog";
 import db from "@/lib/supabase/db";
 import { products } from "@/lib/supabase/schema";
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -25,14 +28,6 @@ async function ensureAdmin() {
   return user;
 }
 
-async function revalidateProductPages() {
-  revalidatePath("/admin/products");
-  revalidatePath("/shop");
-  revalidatePath("/featured");
-  revalidatePath("/collections");
-  await invalidateStorefrontCache();
-}
-
 export async function DELETE(request: NextRequest) {
   const user = await ensureAdmin();
   if (!user) {
@@ -50,7 +45,8 @@ export async function DELETE(request: NextRequest) {
   }
 
   const outcome = await deleteOrArchiveProducts(parsed.data.ids);
-  await revalidateProductPages();
+  revalidateAfterCatalogBulkChange();
+  await invalidateStorefrontCache();
 
   return NextResponse.json(outcome);
 }
@@ -98,15 +94,17 @@ export async function PATCH(request: NextRequest) {
     .update(products)
     .set({ stock: parsed.data.stock })
     .where(eq(products.id, parsed.data.id))
-    .returning({ id: products.id, stock: products.stock });
+    .returning({
+      id: products.id,
+      stock: products.stock,
+      slug: products.slug,
+    });
 
   if (!updated) {
     return NextResponse.json({ message: "Product not found" }, { status: 404 });
   }
 
-  revalidatePath("/admin/products");
-  revalidatePath("/shop");
-  revalidatePath("/cart");
+  revalidateAfterProductMutation({ slug: updated.slug });
   await invalidateStorefrontCache();
 
   return NextResponse.json({ ok: true, product: updated });

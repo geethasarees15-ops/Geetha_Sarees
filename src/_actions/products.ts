@@ -4,6 +4,7 @@ import db from "@/lib/supabase/db";
 import { products } from "@/lib/supabase/schema";
 import { requireAdminActionUser } from "@/lib/auth/require-admin";
 import { invalidateStorefrontCache } from "@/lib/cache/invalidate-storefront";
+import { revalidateAfterProductMutation } from "@/lib/cache/revalidate-product-catalog";
 import {
   buildBulkProductInsertValues,
   type NormalizedBulkDraftShared,
@@ -16,21 +17,8 @@ import {
 } from "@/lib/admin/save-product";
 import { mapProductSaveError } from "@/lib/supabase/pooler-errors";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
 
 export type { ProductImageOptions };
-
-function revalidateProductCatalogPaths() {
-  // Keep this light — broad layout revalidation after admin saves can surface
-  // as a vague "Server Components" error on serverless.
-  try {
-    revalidatePath("/admin/products");
-    revalidatePath("/shop");
-    revalidatePath("/featured");
-  } catch (error) {
-    console.error("[products] revalidatePath failed:", error);
-  }
-}
 
 async function softInvalidateStorefrontCache() {
   try {
@@ -46,7 +34,7 @@ export const createProductAction = async (
 ) => {
   await requireAdminActionUser();
   const created = await createProductRecord(product, options);
-  revalidateProductCatalogPaths();
+  revalidateAfterProductMutation({ slug: created.slug });
   void softInvalidateStorefrontCache();
   return [created];
 };
@@ -58,7 +46,7 @@ export const updateProductAction = async (
 ) => {
   await requireAdminActionUser();
   const updated = await updateProductRecord(productId, product, options);
-  revalidateProductCatalogPaths();
+  revalidateAfterProductMutation({ slug: updated.slug });
   void softInvalidateStorefrontCache();
   return [updated];
 };
@@ -172,7 +160,7 @@ export async function createDraftProductsFromMedia(
       });
     }
 
-    revalidateProductCatalogPaths();
+    revalidateAfterProductMutation();
     await invalidateStorefrontCache();
     return createdProducts;
   } catch (error) {

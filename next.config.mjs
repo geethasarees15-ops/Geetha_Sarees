@@ -19,6 +19,9 @@ const nextConfig = {
     ];
   },
   images: {
+    // Serve R2/CDN URLs as-is — uploads are already compressed client-side.
+    // Disables Vercel Image Optimization (/_next/image) billing & CPU.
+    unoptimized: true,
     formats: ["image/avif", "image/webp"],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 320, 384, 400],
     remotePatterns: [
