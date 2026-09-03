@@ -10,7 +10,9 @@ import { fileURLToPath } from "url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEAM_ID = "team_LB4nYuqRF3J4bWptxgnlR8NW";
-const PROJECT = "geethasarees";
+/** Both projects import the same GitHub repo — env must match on each. */
+const PROJECTS = ["geethasarees", "geetha-sarees"];
+const DEPLOY_PROJECT = "geethasarees";
 
 function loadToken() {
   if (process.env.VERCEL_TOKEN?.trim()) return process.env.VERCEL_TOKEN.trim();
@@ -47,20 +49,24 @@ function loadVars() {
   return vars;
 }
 
-async function main() {
-  const token = loadToken();
-  const vars = loadVars();
-  const body = Object.entries(vars).map(([key, value]) => ({
+function envBody(vars) {
+  return Object.entries(vars).map(([key, value]) => ({
     key,
     value,
-    type: key.includes("SECRET") || key.includes("KEY") || key.includes("ROLE") || key.includes("PASSWORD")
-      ? "encrypted"
-      : "plain",
+    type:
+      key.includes("SECRET") ||
+      key.includes("KEY") ||
+      key.includes("ROLE") ||
+      key.includes("PASSWORD")
+        ? "encrypted"
+        : "plain",
     target: ["production", "preview"],
   }));
+}
 
+async function pushEnv(token, project, vars) {
   const url = new URL(
-    `https://api.vercel.com/v10/projects/${encodeURIComponent(PROJECT)}/env`,
+    `https://api.vercel.com/v10/projects/${encodeURIComponent(project)}/env`,
   );
   url.searchParams.set("teamId", TEAM_ID);
   url.searchParams.set("upsert", "true");
@@ -71,18 +77,22 @@ async function main() {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(envBody(vars)),
   });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    console.error("Vercel env API failed:", res.status, JSON.stringify(json, null, 2));
-    process.exit(1);
+    throw new Error(
+      `Vercel env API failed for ${project}: ${res.status} ${JSON.stringify(json)}`,
+    );
   }
 
-  console.log("Environment variables upserted for", PROJECT);
-  console.log(JSON.stringify(json, null, 2));
+  const created = json.created?.length ?? 0;
+  const updated = json.updated?.length ?? 0;
+  console.log(`Environment variables upserted for ${project} (+${created} ~${updated})`);
+}
 
+async function triggerDeploy(token, project) {
   const deployUrl = new URL("https://api.vercel.com/v13/deployments");
   deployUrl.searchParams.set("teamId", TEAM_ID);
   const deployRes = await fetch(deployUrl, {
@@ -92,7 +102,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      name: PROJECT,
+      name: project,
       target: "production",
       gitSource: {
         type: "github",
@@ -104,10 +114,22 @@ async function main() {
   });
   const deployJson = await deployRes.json().catch(() => ({}));
   if (!deployRes.ok) {
-    console.warn("Deploy trigger failed (env may still be saved):", deployRes.status, deployJson);
-    return;
+    console.warn(`Deploy trigger failed for ${project}:`, deployRes.status, deployJson);
+    return null;
   }
-  console.log("Production deploy triggered:", deployJson.url || deployJson.id);
+  console.log(`Production deploy triggered for ${project}:`, deployJson.url || deployJson.id);
+  return deployJson;
+}
+
+async function main() {
+  const token = loadToken();
+  const vars = loadVars();
+
+  for (const project of PROJECTS) {
+    await pushEnv(token, project, vars);
+  }
+
+  await triggerDeploy(token, DEPLOY_PROJECT);
 }
 
 main().catch((err) => {
