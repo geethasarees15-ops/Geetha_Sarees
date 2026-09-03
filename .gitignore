@@ -33,6 +33,9 @@ yarn-error.log*
 # local identity/secrets (never push)
 .cursor/*.local.md
 .cursor/ssr-tex-secrets.local.md
+Geetha-Sarees-IDs.txt
+*-IDs.txt
+Supabase password.txt
 
 # vercel
 .vercel
@@ -40,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# compiled worker (deployed via Cloudflare API)
+/workers/r2-media-proxy/dist/

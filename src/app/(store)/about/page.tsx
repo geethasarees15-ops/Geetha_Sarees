@@ -6,25 +6,24 @@ import { STOREFRONT_STATIC_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 export const revalidate = STOREFRONT_STATIC_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
-  title: "Our Story | SRI SAI RAGHAVENDRA TEX",
+  title: "Our Story | Geetha Sarees",
   description:
-    "About SRI SAI RAGHAVENDRA TEX — authentic sarees from Salem, Tamil Nadu",
+    "About Geetha Sarees — authentic silk and cotton sarees",
 };
 
 export default function AboutPage() {
   return (
     <InfoPage
       heading="Our Story"
-      description="SRI SAI RAGHAVENDRA TEX — trusted sarees for every occasion, from our family to yours."
+      description="Geetha Sarees — trusted sarees for every occasion, from our family to yours."
     >
       <p>
-        SRI SAI RAGHAVENDRA TEX has been serving customers across Tamil Nadu
-        with authentic silk and cotton sarees for festivals, weddings, and
+        Geetha Sarees offers authentic silk and cotton sarees for festivals, weddings, and
         everyday elegance. From Kanjivaram and soft silk to cotton and wedding
         collections, we curate quality pieces for retail and wholesale buyers.
       </p>
       <p>
-        Based in Salem district, we combine the warmth of a local textile shop
+        We combine the warmth of a local textile shop
         with the convenience of online ordering. Whether you visit our showroom
         or shop from home, our team is here to help you find the right saree.
       </p>

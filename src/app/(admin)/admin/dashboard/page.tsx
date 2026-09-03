@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: "Dashboard | SRI SAI RAGHAVENDRA TEX Admin",
+  title: "Dashboard | Geetha Sarees Admin",
   description: "Store overview, analytics, reports and notifications",
 };
 

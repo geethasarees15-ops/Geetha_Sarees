@@ -7,11 +7,11 @@ jest.mock("../network/fetchWithTimeout", () => ({
 }));
 
 jest.mock("../utils", () => ({
-  getURL: () => "https://www.sairaghavendratex.com/",
+  getURL: () => "https://geethasarees.vercel.app/",
 }));
 
 jest.mock("../auth/site-urls", () => ({
-  getCanonicalSiteOrigin: () => "https://www.sairaghavendratex.com",
+  getCanonicalSiteOrigin: () => "https://geethasarees.vercel.app",
 }));
 
 import { getCashfreeConfig } from "../integrations/settings";

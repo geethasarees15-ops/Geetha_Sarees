@@ -41,9 +41,7 @@ const TOKEN_PREFIX = "uv1";
 const STAGING_PREFIX = "uploads/staging/";
 
 const CORS_ORIGINS = new Set([
-  "https://www.sairaghavendratex.com",
-  "https://sairaghavendratex.com",
-  "https://ssr-tex-shop_onlin.vercel.app",
+  "https://geethasarees.vercel.app",
   "http://localhost:3000",
   "https://localhost",
   "http://localhost",
@@ -52,7 +50,7 @@ const CORS_ORIGINS = new Set([
 function isAllowedCorsOrigin(origin: string): boolean {
   if (!origin) return false;
   if (CORS_ORIGINS.has(origin)) return true;
-  return /^https:\/\/ssr-tex-shoponlin[\w-]*\.vercel\.app$/i.test(origin);
+  return /^https:\/\/geethasarees[\w-]*\.vercel\.app$/i.test(origin);
 }
 
 function corsHeaders(request: Request): HeadersInit {

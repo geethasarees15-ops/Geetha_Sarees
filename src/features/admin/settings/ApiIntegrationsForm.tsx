@@ -580,7 +580,7 @@ export function ApiIntegrationsForm() {
               id="wa-seller-mobiles"
               value={form.whatsapp.sellerMobiles}
               onChange={(e) => updateWhatsApp("sellerMobiles", e.target.value)}
-              placeholder="7708069049, 9123456789"
+              placeholder="9876543210, 9123456789"
             />
           </div>
         </CardContent>

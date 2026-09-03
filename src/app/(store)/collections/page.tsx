@@ -9,14 +9,14 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "All Collections",
   description:
-    "Browse all saree collections at SRI SAI RAGHAVENDRA TEX — Kanjivaram wedding sarees, cotton sarees, soft silk, traditional silk and festive collections.",
+    "Browse all saree collections at Geetha Sarees — Kanjivaram wedding sarees, cotton sarees, soft silk, traditional silk and festive collections.",
   alternates: {
     canonical: "/collections",
   },
   openGraph: {
-    title: "All Collections | SRI SAI RAGHAVENDRA TEX",
+    title: "All Collections | Geetha Sarees",
     description:
-      "Browse Kanjivaram, cotton, soft silk, wedding and festive saree collections at SRI SAI RAGHAVENDRA TEX.",
+      "Browse Kanjivaram, cotton, soft silk, wedding and festive saree collections at Geetha Sarees.",
     url: "/collections",
   },
 };

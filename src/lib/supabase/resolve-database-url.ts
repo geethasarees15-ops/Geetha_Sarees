@@ -1,6 +1,6 @@
 /**
  * Direct host db.<ref>.supabase.co is unreliable from Vercel.
- * SSR Tex shop uses aws-0-ap-south-1 transaction pooler (port 6543) for serverless.
+ * Prefer aws-0-ap-south-1 transaction pooler (port 6543) for serverless.
  */
 const DEFAULT_REGION = "ap-south-1";
 const DEFAULT_AWS_PREFIX = "aws-0";

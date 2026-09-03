@@ -9,7 +9,7 @@ describe("contact links", () => {
 
   it("returns call or WhatsApp href by mode", () => {
     const contact = {
-      name: "J. Moulee",
+      name: "Store contact",
       phone: "+91 80127 15132",
       phoneHref: "tel:+918012715132",
     };

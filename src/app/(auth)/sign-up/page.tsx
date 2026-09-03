@@ -10,8 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
-  title: "Sign Up | SRI SAI RAGHAVENDRA TEX",
-  description: "Create your SRI SAI RAGHAVENDRA TEX account",
+  title: "Sign Up | Geetha Sarees",
+  description: "Create your Geetha Sarees account",
 };
 
 export default async function SignUpPage() {
@@ -32,7 +32,7 @@ export default async function SignUpPage() {
             Create account
           </h1>
           <p className="text-sm text-muted-foreground">
-            Join SRI SAI RAGHAVENDRA TEX for orders and wishlist
+            Join Geetha Sarees for orders and wishlist
           </p>
         </div>
       </div>

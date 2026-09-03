@@ -13,19 +13,16 @@ const siteUrl = getURL();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "SRI SAI RAGHAVENDRA TEX | Silk & Cotton Sarees",
-    template: "%s | SRI SAI RAGHAVENDRA TEX",
+    default: "Geetha Sarees | Silk & Cotton Sarees",
+    template: "%s | Geetha Sarees",
   },
   description: siteConfig.description,
   keywords: [
-    "SRI SAI RAGHAVENDRA TEX",
-    "SSR Tex",
+    "Geetha Sarees",
     "silk sarees",
     "cotton sarees",
     "Kanjivaram sarees",
     "wedding sarees",
-    "Salem saree shop",
-    "Elampillai sarees",
     "wholesale sarees",
   ],
   applicationName: siteConfig.name,
@@ -42,12 +39,12 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: siteUrl,
     siteName: siteConfig.name,
-    title: "SRI SAI RAGHAVENDRA TEX | Silk & Cotton Sarees",
+    title: "Geetha Sarees | Silk & Cotton Sarees",
     description: siteConfig.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "SRI SAI RAGHAVENDRA TEX | Silk & Cotton Sarees",
+    title: "Geetha Sarees | Silk & Cotton Sarees",
     description: siteConfig.description,
   },
   robots: {
@@ -65,9 +62,9 @@ export const metadata: Metadata = {
     canonical: siteUrl,
   },
   icons: {
-    icon: [{ url: "/images/ssr-tex-emblem.svg", type: "image/svg+xml" }],
-    shortcut: ["/images/ssr-tex-emblem.svg"],
-    apple: [{ url: "/images/ssr-tex-emblem.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/images/geetha-sarees-emblem.svg", type: "image/svg+xml" }],
+    shortcut: ["/images/geetha-sarees-emblem.svg"],
+    apple: [{ url: "/images/geetha-sarees-emblem.svg", type: "image/svg+xml" }],
   },
 };
 

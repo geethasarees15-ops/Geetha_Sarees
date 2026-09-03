@@ -3,7 +3,7 @@ import {
   type AddressFormValues,
 } from "../validations/addressFormSchema";
 
-const STORAGE_KEY = "sakthi_checkout_address_draft";
+const STORAGE_KEY = "geetha_checkout_address_draft";
 
 const emptyDraft = (): AddressFormValues => ({
   fullName: "",

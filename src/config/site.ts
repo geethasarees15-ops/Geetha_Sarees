@@ -1,76 +1,60 @@
 import type { NavItemWithOptionalChildren } from "@/types";
+import type { StoreContact } from "@/lib/contact/links";
 
 export type SiteConfig = typeof siteConfig;
 
-/** Business card — SRI SAI RAGHAVENDRA TEX (SSR Tex) */
-const ADDRESS_LINES = [
-  "Chettiyar Street, Perumal Kovil Opp. Road",
-  "Elampillai – Kadayampatty",
-  "Elampillai, Salem – 637 502",
-] as const;
+/** Geetha Sarees — fill address, GSTIN, and phones in Admin → Settings when ready. */
+const ADDRESS_LINES: string[] = [];
 
-/** Proprietors / contact persons from the business card */
-const CONTACTS = [
-  {
-    name: "J. Moulee",
-    phone: "+91 80127 15132",
-    phoneHref: "tel:+918012715132",
-  },
-  {
-    name: "J. Vimal",
-    phone: "+91 95667 84543",
-    phoneHref: "tel:+919566784543",
-  },
-] as const;
+const CONTACTS: StoreContact[] = [];
 
-const PHONE = CONTACTS[0].phone;
-const PHONE_HREF = CONTACTS[0].phoneHref;
+const PHONE = "";
+const PHONE_HREF = "tel:";
 const EMAIL = "";
-const GSTIN = "33BMCPV3652G1Z1";
+const GSTIN = "";
 
 const SOCIAL = {
   instagram: "",
   youtube: "",
   facebook: "",
-  whatsapp: "https://wa.me/918012715132",
+  whatsapp: "",
 } as const;
 
 export const siteConfig = {
   /** Title-case shop board line (navbar/footer wordmark) */
-  shopBoardName: "Sri Sai Raghavendra Tex",
-  name: "SRI SAI RAGHAVENDRA TEX®",
-  shortName: "SSR Tex",
-  tagline: "Sarees Wholesale & Retail Merchant",
-  /** Town shown on shop board / navbar */
-  location: "ELAMPILLAI",
-  description: "Sarees wholesale & retail merchant — silk and cotton sarees",
+  shopBoardName: "Geetha Sarees",
+  name: "Geetha Sarees",
+  shortName: "Geetha Sarees",
+  tagline: "Sarees Wholesale & Retail",
+  /** Line under the shop name on the board */
+  location: "SILK & COTTON",
+  description:
+    "Geetha Sarees — silk and cotton sarees for weddings, festivals, wholesale and retail",
   searchPlaceholder: "Search silk & cotton sarees, collections…",
-  url: "https://www.sairaghavendratex.com",
+  url: "https://geethasarees.vercel.app",
   addressLines: ADDRESS_LINES,
   /** Single-line address for compact UI */
   address: ADDRESS_LINES.join(", "),
   phone: PHONE,
   /** `tel:` href (digits only, with country code) */
   phoneHref: PHONE_HREF,
-  /** All proprietors / contact numbers from the business card */
   contacts: CONTACTS,
   email: EMAIL,
   gstin: GSTIN,
   currency: "INR",
   currencySymbol: "₹",
-  /** Update with your real profile URLs */
   social: SOCIAL,
   /** Top offer ribbon — rotates on the storefront */
   announcements: [
     {
-      text: "Premium silk & cotton sarees — wholesale & retail at SRI SAI RAGHAVENDRA TEX",
+      text: "Premium silk & cotton sarees — wholesale & retail at Geetha Sarees",
       href: "/shop",
       cta: "Shop now",
     },
     {
-      text: "Visit our store in Salem · Call for orders & enquiries",
-      href: "tel:+917708069049",
-      cta: "Call us",
+      text: "Call or WhatsApp us for orders & enquiries",
+      href: "/contact",
+      cta: "Contact us",
     },
     {
       text: "Explore Kanjivaram, wedding & festive collections",
@@ -159,7 +143,7 @@ export const siteConfig = {
       ],
     },
     {
-      title: "About SRI SAI RAGHAVENDRA TEX",
+      title: "About Geetha Sarees",
       items: [
         { title: "Our Story", href: "/about", items: [] },
         { title: "Our Collections", href: "/collections", items: [] },

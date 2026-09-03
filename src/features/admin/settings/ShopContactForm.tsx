@@ -267,7 +267,7 @@ export function ShopContactForm() {
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, gstin: e.target.value }))
                 }
-                placeholder="33BMCPV3652G1Z1"
+                placeholder="GSTIN (if registered)"
               />
             </div>
             <div className="grid gap-2">
@@ -309,7 +309,7 @@ export function ShopContactForm() {
                     onChange={(e) =>
                       updateContact(index, { name: e.target.value })
                     }
-                    placeholder="J. Moulee"
+                    placeholder="Contact name"
                   />
                 </div>
                 <div className="grid gap-1">
@@ -320,7 +320,7 @@ export function ShopContactForm() {
                     onChange={(e) =>
                       updateContact(index, { phone: e.target.value })
                     }
-                    placeholder="+91 80127 15132"
+                    placeholder="+91 9XXXXXXXXX"
                   />
                 </div>
                 <div className="flex items-end">

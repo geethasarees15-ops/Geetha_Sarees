@@ -7,9 +7,9 @@ import { STOREFRONT_STATIC_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 export const revalidate = STOREFRONT_STATIC_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
-  title: "FAQ | SRI SAI RAGHAVENDRA TEX",
+  title: "FAQ | Geetha Sarees",
   description:
-    "Frequently asked questions about SRI SAI RAGHAVENDRA TEX sarees",
+    "Frequently asked questions about Geetha Sarees sarees",
 };
 
 const faqs = [
@@ -23,7 +23,7 @@ const faqs = [
   },
   {
     q: "Can I visit your store?",
-    a: "Yes. We are located in Elampillai, Salem district. See our Contact page for the full address and phone number.",
+    a: "Yes. See our Contact page for the store address and phone number.",
   },
   {
     q: "Are the sarees pure silk?",
@@ -41,7 +41,7 @@ export default async function FaqPage() {
   return (
     <InfoPage
       heading="FAQ"
-      description="Answers to common questions about shopping with SRI SAI RAGHAVENDRA TEX."
+      description="Answers to common questions about shopping with Geetha Sarees."
     >
       <ul className="space-y-6">
         {faqs.map(({ q, a }) => (

@@ -1,0 +1,25 @@
+---
+description: Geetha Sarees shop identity only — never SSR Tex, Hub, or Thryco
+alwaysApply: true
+---
+
+# Geetha Sarees shop identity (this workspace only)
+
+This repo is **Geetha Sarees**. Use **only** this project's GitHub, Vercel, Supabase, and keys. Do not reuse SRI SAI RAGHAVENDRA TEX, Hub of crafts, or Thryco accounts.
+
+Load credentials from `.env.local`. Never commit secrets. Never paste keys into git.
+
+## Canonical identity
+
+| What | Use this |
+|------|----------|
+| Brand | Geetha Sarees |
+| GitHub | `geethasarees15-ops/Geetha_Sarees` |
+| Default site URL | `https://geethasarees.vercel.app` until a custom domain is added |
+| Env site URL | `NEXT_PUBLIC_SITE_URL` in `.env.local` / Vercel |
+
+## Do not
+
+- Copy SSR Tex / Sakthi / Hub API keys, Redis, R2, or Supabase into this shop.
+- Leave SSR Tex names, Elampillai, or sairaghavendratex.com in customer-facing copy.
+- Commit `.env.local` or personal access tokens.

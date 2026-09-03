@@ -5,8 +5,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
-const input = process.argv[2] ?? path.join(root, "public/images/ssr-brand-banner-source.png");
-const output = path.join(root, "public/images/ssr-brand-banner.png");
+const input = process.argv[2] ?? path.join(root, "public/images/geetha-brand-banner-source.png");
+const output = path.join(root, "public/images/geetha-brand-banner.png");
 
 function isBackgroundPixel(r, g, b) {
   const lum = 0.299 * r + 0.587 * g + 0.114 * b;

@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* SSR Tex — regal plum purple primary with champagne gold accents */
+    /* Geetha Sarees — regal plum purple primary with champagne gold accents */
     --background: 320 28% 98%;
     --foreground: 318 35% 14%;
 
@@ -217,7 +217,7 @@ html {
   animation: phone-glow 2.2s ease-in-out infinite;
 }
 
-/* SSR Tex shop-board — gold on purple; solid text (no background-clip) for mobile/dark reliability */
+/* Geetha Sarees shop-board — gold on purple; solid text (no background-clip) for mobile/dark reliability */
 .brand-board-lockup {
   isolation: isolate;
   color-scheme: light;

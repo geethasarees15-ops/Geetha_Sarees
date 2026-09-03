@@ -21,16 +21,16 @@ import type { Metadata } from "next";
 export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
-  title: "SRI SAI RAGHAVENDRA TEX | Premium Silk & Cotton Sarees Online",
+  title: "Geetha Sarees | Premium Silk & Cotton Sarees Online",
   description:
-    "Shop authentic silk and cotton sarees at SRI SAI RAGHAVENDRA TEX. Explore featured sarees, wedding collections, Kanjivaram styles, and wholesale sarees from Salem.",
+    "Shop authentic silk and cotton sarees at Geetha Sarees. Explore featured sarees, wedding collections, Kanjivaram styles, and wholesale sarees.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "SRI SAI RAGHAVENDRA TEX | Premium Silk & Cotton Sarees Online",
+    title: "Geetha Sarees | Premium Silk & Cotton Sarees Online",
     description:
-      "Shop authentic silk and cotton sarees at SRI SAI RAGHAVENDRA TEX. Explore featured sarees, wedding collections, and wholesale sarees from Salem.",
+      "Shop authentic silk and cotton sarees at Geetha Sarees. Explore featured sarees, wedding collections, and wholesale sarees.",
     url: "/",
   },
 };

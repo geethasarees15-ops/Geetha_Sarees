@@ -25,7 +25,7 @@ function GoldRule({ widthPx }: { widthPx: number }) {
   );
 }
 
-/** Shop sign lockup — transparent SSR medallion left + purple text panel right. */
+/** Shop sign lockup — GS emblem left + purple text panel right. */
 export function BrandWordmark({
   className,
   size = "md",
@@ -44,7 +44,7 @@ export function BrandWordmark({
       aria-label={`${siteConfig.shopBoardName}, ${siteConfig.location}`}
     >
       <Image
-        src="/images/ssr-emblem.png"
+        src="/images/geetha-sarees-emblem.svg"
         alt=""
         width={config.emblemPx}
         height={config.emblemPx}

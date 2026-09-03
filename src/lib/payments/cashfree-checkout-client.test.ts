@@ -14,9 +14,9 @@ describe("cashfree-checkout-client", () => {
 
   it("builds client return URLs from the current origin", () => {
     expect(
-      buildClientCashfreeReturnUrl("https://www.sairaghavendratex.com"),
+      buildClientCashfreeReturnUrl("https://geethasarees.vercel.app"),
     ).toBe(
-      "https://www.sairaghavendratex.com/api/cashfree/redirect?order_id={order_id}",
+      "https://geethasarees.vercel.app/api/cashfree/redirect?order_id={order_id}",
     );
   });
 
@@ -27,8 +27,8 @@ describe("cashfree-checkout-client", () => {
       paymentSessionId: "session_abc123",
       environment: "production",
       returnUrl:
-        "https://www.sairaghavendratex.com/api/cashfree/redirect?order_id={order_id}",
-      checkoutOrigin: "https://www.sairaghavendratex.com",
+        "https://geethasarees.vercel.app/api/cashfree/redirect?order_id={order_id}",
+      checkoutOrigin: "https://geethasarees.vercel.app",
     });
 
     expect(parsed.paymentSessionId).toBe("session_abc123");
@@ -42,8 +42,8 @@ describe("cashfree-checkout-client", () => {
         paymentSessionId: "bad",
         environment: "production",
         returnUrl:
-          "https://www.sairaghavendratex.com/api/cashfree/redirect?order_id={order_id}",
-        checkoutOrigin: "https://www.sairaghavendratex.com",
+          "https://geethasarees.vercel.app/api/cashfree/redirect?order_id={order_id}",
+        checkoutOrigin: "https://geethasarees.vercel.app",
       }),
     ).toThrow("Invalid Cashfree checkout response");
   });
@@ -71,8 +71,8 @@ describe("cashfree-checkout-client", () => {
       paymentSessionId: "session_abc123",
       environment: "production" as const,
       returnUrl:
-        "https://www.sairaghavendratex.com/api/cashfree/redirect?order_id={order_id}",
-      checkoutOrigin: "https://www.sairaghavendratex.com",
+        "https://geethasarees.vercel.app/api/cashfree/redirect?order_id={order_id}",
+      checkoutOrigin: "https://geethasarees.vercel.app",
     };
 
     openCashfreeCheckout({ payload });

@@ -8,9 +8,9 @@ import { Metadata } from "next";
 export const revalidate = STOREFRONT_STATIC_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | SRI SAI RAGHAVENDRA TEX",
+  title: "Terms & Conditions | Geetha Sarees",
   description:
-    "Terms and Conditions and Terms of Use for shopping at SRI SAI RAGHAVENDRA TEX (SSR Tex) online saree store.",
+    "Terms and Conditions and Terms of Use for shopping at Geetha Sarees (Geetha Sarees) online saree store.",
   alternates: {
     canonical: "/terms-and-conditions",
   },
@@ -41,7 +41,7 @@ export default async function TermsAndConditionsPage() {
             {siteConfig.url.replace(/^https:\/\//, "")}
           </Link>{" "}
           operated by {businessName}, a sarees wholesale and retail merchant
-          based in Elampillai, Salem, Tamil Nadu, India (&quot;we&quot;,
+          in India (&quot;we&quot;,
           &quot;us&quot;, &quot;our&quot;).
         </p>
         <p>
@@ -200,9 +200,8 @@ export default async function TermsAndConditionsPage() {
           10. Governing law
         </h2>
         <p>
-          These Terms are governed by the laws of India. Courts in Salem, Tamil
-          Nadu shall have jurisdiction, subject to applicable consumer
-          protection laws.
+          These Terms are governed by the laws of India. Courts in India shall
+          have jurisdiction, subject to applicable consumer protection laws.
         </p>
       </section>
 

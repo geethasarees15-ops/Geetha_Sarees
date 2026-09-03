@@ -87,7 +87,7 @@ export const SEO_PRIMARY_NAV = [
   {
     name: "Contact us",
     href: "/contact",
-    description: "Visit our Salem store or call for orders and enquiries.",
+    description: "Call or message us for orders and enquiries.",
   },
   {
     name: "Terms & Conditions",

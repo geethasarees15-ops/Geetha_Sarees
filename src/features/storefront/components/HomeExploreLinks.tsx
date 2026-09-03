@@ -5,17 +5,17 @@ export function HomeExploreLinks() {
   return (
     <section
       className="border-t py-8 md:py-10"
-      aria-labelledby="explore-sakthi-heading"
+      aria-labelledby="explore-geetha-heading"
     >
       <h2
-        id="explore-sakthi-heading"
+        id="explore-geetha-heading"
         className="font-[family-name:var(--font-hero-serif)] text-xl font-semibold text-foreground md:text-2xl"
       >
-        Explore SRI SAI RAGHAVENDRA TEX
+        Explore Geetha Sarees
       </h2>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">
         Shop premium silk and cotton sarees online, browse collections, and
-        contact our Salem store for wholesale and retail orders.
+        contact us for wholesale and retail orders.
       </p>
       <nav
         className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"

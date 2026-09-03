@@ -11,8 +11,8 @@ import {
 
 describe("stripRegisteredMarks", () => {
   it("removes ® and (R)", () => {
-    expect(stripRegisteredMarks("SRI SAI RAGHAVENDRA TEX®")).toBe(
-      "SRI SAI RAGHAVENDRA TEX",
+    expect(stripRegisteredMarks("Geetha Sarees®")).toBe(
+      "Geetha Sarees",
     );
     expect(stripRegisteredMarks("Brand (R) Name")).toBe("Brand Name");
   });
@@ -22,19 +22,19 @@ describe("formatPdfFromAddress", () => {
   it("strips brand mark and GSTIN line", () => {
     const from = formatPdfFromAddress(
       [
-        "SRI SAI RAGHAVENDRA TEX®",
+        "Geetha Sarees",
         "Chettiyar Street",
-        "Elampillai, Salem – 637 502",
-        "Ph: +91 80127 15132",
-        "GSTIN: 33BMCPV3652G1Z1",
+        "City, State – 000 000",
+        "Ph: +91 98765 43210",
+        "GSTIN: 33AAAAA0000A1Z5",
       ].join("\n"),
     );
     expect(from).toBe(
       [
-        "SRI SAI RAGHAVENDRA TEX",
+        "Geetha Sarees",
         "Chettiyar Street",
-        "Elampillai, Salem – 637 502",
-        "Ph: +91 80127 15132",
+        "City, State – 000 000",
+        "Ph: +91 98765 43210",
       ].join("\n"),
     );
     expect(from).not.toMatch(/GSTIN/i);
@@ -94,7 +94,7 @@ describe("expandCountryInToIndia / extractIndianMobile", () => {
 describe("quality bar validatePdfLabelAddresses", () => {
   it("passes formatted FROM/TO", () => {
     const prepared = prepareValidatedPdfAddresses({
-      from: "SRI SAI RAGHAVENDRA TEX®\nStreet\nGSTIN: 33BMCPV3652G1Z1",
+      from: "Geetha Sarees®\nStreet\nGSTIN: 33AAAAA0000A1Z5",
       to: "Name\nAddr\nIN\nuser@x.com\n9876543210",
     });
     expect(validatePdfLabelAddresses(prepared)).toEqual([]);

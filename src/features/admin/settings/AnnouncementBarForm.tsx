@@ -298,7 +298,7 @@ export function AnnouncementBarForm() {
                 id={`announcement-href-${index}`}
                 value={line.href}
                 onChange={(e) => updateLine(index, "href", e.target.value)}
-                placeholder="/shop or tel:+917708069049"
+                placeholder="/shop or /contact"
               />
             </div>
           </CardContent>

@@ -1,4 +1,4 @@
-/** SSR Tex brand palette — matches shop-board sign (purple + gold) */
+/** Geetha Sarees brand palette — matches shop-board sign (purple + gold) */
 export const brandColors = {
   purple: "#6B1858",
   purpleDark: "#55104A",
