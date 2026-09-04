@@ -88,14 +88,31 @@ function useCartActions(
         });
         refetch({ requestPolicy: "network-only" });
       }
+      if (res?.error) {
+        if (!opts.silent) {
+          toast({
+            title: "Could not add to cart",
+            description: res.error.message,
+            variant: "destructive",
+          });
+        }
+        return { blockedBulk: false, added: false };
+      }
       if (size) {
         setProductSize(productId, size);
       }
-      if (res && !res.error && !opts.silent)
+      if (!opts.silent) {
         toast({ title: "Success, Added a Product to the Cart." });
+      }
       return { blockedBulk: false, added: true };
     } catch {
-      if (!opts.silent) toast({ title: "Error, Unexpected Error occurred." });
+      if (!opts.silent) {
+        toast({
+          title: "Could not add to cart",
+          description: "Unexpected error. Please try again.",
+          variant: "destructive",
+        });
+      }
       return { blockedBulk: false, added: false };
     }
   };

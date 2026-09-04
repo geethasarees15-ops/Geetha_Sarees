@@ -1,9 +1,9 @@
 "use client";
 
-import useCartStore, { type CartItems } from "@/features/carts/useCartStore";
+import useCartStore from "@/features/carts/useCartStore";
+import { mergeGuestCartIntoAccount } from "@/lib/cart/merge-guest-cart";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthUser, Session } from "@supabase/supabase-js";
-import { nanoid } from "nanoid";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../lib/supabase/client";
@@ -116,12 +116,21 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
 
         switch (_event) {
           case "INITIAL_SESSION":
-            supabase.auth.getUser().then(({ data }) => {
+            supabase.auth.getUser().then(async ({ data }) => {
               setUser(data.user);
               if (data.user?.id) {
+                const guestCart = useCartStore.getState().cart;
+                if (Object.keys(guestCart).length > 0) {
+                  const { merged, error } = await mergeGuestCartIntoAccount(
+                    supabase,
+                    data.user.id,
+                    guestCart,
+                  );
+                  if (!error && merged > 0) {
+                    removeAllCartStorage();
+                  }
+                }
                 void syncLocalWishlistToAccount(data.user.id);
-              } else {
-                // Stay on device-local wishlist when signed out.
               }
             });
             break;
@@ -138,33 +147,23 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({
             break;
 
           case "SIGNED_IN":
-            supabase.auth.getUser().then(({ data }) => {
+            supabase.auth.getUser().then(async ({ data }) => {
               setUser(data.user);
 
               if (!data.user) return;
 
-              try {
-                const raw = localStorage.getItem("cart");
-                if (raw) {
-                  const parsed = JSON.parse(raw) as { cart?: CartItems };
-                  const cart = parsed?.cart;
-                  if (cart && typeof cart === "object") {
-                    const storageCarts = Object.entries(cart).map(
-                      ([productId, productValue]) => ({
-                        id: nanoid(),
-                        productId,
-                        quantity: productValue.quantity,
-                        userId: data.user!.id,
-                      }),
-                    );
-
-                    if (storageCarts.length > 0) {
-                      supabase.from("carts").insert(storageCarts);
-                    }
-                  }
+              const guestCart = useCartStore.getState().cart;
+              if (Object.keys(guestCart).length > 0) {
+                const { merged, error } = await mergeGuestCartIntoAccount(
+                  supabase,
+                  data.user.id,
+                  guestCart,
+                );
+                if (error) {
+                  console.error("[cart] guest merge failed:", error);
+                } else if (merged > 0) {
+                  removeAllCartStorage();
                 }
-              } catch {
-                // Ignore invalid guest cart payload in localStorage.
               }
             });
 
