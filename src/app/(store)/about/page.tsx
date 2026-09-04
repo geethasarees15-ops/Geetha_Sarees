@@ -1,14 +1,16 @@
 import InfoPage from "@/components/layouts/InfoPage";
 import Link from "next/link";
-import { Metadata } from "next";
 import { STOREFRONT_STATIC_REVALIDATE_SECONDS } from "@/lib/cache/constants";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = STOREFRONT_STATIC_REVALIDATE_SECONDS;
 
-export const metadata: Metadata = {
-  title: "Our Story | Geetha Sarees",
-  description: "About Geetha Sarees — authentic silk and cotton sarees",
-};
+export const metadata = buildPageMetadata({
+  title: "Our Story",
+  description:
+    "About Geetha saree's — authentic silk and cotton sarees for weddings, festivals, wholesale and retail.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

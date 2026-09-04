@@ -18,25 +18,17 @@ import {
   buildShopSearchVariables,
   formatShopPriceRangeHeading,
 } from "@/lib/storefront/search-params";
-import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 import { Suspense } from "react";
 
 export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: "Shop All Sarees",
   description:
-    "Browse all silk, cotton, wedding and festive sarees at Geetha Sarees. Shop online with secure checkout and delivery across India.",
-  alternates: {
-    canonical: "/shop",
-  },
-  openGraph: {
-    title: "Shop All Sarees | Geetha Sarees",
-    description:
-      "Browse all silk, cotton, wedding and festive sarees at Geetha Sarees.",
-    url: "/shop",
-  },
-};
+    "Browse all silk, cotton, wedding and festive sarees at Geetha saree's. Shop online at geethasarees.com with secure checkout and delivery across India.",
+  path: "/shop",
+});
 
 interface ProductsPageProps {
   searchParams: {

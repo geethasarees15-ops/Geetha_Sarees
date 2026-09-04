@@ -16,24 +16,19 @@ import { getLandingPageDataCached } from "@/lib/storefront/landing-data";
 import { getShopByPriceBucketsCached } from "@/lib/storefront/shop-by-price";
 import { resolveStorefrontContact } from "@/lib/integrations/settings";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
-import type { Metadata } from "next";
+import {
+  buildPageMetadata,
+  SEO_DEFAULT_DESCRIPTION,
+  SEO_DEFAULT_TITLE,
+} from "@/lib/seo/metadata";
 
 export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
-export const metadata: Metadata = {
-  title: "Geetha Sarees | Premium Silk & Cotton Sarees Online",
-  description:
-    "Shop authentic silk and cotton sarees at Geetha Sarees. Explore featured sarees, wedding collections, Kanjivaram styles, and wholesale sarees.",
-  alternates: {
-    canonical: "/",
-  },
-  openGraph: {
-    title: "Geetha Sarees | Premium Silk & Cotton Sarees Online",
-    description:
-      "Shop authentic silk and cotton sarees at Geetha Sarees. Explore featured sarees, wedding collections, and wholesale sarees.",
-    url: "/",
-  },
-};
+export const metadata = buildPageMetadata({
+  title: SEO_DEFAULT_TITLE,
+  description: SEO_DEFAULT_DESCRIPTION,
+  path: "/",
+});
 
 const SECTION_TIMEOUT_MS = 5000;
 

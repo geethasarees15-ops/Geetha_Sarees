@@ -28,7 +28,9 @@ export function buildOrganizationJsonLd() {
         siteConfig.addressLines.slice(0, 2).join(", ") || undefined,
       addressCountry: "IN",
     },
-    sameAs: Object.values(siteConfig.social),
+    sameAs: Object.values(siteConfig.social).filter(
+      (url): url is string => typeof url === "string" && url.length > 0,
+    ),
   };
 }
 

@@ -4,13 +4,14 @@ import {
   resolveStorefrontSocial,
 } from "@/lib/integrations/settings";
 import Link from "next/link";
-import { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Contact | Geetha Sarees",
+export const metadata = buildPageMetadata({
+  title: "Contact",
   description:
-    "Contact Geetha Sarees — phone, email, WhatsApp, and store address",
-};
+    "Contact Geetha saree's — call 8825716025, WhatsApp, email, and store address at geethasarees.com.",
+  path: "/contact",
+});
 
 export const revalidate = 60;
 

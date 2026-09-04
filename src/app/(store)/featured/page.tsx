@@ -3,28 +3,20 @@ import { Shell } from "@/components/layouts/Shell";
 import { SearchProductsGridSkeleton } from "@/features/products";
 import { FeaturedProductsScroll } from "@/features/search";
 import { Suspense } from "react";
-import { Metadata } from "next";
 import { STOREFRONT_REVALIDATE_SECONDS } from "@/lib/cache/constants";
 import { withFallback } from "@/lib/resilience";
 import { getDraftProductIdsSafe } from "@/lib/storefront/draft-product-ids";
 import { fetchFeaturedProductsCached } from "@/lib/storefront/product-queries";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = STOREFRONT_REVALIDATE_SECONDS;
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: "Featured Sarees",
   description:
-    "Discover handpicked featured sarees at Geetha Sarees — premium styles for weddings, festivals and special occasions.",
-  alternates: {
-    canonical: "/featured",
-  },
-  openGraph: {
-    title: "Featured Sarees | Geetha Sarees",
-    description:
-      "Discover handpicked featured sarees at Geetha Sarees for weddings and festivals.",
-    url: "/featured",
-  },
-};
+    "Discover handpicked featured sarees at Geetha saree's — premium styles for weddings, festivals and special occasions.",
+  path: "/featured",
+});
 
 const FEATURED_PAGE_SIZE = 12;
 

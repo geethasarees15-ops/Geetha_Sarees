@@ -2,24 +2,16 @@ import Header from "@/components/layouts/Header";
 import { Shell } from "@/components/layouts/Shell";
 import CollectionsCard from "@/features/collections/components/CollectionsCard";
 import { getAllCollectionsCached } from "@/lib/storefront/collections-list";
-import { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: "All Collections",
   description:
-    "Browse all saree collections at Geetha Sarees — Kanjivaram wedding sarees, cotton sarees, soft silk, traditional silk and festive collections.",
-  alternates: {
-    canonical: "/collections",
-  },
-  openGraph: {
-    title: "All Collections | Geetha Sarees",
-    description:
-      "Browse Kanjivaram, cotton, soft silk, wedding and festive saree collections at Geetha Sarees.",
-    url: "/collections",
-  },
-};
+    "Browse all saree collections at Geetha saree's — Kanjivaram wedding sarees, cotton sarees, soft silk, traditional silk and festive collections.",
+  path: "/collections",
+});
 
 export default async function AllCollectionsPage() {
   const collectionsCollection = await getAllCollectionsCached();
