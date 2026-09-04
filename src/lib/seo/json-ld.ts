@@ -29,9 +29,7 @@ export function buildOrganizationJsonLd() {
       addressRegion: "Tamil Nadu",
       addressCountry: "IN",
     },
-    sameAs: Object.values(siteConfig.social).filter(
-      (url): url is string => typeof url === "string" && url.length > 0,
-    ),
+    sameAs: Object.values(siteConfig.social).filter((url) => url.length > 0),
   };
 }
 
