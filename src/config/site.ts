@@ -3,13 +3,19 @@ import type { StoreContact } from "@/lib/contact/links";
 
 export type SiteConfig = typeof siteConfig;
 
-/** Geetha Sarees — fill address, GSTIN, and phones in Admin → Settings when ready. */
-const ADDRESS_LINES: string[] = [];
-
-const CONTACTS: StoreContact[] = [];
-
+/** Geetha Sarees — storefront address & contact (also editable in Admin → Settings). */
 const PHONE = "8825716025";
 const PHONE_HREF = "tel:+918825716025";
+
+const ADDRESS_LINES: string[] = [
+  "Gurunatha Samy Kovil Street, Elampillai",
+  "Landmark: Opposite Saravana Balaji Hospital",
+  "Tamil Nadu, India",
+];
+
+const CONTACTS: StoreContact[] = [
+  { name: "Geetha Sarees", phone: PHONE, phoneHref: PHONE_HREF },
+];
 const EMAIL = "";
 const GSTIN = "";
 
@@ -27,9 +33,9 @@ export const siteConfig = {
   shortName: "Geetha saree's",
   tagline: "Sarees Wholesale & Retail",
   /** Legacy subline under wordmark (logo includes contact line) */
-  location: "8825716025",
+  location: "Elampillai · 8825716025",
   description:
-    "Geetha saree's — premium silk and cotton sarees for weddings, festivals, wholesale and retail. Call or WhatsApp 8825716025.",
+    "Geetha saree's — premium silk and cotton sarees in Elampillai. Visit us on Gurunatha Samy Kovil Street (opposite Saravana Balaji Hospital) or call / WhatsApp 8825716025.",
   searchPlaceholder: "Search silk & cotton sarees, collections…",
   url: "https://geethasarees.com",
   addressLines: ADDRESS_LINES,

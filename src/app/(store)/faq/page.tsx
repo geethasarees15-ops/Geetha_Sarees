@@ -22,7 +22,7 @@ const faqs = [
   },
   {
     q: "Can I visit your store?",
-    a: "Yes. See our Contact page for the store address and phone number.",
+    a: "Yes. We are on Gurunatha Samy Kovil Street, Elampillai — opposite Saravana Balaji Hospital. Call 8825716025 before you visit.",
   },
   {
     q: "Are the sarees pure silk?",

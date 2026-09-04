@@ -9,7 +9,7 @@ import { buildPageMetadata } from "@/lib/seo/metadata";
 export const metadata = buildPageMetadata({
   title: "Contact",
   description:
-    "Contact Geetha saree's — call 8825716025, WhatsApp, email, and store address at geethasarees.com.",
+    "Visit Geetha saree's at Gurunatha Samy Kovil Street, Elampillai (opposite Saravana Balaji Hospital). Call or WhatsApp 8825716025.",
   path: "/contact",
 });
 
@@ -24,7 +24,7 @@ export default async function ContactPage() {
   return (
     <InfoPage
       heading="Contact Us"
-      description="Reach Geetha Sarees by phone, WhatsApp, email, or visit our store."
+      description="Reach Geetha Sarees at our Elampillai store, by phone, or on WhatsApp."
     >
       <section id="store" className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">

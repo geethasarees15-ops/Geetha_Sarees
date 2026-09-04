@@ -24,8 +24,9 @@ export function buildOrganizationJsonLd() {
     telephone: siteConfig.phone || undefined,
     address: {
       "@type": "PostalAddress",
-      streetAddress:
-        siteConfig.addressLines.slice(0, 2).join(", ") || undefined,
+      streetAddress: "Gurunatha Samy Kovil Street",
+      addressLocality: "Elampillai",
+      addressRegion: "Tamil Nadu",
       addressCountry: "IN",
     },
     sameAs: Object.values(siteConfig.social).filter(
@@ -64,7 +65,9 @@ export function buildStoreJsonLd() {
     email: siteConfig.email || undefined,
     address: {
       "@type": "PostalAddress",
-      streetAddress: siteConfig.address || undefined,
+      streetAddress: "Gurunatha Samy Kovil Street",
+      addressLocality: "Elampillai",
+      addressRegion: "Tamil Nadu",
       addressCountry: "IN",
     },
     priceRange: "₹₹",
