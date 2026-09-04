@@ -8,8 +8,8 @@ const ADDRESS_LINES: string[] = [];
 
 const CONTACTS: StoreContact[] = [];
 
-const PHONE = "";
-const PHONE_HREF = "tel:";
+const PHONE = "8825716025";
+const PHONE_HREF = "tel:+918825716025";
 const EMAIL = "";
 const GSTIN = "";
 
@@ -17,21 +17,21 @@ const SOCIAL = {
   instagram: "",
   youtube: "",
   facebook: "",
-  whatsapp: "",
+  whatsapp: "https://wa.me/918825716025",
 } as const;
 
 export const siteConfig = {
-  /** Title-case shop board line (navbar/footer wordmark) */
-  shopBoardName: "Geetha Sarees",
-  name: "Geetha Sarees",
-  shortName: "Geetha Sarees",
+  /** Display name — matches logo */
+  shopBoardName: "Geetha saree's",
+  name: "Geetha saree's",
+  shortName: "Geetha saree's",
   tagline: "Sarees Wholesale & Retail",
-  /** Line under the shop name on the board */
-  location: "SILK & COTTON",
+  /** Legacy subline under wordmark (logo includes contact line) */
+  location: "8825716025",
   description:
-    "Geetha Sarees — silk and cotton sarees for weddings, festivals, wholesale and retail",
+    "Geetha saree's — premium silk and cotton sarees for weddings, festivals, wholesale and retail. Call or WhatsApp 8825716025.",
   searchPlaceholder: "Search silk & cotton sarees, collections…",
-  url: "https://geethasaress.com",
+  url: "https://geethasarees.com",
   addressLines: ADDRESS_LINES,
   /** Single-line address for compact UI */
   address: ADDRESS_LINES.join(", "),
@@ -52,9 +52,9 @@ export const siteConfig = {
       cta: "Shop now",
     },
     {
-      text: "Call or WhatsApp us for orders & enquiries",
-      href: "/contact",
-      cta: "Contact us",
+      text: "Call or WhatsApp 8825716025 for orders & enquiries",
+      href: "https://wa.me/918825716025",
+      cta: "Chat now",
     },
     {
       text: "Explore Kanjivaram, wedding & festive collections",

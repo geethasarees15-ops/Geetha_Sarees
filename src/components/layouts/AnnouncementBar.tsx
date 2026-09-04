@@ -18,12 +18,12 @@ function isExternalHref(href: string) {
 
 function MarqueeItem({ item }: { item: Announcement }) {
   const className =
-    "inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-white/95 transition-opacity hover:text-white sm:text-sm";
+    "inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-foreground/90 transition-opacity hover:text-foreground sm:text-sm";
 
   const content = (
     <>
       <span>{item.text}</span>
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FFD700] sm:text-[11px]">
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-primary sm:text-[11px]">
         {item.cta}
         <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
       </span>
@@ -66,7 +66,7 @@ function MarqueeStrip({
           className="inline-flex items-center gap-10 sm:gap-14"
         >
           {index > 0 ? (
-            <span className="text-[#C5A059]/70 select-none" aria-hidden>
+            <span className="text-brand-gold-border/70 select-none" aria-hidden>
               ◆
             </span>
           ) : null}
@@ -84,14 +84,10 @@ export function AnnouncementBar() {
   if (items.length === 1) {
     const item = items[0];
     return (
-      <div className="relative overflow-hidden border-b border-[#C5A059]/25 bg-[#55104A]">
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#3A0838] via-[#55104A] to-[#3A0838]"
-          aria-hidden
-        />
+      <div className="store-announcement-bar relative overflow-hidden">
         <div className="relative z-10 flex h-[var(--announcement-bar-height)] items-center justify-center gap-2 px-3 sm:px-4">
           <Sparkles
-            className="hidden h-3.5 w-3.5 shrink-0 text-[#E8D5A3] sm:block"
+            className="hidden h-3.5 w-3.5 shrink-0 text-primary sm:block"
             aria-hidden
           />
           <MarqueeItem item={item} />
@@ -102,17 +98,12 @@ export function AnnouncementBar() {
 
   return (
     <div
-      className="group/announcement relative overflow-hidden border-b border-[#C5A059]/25 bg-[#55104A]"
+      className="store-announcement-bar group/announcement relative overflow-hidden"
       aria-label="Store announcements"
     >
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#3A0838] via-[#55104A] to-[#3A0838]"
-        aria-hidden
-      />
-
       <div className="relative z-10 flex h-[var(--announcement-bar-height)] items-center">
-        <div className="relative z-20 flex shrink-0 items-center bg-[#55104A] pl-2 pr-1 sm:pl-3 sm:pr-2">
-          <Sparkles className="h-3.5 w-3.5 text-[#E8D5A3]" aria-hidden />
+        <div className="relative z-20 flex shrink-0 items-center pl-2 pr-1 sm:pl-3 sm:pr-2">
+          <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
         </div>
 
         <div className="announcement-marquee-mask relative min-w-0 flex-1 overflow-hidden">

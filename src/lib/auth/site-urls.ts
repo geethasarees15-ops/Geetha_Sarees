@@ -1,5 +1,5 @@
 /** Canonical storefront origin(s) used for auth redirects and SEO. */
-const DEFAULT_PRODUCTION_ORIGIN = "https://geethasaress.com";
+const DEFAULT_PRODUCTION_ORIGIN = "https://geethasarees.com";
 
 function normalizeOrigin(value: string): string {
   const trimmed = value.trim().replace(/\/$/, "");
@@ -35,6 +35,8 @@ export function getAuthCallbackUrls(): string[] {
     "http://localhost:3000/auth/callback",
     "http://127.0.0.1:3000/auth/callback",
     "https://geethasarees.vercel.app/auth/callback",
+    "https://geethasarees.com/auth/callback",
+    "https://www.geethasarees.com/auth/callback",
   ]);
 
   try {

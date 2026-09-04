@@ -95,7 +95,7 @@ export async function savePdfBlob(
 const DEFAULT_LOGO_PATHS = [
   "/logo.png",
   "/logo2.png",
-  "/images/geetha-sarees-emblem.svg",
+  "/images/geetha-sarees-logo.png",
 ];
 let defaultLogoCache: string | null | undefined;
 

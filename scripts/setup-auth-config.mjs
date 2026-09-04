@@ -24,7 +24,7 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 const siteUrl = (
   process.env.SUPABASE_SITE_URL?.trim() ||
   process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-  "https://geethasarees.vercel.app"
+  "https://geethasarees.com"
 ).replace(/\/$/, "");
 
 function authCallback(origin) {
@@ -35,6 +35,8 @@ const redirectOrigins = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "https://geethasarees.vercel.app",
+  "https://geethasarees.com",
+  "https://www.geethasarees.com",
   siteUrl,
 ]);
 

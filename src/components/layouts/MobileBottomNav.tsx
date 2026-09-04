@@ -46,7 +46,7 @@ export function MobileBottomNav() {
   const itemClass = (active: boolean) =>
     cn(
       "relative z-[1] flex min-h-[44px] flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium leading-none touch-manipulation select-none",
-      active ? "text-white" : "text-white/75",
+      active ? "text-primary" : "text-foreground/60",
     );
 
   const items: NavItem[] = [
@@ -102,7 +102,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-[220] isolate border-t border-zinc-700 bg-zinc-900 text-white shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-[220] isolate border-t border-brand-gold-border/30 bg-[hsl(var(--store-header-bg))] text-[hsl(var(--store-header-fg))] shadow-[0_-4px_24px_rgba(0,0,0,0.08)]"
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
       aria-label="Mobile navigation"
     >

@@ -8,8 +8,7 @@ export const revalidate = STOREFRONT_STATIC_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
   title: "FAQ | Geetha Sarees",
-  description:
-    "Frequently asked questions about Geetha Sarees sarees",
+  description: "Frequently asked questions about Geetha Sarees sarees",
 };
 
 const faqs = [

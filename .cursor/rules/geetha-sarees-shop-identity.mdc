@@ -15,7 +15,7 @@ Load credentials from `.env.local`. Never commit secrets. Never paste keys into 
 |------|----------|
 | Brand | Geetha Sarees |
 | GitHub | `geethasarees15-ops/Geetha_Sarees` |
-| Default site URL | `https://geethasarees.vercel.app` until a custom domain is added |
+| Default site URL | `https://geethasarees.com` |
 | Env site URL | `NEXT_PUBLIC_SITE_URL` in `.env.local` / Vercel |
 
 ## Do not

@@ -72,7 +72,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       <div className="flex flex-col gap-3 border-t border-primary/10 pt-4 text-sm">
         <Link
           href="/sign-up"
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-[#55104A]"
+          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-[#C9A227]"
         >
           Create account
         </Link>

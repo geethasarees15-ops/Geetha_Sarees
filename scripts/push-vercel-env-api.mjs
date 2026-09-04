@@ -43,7 +43,7 @@ function loadVars() {
     if (key) vars[key] = value;
   }
   vars.NEXT_PUBLIC_SITE_URL =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://geethasaress.com";
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://geethasarees.com";
   vars.SKIP_ENV_VALIDATION = "true";
   if (!vars.S3_ACCESS_KEY_ID) vars.S3_ACCESS_KEY_ID = "unused-proxy-only";
   if (!vars.S3_SECRET_ACCESS_KEY) vars.S3_SECRET_ACCESS_KEY = "unused-proxy-only";

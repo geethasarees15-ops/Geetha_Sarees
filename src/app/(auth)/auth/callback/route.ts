@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 
   if (
     process.env.NODE_ENV === "production" &&
-    requestHost === "geethasarees.vercel.app" &&
+    requestHost.endsWith(".vercel.app") &&
     canonicalHost !== requestHost
   ) {
     const canonicalCallback = new URL(

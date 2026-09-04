@@ -13,8 +13,8 @@ const siteUrl = getURL();
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Geetha Sarees | Silk & Cotton Sarees",
-    template: "%s | Geetha Sarees",
+    default: "Geetha saree's | Silk & Cotton Sarees",
+    template: "%s | Geetha saree's",
   },
   description: siteConfig.description,
   keywords: [
@@ -34,18 +34,25 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  icons: {
+    icon: [{ url: "/images/geetha-sarees-logo.png", type: "image/png" }],
+    shortcut: ["/images/geetha-sarees-logo.png"],
+    apple: [{ url: "/images/geetha-sarees-logo.png", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     locale: "en_IN",
     url: siteUrl,
     siteName: siteConfig.name,
-    title: "Geetha Sarees | Silk & Cotton Sarees",
+    title: "Geetha saree's | Silk & Cotton Sarees",
     description: siteConfig.description,
+    images: [{ url: "/images/geetha-sarees-logo.png", width: 800, height: 340, alt: siteConfig.name }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Geetha Sarees | Silk & Cotton Sarees",
+    title: "Geetha saree's | Silk & Cotton Sarees",
     description: siteConfig.description,
+    images: ["/images/geetha-sarees-logo.png"],
   },
   robots: {
     index: true,
@@ -61,11 +68,6 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
-  icons: {
-    icon: [{ url: "/images/geetha-sarees-emblem.svg", type: "image/svg+xml" }],
-    shortcut: ["/images/geetha-sarees-emblem.svg"],
-    apple: [{ url: "/images/geetha-sarees-emblem.svg", type: "image/svg+xml" }],
-  },
 };
 
 export default function RootLayout({
@@ -75,14 +77,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <CustomProvider>
-        <body
-          className={`${inter.className} ${brandSans.variable} ${heroSerif.variable}`}
-        >
+      <body
+        className={`${inter.className} ${brandSans.variable} ${heroSerif.variable}`}
+      >
+        <CustomProvider>
           {children}
           <Toaster />
-        </body>
-      </CustomProvider>
+        </CustomProvider>
+      </body>
     </html>
   );
 }

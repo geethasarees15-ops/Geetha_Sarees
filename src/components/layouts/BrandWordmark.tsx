@@ -1,11 +1,12 @@
 import Image from "next/image";
 import { siteConfig } from "@/config/site";
-import { cn } from "@/lib/utils";
 import {
-  shopBoardSizeConfig,
+  BRAND_LOGO_ASPECT,
+  BRAND_LOGO_PATH,
+  brandLogoSizeConfig,
   type ShopBoardBrandSize,
 } from "@/lib/brand/shop-board";
-import { ShopBoardPanel } from "./ShopBoardPanel";
+import { cn } from "@/lib/utils";
 
 export type BrandWordmarkSize = ShopBoardBrandSize;
 
@@ -15,75 +16,36 @@ type Props = {
   align?: "left" | "center";
 };
 
-function GoldRule({ widthPx }: { widthPx: number }) {
-  return (
-    <span
-      className="brand-board-rule shrink-0"
-      style={{ width: widthPx }}
-      aria-hidden
-    />
-  );
-}
-
-/** Shop sign lockup — GS emblem left + purple text panel right. */
+/** Official Geetha saree's logo — horizontal lockup with name, divider, and contact. */
 export function BrandWordmark({
   className,
   size = "md",
   align = "left",
 }: Props) {
-  const config = shopBoardSizeConfig[size];
+  const config = brandLogoSizeConfig[size];
+  const width = Math.round(config.height * BRAND_LOGO_ASPECT);
 
   return (
     <span
       className={cn(
-        "brand-board-lockup inline-flex max-w-full items-center",
-        size === "nav" && "brand-board-lockup--nav",
-        align === "center" && "mx-auto",
+        "brand-logo-lockup inline-flex max-w-full items-center",
+        align === "center" && "mx-auto justify-center",
         className,
       )}
-      aria-label={`${siteConfig.shopBoardName}, ${siteConfig.location}`}
     >
       <Image
-        src="/images/geetha-sarees-emblem.svg"
-        alt=""
-        width={config.emblemPx}
-        height={config.emblemPx}
-        className="brand-board-emblem relative z-[2] shrink-0 object-contain"
-        style={{ marginLeft: config.emblemOffsetRightPx }}
-        aria-hidden
+        src={BRAND_LOGO_PATH}
+        alt={siteConfig.name}
+        width={width}
+        height={config.height}
+        className="brand-logo-image h-auto w-auto object-contain object-left"
+        style={{
+          height: config.height,
+          maxWidth: config.maxWidth,
+          width: "auto",
+        }}
         priority={size === "nav"}
       />
-
-      <ShopBoardPanel
-        slantPercent={config.slantPercent}
-        minHeight={config.panelMinHeight}
-        padX={config.panelPadX}
-        padY={config.panelPadY}
-        className={cn(`brand-board-panel--${size} relative z-[1]`)}
-        style={{ marginLeft: -config.emblemOverlapPx }}
-      >
-        <span
-          className="brand-board-name block max-w-full whitespace-nowrap font-[family-name:var(--font-hero-serif)] font-bold"
-          style={{ fontSize: config.nameFontPx, lineHeight: 1.15 }}
-        >
-          {siteConfig.shopBoardName}
-        </span>
-
-        <span className="mt-1 flex w-full items-center justify-center gap-1.5">
-          <GoldRule widthPx={config.lineWidthPx} />
-          <span
-            className="brand-board-location whitespace-nowrap font-[family-name:var(--font-brand-sans)] font-bold uppercase"
-            style={{
-              fontSize: config.locationFontPx,
-              letterSpacing: config.locationTracking,
-              lineHeight: 1.2,
-            }}
-          >
-            {siteConfig.location}
-          </span>
-          <GoldRule widthPx={config.lineWidthPx} />
-        </span>
-      </ShopBoardPanel>
     </span>
   );
 }

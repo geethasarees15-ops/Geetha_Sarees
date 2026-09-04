@@ -16,7 +16,7 @@ const edgeInsetRight = "max(0.75rem, env(safe-area-inset-right, 0px))" as const;
 
 function MobileNavbar({ adminLayout }: Props) {
   return (
-    <div className="relative h-[var(--store-nav-height-mobile)] min-h-[var(--store-nav-height-mobile)] w-full md:hidden">
+    <div className="store-nav-bar relative h-[var(--store-nav-height-mobile)] min-h-[var(--store-nav-height-mobile)] w-full md:hidden">
       <div
         className="absolute inset-y-0 left-0 z-[2] flex items-center"
         style={{ paddingLeft: edgeInset }}
@@ -49,7 +49,7 @@ function MobileNavbar({ adminLayout }: Props) {
             <MobileSearchTrigger className="h-11 w-11 shrink-0 touch-manipulation" />
             <Link
               href="/cart"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-muted touch-manipulation"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-primary/10 touch-manipulation"
               aria-label="Cart"
             >
               <Suspense fallback={null}>

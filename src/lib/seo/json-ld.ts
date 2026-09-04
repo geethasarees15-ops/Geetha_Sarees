@@ -19,12 +19,13 @@ export function buildOrganizationJsonLd() {
     "@type": "Organization",
     name: siteConfig.name.replace("®", "").trim(),
     url: absoluteUrl(),
-    logo: absoluteUrl("/images/geetha-sarees-emblem.svg"),
+    logo: absoluteUrl("/images/geetha-sarees-logo.png"),
     email: siteConfig.email || undefined,
     telephone: siteConfig.phone || undefined,
     address: {
       "@type": "PostalAddress",
-      streetAddress: siteConfig.addressLines.slice(0, 2).join(", ") || undefined,
+      streetAddress:
+        siteConfig.addressLines.slice(0, 2).join(", ") || undefined,
       addressCountry: "IN",
     },
     sameAs: Object.values(siteConfig.social),
@@ -56,7 +57,7 @@ export function buildStoreJsonLd() {
     "@type": "Store",
     name: siteConfig.name.replace("®", "").trim(),
     url: absoluteUrl(),
-    image: absoluteUrl("/images/geetha-sarees-emblem.svg"),
+    image: absoluteUrl("/images/geetha-sarees-logo.png"),
     telephone: siteConfig.phone || undefined,
     email: siteConfig.email || undefined,
     address: {
@@ -110,8 +111,7 @@ export function buildProductJsonLd(input: {
     "@context": "https://schema.org",
     "@type": "Product",
     name: input.name,
-    description:
-      input.description ?? `Buy ${input.name} from Geetha Sarees.`,
+    description: input.description ?? `Buy ${input.name} from Geetha Sarees.`,
     image: input.imageUrl ? [input.imageUrl] : undefined,
     sku: input.slug,
     brand: {

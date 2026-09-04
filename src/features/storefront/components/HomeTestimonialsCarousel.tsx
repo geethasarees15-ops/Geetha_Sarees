@@ -79,7 +79,7 @@ function CustomerAvatar({
   }
 
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#55104A] text-sm font-bold text-white ring-2 ring-primary/15 ring-offset-2 ring-offset-background">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FFD700] to-[#C9A227] text-sm font-bold text-black ring-2 ring-[#E8C872]/30 ring-offset-2 ring-offset-background">
       {initials || "ST"}
     </div>
   );
@@ -137,7 +137,7 @@ function ModernVideoTestimonialCard({ node }: { node: TestimonialNode }) {
   const posterUrl = imageKey ? keytoUrl(imageKey) : null;
 
   return (
-    <article className="group flex w-full flex-col overflow-hidden rounded-2xl border border-primary/15 bg-[#4A1048]/5 shadow-[0_16px_40px_-24px_rgba(107,24,88,0.5)]">
+    <article className="group flex w-full flex-col overflow-hidden rounded-2xl border border-[#C5A059]/25 bg-black/5 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.35)]">
       <div className="relative aspect-[9/13] w-full max-h-[min(62vh,360px)] bg-muted sm:aspect-[3/4] sm:max-h-none">
         <TestimonialVideoPlayer
           fill
@@ -146,7 +146,7 @@ function ModernVideoTestimonialCard({ node }: { node: TestimonialNode }) {
           posterUrl={posterUrl}
           customerName={node.customer_name}
         />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#4A1048]/95 via-[#4A1048]/50 to-transparent p-3 pt-12 sm:p-4 sm:pt-16">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent p-3 pt-12 sm:p-4 sm:pt-16">
           <StarRating rating={node.rating ?? 5} />
           {node.quote ? (
             <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-snug text-white sm:mt-2 sm:text-sm">

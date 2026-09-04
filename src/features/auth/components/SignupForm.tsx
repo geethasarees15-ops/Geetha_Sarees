@@ -159,7 +159,7 @@ export function SignUpForm() {
         />
         <Button
           disabled={isLoading}
-          className="w-full bg-primary hover:bg-[#55104A]"
+          className="w-full bg-primary hover:bg-[#C9A227]"
         >
           {isLoading && (
             <Icons.spinner

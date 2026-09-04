@@ -7,8 +7,7 @@ export const revalidate = STOREFRONT_STATIC_REVALIDATE_SECONDS;
 
 export const metadata: Metadata = {
   title: "Our Story | Geetha Sarees",
-  description:
-    "About Geetha Sarees — authentic silk and cotton sarees",
+  description: "About Geetha Sarees — authentic silk and cotton sarees",
 };
 
 export default function AboutPage() {
@@ -18,14 +17,15 @@ export default function AboutPage() {
       description="Geetha Sarees — trusted sarees for every occasion, from our family to yours."
     >
       <p>
-        Geetha Sarees offers authentic silk and cotton sarees for festivals, weddings, and
-        everyday elegance. From Kanjivaram and soft silk to cotton and wedding
-        collections, we curate quality pieces for retail and wholesale buyers.
+        Geetha Sarees offers authentic silk and cotton sarees for festivals,
+        weddings, and everyday elegance. From Kanjivaram and soft silk to cotton
+        and wedding collections, we curate quality pieces for retail and
+        wholesale buyers.
       </p>
       <p>
-        We combine the warmth of a local textile shop
-        with the convenience of online ordering. Whether you visit our showroom
-        or shop from home, our team is here to help you find the right saree.
+        We combine the warmth of a local textile shop with the convenience of
+        online ordering. Whether you visit our showroom or shop from home, our
+        team is here to help you find the right saree.
       </p>
       <p>
         Browse our{" "}

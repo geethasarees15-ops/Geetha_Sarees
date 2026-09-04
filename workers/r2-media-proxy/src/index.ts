@@ -41,6 +41,8 @@ const TOKEN_PREFIX = "uv1";
 const STAGING_PREFIX = "uploads/staging/";
 
 const CORS_ORIGINS = new Set([
+  "https://geethasarees.com",
+  "https://www.geethasarees.com",
   "https://geethasarees.vercel.app",
   "http://localhost:3000",
   "https://localhost",
@@ -50,6 +52,7 @@ const CORS_ORIGINS = new Set([
 function isAllowedCorsOrigin(origin: string): boolean {
   if (!origin) return false;
   if (CORS_ORIGINS.has(origin)) return true;
+  if (/^https:\/\/(www\.)?geethasarees\.com$/i.test(origin)) return true;
   return /^https:\/\/geethasarees[\w-]*\.vercel\.app$/i.test(origin);
 }
 
@@ -232,7 +235,11 @@ export default {
 
       const src = await env.MEDIA_BUCKET.get(fromKey);
       if (!src) {
-        return jsonResponse(request, { error: "Staging object not found." }, 404);
+        return jsonResponse(
+          request,
+          { error: "Staging object not found." },
+          404,
+        );
       }
 
       const contentType =

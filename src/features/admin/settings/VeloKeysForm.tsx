@@ -52,7 +52,7 @@ export function VeloKeysForm() {
       "",
       "async function pollOrders() {",
       "  const res = await fetch(",
-      "    `https://geethasarees.vercel.app/api/velo/orders?since=${encodeURIComponent(since)}&limit=50`,",
+      "    `https://geethasarees.com/api/velo/orders?since=${encodeURIComponent(since)}&limit=50`,",
       "    { headers: { 'x-velo-key': apiKey } },",
       "  );",
       "  if (!res.ok) throw new Error('Failed to fetch orders');",
@@ -76,7 +76,7 @@ export function VeloKeysForm() {
     const key = latestApiKey || "YOUR_VELO_API_KEY";
     return [
       "const apiKey = '" + key + "';",
-      "const baseUrl = 'https://geethasarees.vercel.app/api/velo/products';",
+      "const baseUrl = 'https://geethasarees.com/api/velo/products';",
       "",
       "async function callProductsApi(action, requestId, data) {",
       "  const res = await fetch(baseUrl, {",

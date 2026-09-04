@@ -20,7 +20,7 @@ async function MainNavbar({ adminLayout = false }: MainNavbarProps) {
       className={cn("top-0 z-[100] w-full", adminLayout ? "relative" : "fixed")}
     >
       {!adminLayout ? <AnnouncementBar /> : null}
-      <nav className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+      <nav className="store-nav-bar w-full">
         {adminLayout ? (
           <div className="flex min-h-[var(--admin-header-height-mobile)] w-full md:hidden">
             <MobileNavbar adminLayout={adminLayout} />
@@ -47,7 +47,7 @@ async function MainNavbar({ adminLayout = false }: MainNavbarProps) {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="text-foreground/80 transition hover:text-primary"
+                      className="text-foreground/85 transition hover:text-primary"
                     >
                       {item.title}
                     </Link>
@@ -58,7 +58,7 @@ async function MainNavbar({ adminLayout = false }: MainNavbarProps) {
                   <SearchInput />
                 </Suspense>
 
-                <div className="relative flex items-center gap-x-5">
+                <div className="relative flex items-center gap-x-5 text-foreground/85">
                   <Suspense>
                     <UserNav />
                   </Suspense>

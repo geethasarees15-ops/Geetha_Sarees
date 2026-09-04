@@ -11,9 +11,7 @@ import {
 
 describe("stripRegisteredMarks", () => {
   it("removes ® and (R)", () => {
-    expect(stripRegisteredMarks("Geetha Sarees®")).toBe(
-      "Geetha Sarees",
-    );
+    expect(stripRegisteredMarks("Geetha Sarees®")).toBe("Geetha Sarees");
     expect(stripRegisteredMarks("Brand (R) Name")).toBe("Brand Name");
   });
 });
