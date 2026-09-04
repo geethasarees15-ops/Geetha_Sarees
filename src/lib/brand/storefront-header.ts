@@ -23,8 +23,7 @@ export function computeStorefrontHeaderMetrics() {
   const navMobilePx = Math.max(NAV_MOBILE_ROW_PX, navLockupPx + 12);
   const navDesktopPx = NAV_DESKTOP_PADDING_Y_PX + desktopLockupPx + 8;
 
-  const offsetMobilePx =
-    ANNOUNCEMENT_BAR_PX + navMobilePx + LOGO_CLEARANCE_PX;
+  const offsetMobilePx = ANNOUNCEMENT_BAR_PX + navMobilePx + LOGO_CLEARANCE_PX;
   const offsetDesktopPx =
     ANNOUNCEMENT_BAR_PX + navDesktopPx + LOGO_CLEARANCE_PX;
 

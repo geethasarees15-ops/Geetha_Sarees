@@ -46,7 +46,14 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     title: "Geetha saree's | Silk & Cotton Sarees",
     description: siteConfig.description,
-    images: [{ url: "/images/geetha-sarees-logo.png", width: 800, height: 340, alt: siteConfig.name }],
+    images: [
+      {
+        url: "/images/geetha-sarees-logo.png",
+        width: 800,
+        height: 340,
+        alt: siteConfig.name,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
