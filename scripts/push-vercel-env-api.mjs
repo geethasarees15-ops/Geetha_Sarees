@@ -10,8 +10,8 @@ import { fileURLToPath } from "url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEAM_ID = "team_LB4nYuqRF3J4bWptxgnlR8NW";
-/** Both projects import the same GitHub repo — env must match on each. */
-const PROJECTS = ["geethasarees", "geetha-sarees"];
+/** Single production project — duplicate geetha-sarees is paused to avoid double builds/queue. */
+const PROJECTS = ["geethasarees"];
 const DEPLOY_PROJECT = "geethasarees";
 
 function loadToken() {
